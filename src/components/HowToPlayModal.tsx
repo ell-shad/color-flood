@@ -49,7 +49,9 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
             <button
               onClick={() => setActiveTab('solo')}
               className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'solo' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                activeTab === 'solo'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <User className="w-3.5 h-3.5" />
@@ -74,19 +76,24 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Goal:</strong> Fill the entire grid with a single color before your move limit runs out.
+                  <strong>Goal:</strong> Fill the entire grid with a single color before
+                  your move limit runs out.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Starting Root:</strong> You always control the top-left tile (0, 0). Click any of the color buttons below to recolor your connected block.
+                  <strong>Starting Root:</strong> You always control the top-left tile (0,
+                  0). Click any of the color buttons below to recolor your connected
+                  block.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify the color that claims the highest number of adjacent cells in one stroke.
+                  <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify
+                  the color that claims the highest number of adjacent cells in one
+                  stroke.
                 </p>
               </div>
             </div>
@@ -95,31 +102,43 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Goal:</strong> Capture more than <strong>50%</strong> of the board cells (or finish with more territory than your rival).
+                  <strong>Goal:</strong> Capture more than <strong>50%</strong> of the
+                  board cells (or finish with more territory than your rival).
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Corners:</strong> <span className="text-cyan-400 font-bold">Player 1</span> starts at the <em>Top-Left</em> corner. <span className="text-rose-400 font-bold">Player 2 (or AI Bot)</span> starts at the <em>Bottom-Right</em> corner.
+                  <strong>Corners:</strong>{' '}
+                  <span className="text-cyan-400 font-bold">Player 1</span> starts at the{' '}
+                  <em>Top-Left</em> corner.{' '}
+                  <span className="text-rose-400 font-bold">Player 2 (or AI Bot)</span>{' '}
+                  starts at the <em>Bottom-Right</em> corner.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Color Locking:</strong> You take turns choosing a color. You <em>cannot</em> pick your current color, and you <em>cannot</em> pick the color currently owned by your opponent!
+                  <strong>Color Locking:</strong> You take turns choosing a color. You{' '}
+                  <em>cannot</em> pick your current color, and you <em>cannot</em> pick
+                  the color currently owned by your opponent!
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Absorption:</strong> When you pick a color, your whole empire changes to that color and absorbs any adjacent neutral cells matching it.
+                  <strong>Absorption:</strong> When you pick a color, your whole empire
+                  changes to that color and absorbs any adjacent neutral cells matching
+                  it.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Play Modes:</strong> Challenge a friend <strong>Online from distance</strong> via room code or instant shareable link, play <strong>Pass & Play</strong> locally on one device, or battle the <strong>AI Bot</strong> (Easy, Medium, Master).
+                  <strong>Play Modes:</strong> Challenge a friend{' '}
+                  <strong>Online from distance</strong> via room code or instant shareable
+                  link, play <strong>Pass & Play</strong> locally on one device, or battle
+                  the <strong>AI Bot</strong> (Easy, Medium, Master).
                 </p>
               </div>
             </div>

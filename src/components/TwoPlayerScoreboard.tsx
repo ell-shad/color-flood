@@ -4,8 +4,14 @@
  */
 
 import React, { useState } from 'react';
-import { User, Bot, Sparkles, Lightbulb, Globe, Copy, Check, RotateCcw } from 'lucide-react';
-import { TwoPlayerGameState, MultiplayerOpponent, SeriesScore, ActiveEmote, GameTheme, ChallengeType } from '../types';
+import { User, Bot, Sparkles, Lightbulb, Globe, Copy, Check } from 'lucide-react';
+import {
+  TwoPlayerGameState,
+  MultiplayerOpponent,
+  SeriesScore,
+  ActiveEmote,
+  GameTheme,
+} from '../types';
 import { THEMES } from '../utils/themes';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { ProgressiveTrack } from './ProgressiveTrack';
@@ -45,7 +51,6 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
   roomId,
   p1Connected = true,
   p2Connected = true,
-  onRequestReset,
 }) => {
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -105,9 +110,13 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
           <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold">
             R{roundNum} • P{firstTurn} opened
           </span>
-          <span className="text-cyan-400 font-bold">{displayName1.slice(0, 6)}: {seriesScore.p1}</span>
+          <span className="text-cyan-400 font-bold">
+            {displayName1.slice(0, 6)}: {seriesScore.p1}
+          </span>
           <span className="text-slate-600">—</span>
-          <span className="text-rose-400 font-bold">{displayName2.slice(0, 6)}: {seriesScore.p2}</span>
+          <span className="text-rose-400 font-bold">
+            {displayName2.slice(0, 6)}: {seriesScore.p2}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -119,7 +128,11 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
             >
               <Globe className="w-2.5 h-2.5 text-emerald-400" />
               <span>{roomId}</span>
-              {copiedCode ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+              {copiedCode ? (
+                <Check className="w-2.5 h-2.5 text-emerald-400" />
+              ) : (
+                <Copy className="w-2.5 h-2.5" />
+              )}
             </button>
           )}
 
@@ -141,7 +154,9 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
             }`}
             title="Hint best move"
           >
-            <Lightbulb className={`w-3 h-3 ${hint !== null ? 'text-amber-400' : 'text-slate-400'}`} />
+            <Lightbulb
+              className={`w-3 h-3 ${hint !== null ? 'text-amber-400' : 'text-slate-400'}`}
+            />
             <span>Hint</span>
           </button>
         </div>
@@ -221,8 +236,8 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
                   isP1Turn
                     ? 'bg-cyan-500 text-slate-950 animate-pulse'
                     : isBotThinking
-                    ? 'bg-rose-400 text-slate-950 animate-bounce'
-                    : 'bg-rose-500 text-white animate-pulse'
+                      ? 'bg-rose-400 text-slate-950 animate-bounce'
+                      : 'bg-rose-500 text-white animate-pulse'
                 }`}
               >
                 <Sparkles className="w-2.5 h-2.5" />
@@ -232,12 +247,12 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
                       ? 'Your Turn'
                       : 'Rival Turn'
                     : isP1Turn
-                    ? 'P1 Turn'
-                    : opponent === 'bot'
-                    ? isBotThinking
-                      ? 'Thinking'
-                      : 'Bot Turn'
-                    : 'P2 Turn'}
+                      ? 'P1 Turn'
+                      : opponent === 'bot'
+                        ? isBotThinking
+                          ? 'Thinking'
+                          : 'Bot Turn'
+                        : 'P2 Turn'}
                 </span>
               </div>
             ) : (
@@ -300,7 +315,11 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
                   borderColor: isP2Turn ? '#FB7185' : 'rgba(255,255,255,0.2)',
                 }}
               >
-                {opponent === 'bot' ? <Bot className="w-3.5 h-3.5 drop-shadow" /> : <User className="w-3.5 h-3.5 drop-shadow" />}
+                {opponent === 'bot' ? (
+                  <Bot className="w-3.5 h-3.5 drop-shadow" />
+                ) : (
+                  <User className="w-3.5 h-3.5 drop-shadow" />
+                )}
               </div>
               {myRole === 2 && opponent === 'online' && (
                 <span className="absolute -bottom-1 -left-1 bg-rose-500 text-white text-[7px] font-black px-1 rounded uppercase">

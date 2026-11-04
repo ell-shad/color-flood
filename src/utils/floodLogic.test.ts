@@ -110,30 +110,38 @@ describe('floodSolo', () => {
 
 describe('checkSoloWin', () => {
   it('returns true for a single-color board', () => {
-    expect(checkSoloWin([
-      [5, 5],
-      [5, 5],
-    ])).toBe(true);
+    expect(
+      checkSoloWin([
+        [5, 5],
+        [5, 5],
+      ]),
+    ).toBe(true);
   });
 
   it('returns false for a mixed board', () => {
-    expect(checkSoloWin([
-      [5, 5],
-      [5, 4],
-    ])).toBe(false);
+    expect(
+      checkSoloWin([
+        [5, 5],
+        [5, 4],
+      ]),
+    ).toBe(false);
   });
 });
 
 describe('countConnectedSolo', () => {
   it('counts the connected component of the start cell', () => {
-    expect(countConnectedSolo([
-      [0, 0],
-      [1, 0],
-    ])).toBe(3);
-    expect(countConnectedSolo([
-      [0, 1],
-      [1, 0],
-    ])).toBe(1);
+    expect(
+      countConnectedSolo([
+        [0, 0],
+        [1, 0],
+      ]),
+    ).toBe(3);
+    expect(
+      countConnectedSolo([
+        [0, 1],
+        [1, 0],
+      ]),
+    ).toBe(1);
   });
 
   it('counts the whole board when it is one color', () => {
@@ -235,7 +243,7 @@ describe('expandPlayerTerritory', () => {
       grid,
       ['0,0'],
       ['1,0', '2,0'], // opponent owns the left column below P1
-      1
+      1,
     );
 
     expect(newGrid[0]).toEqual([1, 1, 2]);
@@ -270,9 +278,7 @@ describe('expandPlayerTerritory', () => {
   });
 
   it('does not mutate the input grid or cell lists', () => {
-    const grid = [
-      [0, 1, 2],
-    ];
+    const grid = [[0, 1, 2]];
     const snapshot = clone(grid);
     const currentCells = ['0,0'];
     const opponentCells = ['0,2'];
@@ -284,7 +290,7 @@ describe('expandPlayerTerritory', () => {
 });
 
 describe('getLegalMultiplayerColors', () => {
-  it('excludes both players\' current colors', () => {
+  it("excludes both players' current colors", () => {
     expect(getLegalMultiplayerColors(0, 3, 5)).toEqual([1, 2, 4]);
   });
 
@@ -358,7 +364,12 @@ describe('getBestMultiplayerMove', () => {
     let expected = -Infinity;
     let best = -1;
     for (const c of [1, 2, 3]) {
-      const { newGrid, newCells, gain } = expandPlayerTerritory(grid, ['0,0'], ['2,2'], c);
+      const { newGrid, newCells, gain } = expandPlayerTerritory(
+        grid,
+        ['0,0'],
+        ['2,2'],
+        c,
+      );
       const oppLegal = getLegalMultiplayerColors(c, oppColor, 5);
       let maxOppGain = 0;
       for (const oppC of oppLegal) {
@@ -396,7 +407,7 @@ describe('checkMultiplayerGameOver', () => {
       1,
       base.grid,
       p1Cells,
-      p2Cells
+      p2Cells,
     );
 
   it('declares an immediate winner on majority (>50%)', () => {
@@ -428,7 +439,7 @@ describe('checkMultiplayerGameOver', () => {
       1,
       grid2,
       ['0,0'],
-      ['1,1', '1,0']
+      ['1,1', '1,0'],
     );
     expect(outcome).toBe('p2_won');
   });

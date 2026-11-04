@@ -6,7 +6,15 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { GRID_SIZES, COLOR_COUNTS } from '../utils/floodLogic';
-import { BotDifficulty, GameMode, GridSize, ColorCount, MultiplayerOpponent, ThemeId, ChallengeType } from '../types';
+import {
+  BotDifficulty,
+  GameMode,
+  GridSize,
+  ColorCount,
+  MultiplayerOpponent,
+  ThemeId,
+  ChallengeType,
+} from '../types';
 import { THEMES } from '../utils/themes';
 import { Eye, RotateCcw, Download, Sparkles, Palette, Trophy } from 'lucide-react';
 
@@ -38,7 +46,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeColorCount,
   mode,
   opponent,
-  onChangeOpponent,
   botDifficulty,
   onChangeBotDifficulty,
   showTerritoryOverlay,
@@ -64,8 +71,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* Quick Easiest Preset & Theme Bar */}
         <div className="flex items-center justify-between pb-2.5 border-b border-slate-750 gap-2 flex-wrap">
           <div>
-            <span className="text-xs font-bold text-white block">Difficulty & Aesthetics</span>
-            <span className="text-[10px] text-slate-400">Default is always easiest setup</span>
+            <span className="text-xs font-bold text-white block">
+              Difficulty & Aesthetics
+            </span>
+            <span className="text-[10px] text-slate-400">
+              Default is always easiest setup
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -129,7 +140,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
               Grid Size
             </label>
-            <span className="text-[10px] text-indigo-400 font-mono">10x10 is easiest</span>
+            <span className="text-[10px] text-indigo-400 font-mono">
+              10x10 is easiest
+            </span>
           </div>
           <div className="flex gap-1.5">
             {GRID_SIZES.map((size) => (
@@ -144,7 +157,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 <span>{size}²</span>
                 {size === 10 && (
-                  <span className="text-[7px] uppercase tracking-wider font-mono opacity-80">Easy</span>
+                  <span className="text-[7px] uppercase tracking-wider font-mono opacity-80">
+                    Easy
+                  </span>
                 )}
               </button>
             ))}
@@ -157,7 +172,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
               Colors Count
             </label>
-            <span className="text-[10px] text-indigo-400 font-mono">4 Colors is easiest</span>
+            <span className="text-[10px] text-indigo-400 font-mono">
+              4 Colors is easiest
+            </span>
           </div>
           <div className="flex gap-1.5">
             {COLOR_COUNTS.map((count) => (
@@ -172,7 +189,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 <span>{count} Colors</span>
                 {count === 4 && (
-                  <span className="text-[7px] uppercase tracking-wider font-mono opacity-80">Easy</span>
+                  <span className="text-[7px] uppercase tracking-wider font-mono opacity-80">
+                    Easy
+                  </span>
                 )}
               </button>
             ))}
@@ -189,7 +208,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                     AI Difficulty
                   </label>
-                  <span className="text-[10px] text-cyan-400 font-mono">Easy is default</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">
+                    Easy is default
+                  </span>
                 </div>
                 <div className="flex gap-1.5">
                   {(['easy', 'medium', 'master'] as BotDifficulty[]).map((diff) => (
@@ -217,7 +238,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 <Eye className="w-3.5 h-3.5 text-indigo-400" />
                 <span>
-                  Glow: <strong className="text-white">{showTerritoryOverlay ? 'ON' : 'OFF'}</strong>
+                  Glow:{' '}
+                  <strong className="text-white">
+                    {showTerritoryOverlay ? 'ON' : 'OFF'}
+                  </strong>
                 </span>
               </button>
 

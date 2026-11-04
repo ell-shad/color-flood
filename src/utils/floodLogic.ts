@@ -34,7 +34,7 @@ export const COLOR_COUNTS: ColorCount[] = [4, 5, 6, 7, 8];
 
 export const generateSoloGrid = (size: number, colorCount: number): number[][] => {
   return Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => Math.floor(Math.random() * colorCount))
+    Array.from({ length: size }, () => Math.floor(Math.random() * colorCount)),
   );
 };
 
@@ -147,7 +147,7 @@ export const findConnectedComponent = (
   grid: number[][],
   startR: number,
   startC: number,
-  targetColor: number
+  targetColor: number,
 ): string[] => {
   const size = grid.length;
   const queue: [number, number][] = [[startR, startC]];
@@ -189,7 +189,7 @@ export const findConnectedComponent = (
  */
 export const generateTwoPlayerGrid = (
   size: number,
-  colorCount: number
+  colorCount: number,
 ): {
   grid: number[][];
   p1Cells: string[];
@@ -240,7 +240,7 @@ export const expandPlayerTerritory = (
   grid: number[][],
   currentCells: string[],
   opponentCells: string[],
-  targetColor: number
+  targetColor: number,
 ): {
   newGrid: number[][];
   newCells: string[];
@@ -272,7 +272,11 @@ export const expandPlayerTerritory = (
     for (const [nr, nc] of neighbors) {
       if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
         const key = `${nr},${nc}`;
-        if (!updatedSet.has(key) && !opponentSet.has(key) && newGrid[nr][nc] === targetColor) {
+        if (
+          !updatedSet.has(key) &&
+          !opponentSet.has(key) &&
+          newGrid[nr][nc] === targetColor
+        ) {
           updatedSet.add(key);
           queue.push([nr, nc]);
         }
@@ -295,7 +299,7 @@ export const expandPlayerTerritory = (
 export const getLegalMultiplayerColors = (
   p1Color: number,
   p2Color: number,
-  colorCount: number
+  colorCount: number,
 ): number[] => {
   const legal: number[] = [];
   for (let i = 0; i < colorCount; i++) {
@@ -317,7 +321,7 @@ export const getBestMultiplayerMove = (
   p1Color: number,
   p2Color: number,
   colorCount: number,
-  difficulty: BotDifficulty = 'master'
+  difficulty: BotDifficulty = 'master',
 ): { bestColor: number; maxGain: number; evaluations: Record<number, number> } => {
   const currentCells = activePlayer === 1 ? p1Cells : p2Cells;
   const opponentCells = activePlayer === 1 ? p2Cells : p1Cells;
@@ -341,7 +345,11 @@ export const getBestMultiplayerMove = (
   if (difficulty === 'easy') {
     if (Math.random() < 0.6) {
       const randomColor = legalColors[Math.floor(Math.random() * legalColors.length)];
-      return { bestColor: randomColor, maxGain: evaluations[randomColor] || 0, evaluations };
+      return {
+        bestColor: randomColor,
+        maxGain: evaluations[randomColor] || 0,
+        evaluations,
+      };
     }
   }
 
@@ -369,7 +377,7 @@ export const getBestMultiplayerMove = (
       grid,
       currentCells,
       opponentCells,
-      c
+      c,
     );
 
     // Simulate opponent's best response
@@ -409,7 +417,7 @@ export const checkMultiplayerGameOver = (
   p2Color: number,
   grid: number[][],
   p1Cells: string[],
-  p2Cells: string[]
+  p2Cells: string[],
 ): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
   const majorityThreshold = Math.floor(totalCells / 2) + 1;
 

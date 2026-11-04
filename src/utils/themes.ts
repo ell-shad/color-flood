@@ -32,8 +32,10 @@ export const THEMES: Record<ThemeId, GameTheme> = {
     boardBg: 'bg-slate-900/95',
     boardBorder: 'border-slate-700/60',
     cellRadius: 'rounded-[3px] sm:rounded-sm',
-    glowP1: 'ring-1 sm:ring-[1.5px] ring-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.35)]',
-    glowP2: 'ring-1 sm:ring-[1.5px] ring-rose-400/80 shadow-[0_0_8px_rgba(251,113,133,0.35)]',
+    glowP1:
+      'ring-1 sm:ring-[1.5px] ring-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.35)]',
+    glowP2:
+      'ring-1 sm:ring-[1.5px] ring-rose-400/80 shadow-[0_0_8px_rgba(251,113,133,0.35)]',
   },
   neon: {
     id: 'neon',
@@ -177,7 +179,8 @@ export const THEMES: Record<ThemeId, GameTheme> = {
     boardBg: 'bg-zinc-950/95',
     boardBorder: 'border-emerald-800/40',
     cellRadius: 'rounded-[3px] sm:rounded-sm',
-    glowP1: 'ring-1 sm:ring-[1.5px] ring-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.4)]',
+    glowP1:
+      'ring-1 sm:ring-[1.5px] ring-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.4)]',
     glowP2: 'ring-1 sm:ring-[1.5px] ring-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.4)]',
   },
   jewel: {
@@ -207,7 +210,8 @@ export const THEMES: Record<ThemeId, GameTheme> = {
     boardBorder: 'border-amber-500/30',
     cellRadius: 'rounded-[3px] sm:rounded-sm',
     glowP1: 'ring-1 sm:ring-[1.5px] ring-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.4)]',
-    glowP2: 'ring-1 sm:ring-[1.5px] ring-purple-300 shadow-[0_0_8px_rgba(216,180,254,0.4)]',
+    glowP2:
+      'ring-1 sm:ring-[1.5px] ring-purple-300 shadow-[0_0_8px_rgba(216,180,254,0.4)]',
   },
 };
 

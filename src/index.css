@@ -1,6 +1,7 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -8,8 +9,8 @@ html, body {
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
-  background-color: #0F172A;
-  color: #F8FAFC;
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 * {

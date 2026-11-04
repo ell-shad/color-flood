@@ -4,7 +4,17 @@
  */
 
 import React from 'react';
-import { Settings2, RotateCcw, Info, Users, User, Bot, Swords, Globe, Palette } from 'lucide-react';
+import {
+  Settings2,
+  RotateCcw,
+  Info,
+  Users,
+  User,
+  Bot,
+  Swords,
+  Globe,
+  Palette,
+} from 'lucide-react';
 import { GameMode, MultiplayerOpponent } from '../types';
 
 interface HeaderProps {

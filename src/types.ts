@@ -12,13 +12,7 @@ export type PlayerId = 1 | 2;
 export type ChallengeType = 'standard' | 'progressive';
 
 export type ThemeId =
-  | 'arcade'
-  | 'neon'
-  | 'sunset'
-  | 'pastel'
-  | 'frost'
-  | 'botanical'
-  | 'jewel';
+  'arcade' | 'neon' | 'sunset' | 'pastel' | 'frost' | 'botanical' | 'jewel';
 
 export interface GameTheme {
   id: ThemeId;

@@ -56,14 +56,15 @@ export const GameGrid: React.FC<GameGridProps> = ({
           row.map((colorIdx, c) => {
             const key = `${r},${c}`;
             const isP1Start = mode === 'multiplayer' && r === 0 && c === 0;
-            const isP2Start = mode === 'multiplayer' && r === gridSize - 1 && c === gridSize - 1;
+            const isP2Start =
+              mode === 'multiplayer' && r === gridSize - 1 && c === gridSize - 1;
 
             const isP1Owned = mode === 'multiplayer' && p1Set.has(key);
             const isP2Owned = mode === 'multiplayer' && p2Set.has(key);
 
             // Compute distance from active root for fluid wave animation
             const distFromP1 = r + c;
-            const distFromP2 = (gridSize - 1 - r) + (gridSize - 1 - c);
+            const distFromP2 = gridSize - 1 - r + (gridSize - 1 - c);
             const waveDist = lastMovingPlayer === 2 ? distFromP2 : distFromP1;
             const waveDelay = Math.min(0.24, waveDist * 0.014);
 
@@ -110,19 +111,22 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 )}
 
                 {/* Subtle Territory Markers on Owned Cells */}
-                {showTerritoryOverlay && mode === 'multiplayer' && !isP1Start && !isP2Start && (
-                  <>
-                    {isP1Owned && (
-                      <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-cyan-100/90 shadow-sm pointer-events-none" />
-                    )}
-                    {isP2Owned && (
-                      <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-rose-100/90 shadow-sm pointer-events-none" />
-                    )}
-                  </>
-                )}
+                {showTerritoryOverlay &&
+                  mode === 'multiplayer' &&
+                  !isP1Start &&
+                  !isP2Start && (
+                    <>
+                      {isP1Owned && (
+                        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-cyan-100/90 shadow-sm pointer-events-none" />
+                      )}
+                      {isP2Owned && (
+                        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-rose-100/90 shadow-sm pointer-events-none" />
+                      )}
+                    </>
+                  )}
               </motion.div>
             );
-          })
+          }),
         )}
       </div>
     </div>

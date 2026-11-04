@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RotateCcw, Check, X, Clock, HelpCircle, Swords } from 'lucide-react';
+import { RotateCcw, Check, X, Clock, HelpCircle } from 'lucide-react';
 import { ResetProposal, MultiplayerOpponent } from '../types';
 
 interface ResetApprovalModalProps {
@@ -89,8 +89,7 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
   if (!proposal) return null;
 
   const isRequester = myRole === proposal.requestedBy;
-  const requesterName =
-    proposal.requestedBy === 1 ? p1Name : p2Name || 'Player 2';
+  const requesterName = proposal.requestedBy === 1 ? p1Name : p2Name || 'Player 2';
   const otherName = proposal.requestedBy === 1 ? p2Name || 'Player 2' : p1Name;
 
   return (
@@ -119,7 +118,8 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
                   Reset Requested
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Waiting for <strong className="text-slate-200">{otherName}</strong> to approve the match reset...
+                  Waiting for <strong className="text-slate-200">{otherName}</strong> to
+                  approve the match reset...
                 </p>
               </div>
 
@@ -144,7 +144,8 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
                   Opponent Requested Reset
                 </h3>
                 <p className="text-xs text-slate-400">
-                  <strong className="text-cyan-400">{requesterName}</strong> wants to reset the match and start a new round.
+                  <strong className="text-cyan-400">{requesterName}</strong> wants to
+                  reset the match and start a new round.
                 </p>
                 {proposal.targetStage && (
                   <div className="text-[11px] text-amber-300 font-mono bg-amber-950/40 py-1 px-2 rounded-lg border border-amber-500/30 inline-block mt-1">

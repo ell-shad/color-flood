@@ -113,7 +113,7 @@ export function useOnlineMultiplayer() {
               ) {
                 onEmoteCallbackRef.current(
                   data.roomState.lastEmote.role,
-                  data.roomState.lastEmote.emoji
+                  data.roomState.lastEmote.emoji,
                 );
               }
             }
@@ -126,7 +126,8 @@ export function useOnlineMultiplayer() {
                 prev.p2Connected !== data.roomState.p2Connected ||
                 prev.turn !== data.roomState.turn ||
                 prev.roundNumber !== data.roomState.roundNumber ||
-                JSON.stringify(prev.resetProposal) !== JSON.stringify(data.roomState.resetProposal)
+                JSON.stringify(prev.resetProposal) !==
+                  JSON.stringify(data.roomState.resetProposal)
               ) {
                 return data.roomState;
               }
@@ -149,7 +150,7 @@ export function useOnlineMultiplayer() {
       gridSize = 10,
       colorCount = 4,
       challengeType: ChallengeType = 'standard',
-      themeId: ThemeId = 'arcade'
+      themeId: ThemeId = 'arcade',
     ) => {
       setConnectionStatus('connecting');
       setErrorMessage(null);
@@ -167,7 +168,7 @@ export function useOnlineMultiplayer() {
 
       const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(
         actualGridSize,
-        actualColorCount
+        actualColorCount,
       );
 
       const initialRoomState: OnlineRoomState = {
@@ -243,7 +244,9 @@ export function useOnlineMultiplayer() {
 
         peer.on('open', () => {
           setConnectionStatus('connected');
-          setSystemMessage('Room active! Share the code or invite link with your friend.');
+          setSystemMessage(
+            'Room active! Share the code or invite link with your friend.',
+          );
           startServerPolling(code);
         });
 
@@ -266,9 +269,13 @@ export function useOnlineMultiplayer() {
                 setTimeout(() => {
                   try {
                     conn.close();
-                  } catch {}
+                  } catch {
+                    /* intentionally ignored */
+                  }
                 }, 400);
-              } catch {}
+              } catch {
+                /* intentionally ignored */
+              }
             });
             return;
           }
@@ -284,7 +291,11 @@ export function useOnlineMultiplayer() {
 
             if (data.type === 'join') {
               const stateSnapshot = currentRoomStateRef.current;
-              if (stateSnapshot && stateSnapshot.p2Connected && conn !== connRef.current) {
+              if (
+                stateSnapshot &&
+                stateSnapshot.p2Connected &&
+                conn !== connRef.current
+              ) {
                 conn.send({
                   type: 'rejected',
                   reason: 'ROOM_FULL',
@@ -292,7 +303,9 @@ export function useOnlineMultiplayer() {
                 });
                 try {
                   conn.close();
-                } catch {}
+                } catch {
+                  /* intentionally ignored */
+                }
                 return;
               }
 
@@ -314,15 +327,19 @@ export function useOnlineMultiplayer() {
                 handleReceiveMove(2, data.color);
               }
             } else if (data.type === 'reset_proposed' && data.proposal) {
-              setRoomState((prev) => (prev ? { ...prev, resetProposal: data.proposal! } : null));
+              setRoomState((prev) =>
+                prev ? { ...prev, resetProposal: data.proposal! } : null,
+              );
               setSystemMessage('Opponent requested a match reset. Accept or decline?');
             } else if (data.type === 'reset_accepted' && data.state) {
               setRoomState(data.state);
               setSystemMessage(
-                `Match reset accepted! Round ${data.state.roundNumber} • Player ${data.state.firstTurnPlayer} moves first.`
+                `Match reset accepted! Round ${data.state.roundNumber} • Player ${data.state.firstTurnPlayer} moves first.`,
               );
             } else if (data.type === 'reset_declined') {
-              setRoomState((prev) => (prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null));
+              setRoomState((prev) =>
+                prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null,
+              );
               setSystemMessage('Opponent declined the reset request.');
             } else if (data.type === 'settings_updated' && data.state) {
               setRoomState(data.state);
@@ -353,7 +370,7 @@ export function useOnlineMultiplayer() {
         startServerPolling(code);
       }
     },
-    [startServerPolling]
+    [startServerPolling],
   );
 
   // --- JOIN ROOM (CLIENT / P2) ---
@@ -442,14 +459,17 @@ export function useOnlineMultiplayer() {
 
           if (data.type === 'rejected') {
             setErrorMessage(
-              data.message || 'Room is full (2/2 players already playing). Only 2 players allowed.'
+              data.message ||
+                'Room is full (2/2 players already playing). Only 2 players allowed.',
             );
             setConnectionStatus('error');
             setRoomState(null);
             setMyRole(null);
             try {
               conn.close();
-            } catch {}
+            } catch {
+              /* intentionally ignored */
+            }
             return;
           }
 
@@ -459,15 +479,19 @@ export function useOnlineMultiplayer() {
           } else if (data.type === 'move' && data.color !== undefined) {
             handleReceiveMove(1, data.color);
           } else if (data.type === 'reset_proposed' && data.proposal) {
-            setRoomState((prev) => (prev ? { ...prev, resetProposal: data.proposal! } : null));
+            setRoomState((prev) =>
+              prev ? { ...prev, resetProposal: data.proposal! } : null,
+            );
             setSystemMessage('Opponent requested a match reset. Accept or decline?');
           } else if (data.type === 'reset_accepted' && data.state) {
             setRoomState(data.state);
             setSystemMessage(
-              `Match reset accepted! Round ${data.state.roundNumber} • Player ${data.state.firstTurnPlayer} moves first.`
+              `Match reset accepted! Round ${data.state.roundNumber} • Player ${data.state.firstTurnPlayer} moves first.`,
             );
           } else if (data.type === 'reset_declined') {
-            setRoomState((prev) => (prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null));
+            setRoomState((prev) =>
+              prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null,
+            );
             setSystemMessage('Opponent declined the reset request.');
           } else if (data.type === 'settings_updated' && data.state) {
             setRoomState(data.state);
@@ -487,7 +511,9 @@ export function useOnlineMultiplayer() {
         conn.on('error', (err) => {
           console.warn('Direct peer connection error:', err);
           if (!joinedViaServer) {
-            setErrorMessage(`Could not connect to room "${code}". Please check the code.`);
+            setErrorMessage(
+              `Could not connect to room "${code}". Please check the code.`,
+            );
             setConnectionStatus('error');
           }
         });
@@ -501,7 +527,7 @@ export function useOnlineMultiplayer() {
         }
       });
     },
-    [startServerPolling]
+    [startServerPolling],
   );
 
   // --- MOVE CALCULATION (SHARED) ---
@@ -515,7 +541,7 @@ export function useOnlineMultiplayer() {
         prev.grid,
         currentCells,
         opponentCells,
-        color
+        color,
       );
 
       const nextP1Cells = fromRole === 1 ? newCells : prev.p1Cells;
@@ -533,7 +559,7 @@ export function useOnlineMultiplayer() {
         nextP2Color,
         newGrid,
         nextP1Cells,
-        nextP2Cells
+        nextP2Cells,
       );
 
       const series = { ...prev.series };
@@ -545,12 +571,18 @@ export function useOnlineMultiplayer() {
       if (outcome !== 'playing' && prev.status === 'playing') {
         if (outcome === 'p1_won') {
           series.p1 += 1;
-          if (prev.challengeType === 'progressive' && !stageWins[1].includes(prev.currentStage)) {
+          if (
+            prev.challengeType === 'progressive' &&
+            !stageWins[1].includes(prev.currentStage)
+          ) {
             stageWins[1].push(prev.currentStage);
           }
         } else if (outcome === 'p2_won') {
           series.p2 += 1;
-          if (prev.challengeType === 'progressive' && !stageWins[2].includes(prev.currentStage)) {
+          if (
+            prev.challengeType === 'progressive' &&
+            !stageWins[2].includes(prev.currentStage)
+          ) {
             stageWins[2].push(prev.currentStage);
           }
         } else if (outcome === 'draw') {
@@ -596,12 +628,16 @@ export function useOnlineMultiplayer() {
         body: JSON.stringify({ role: myRole, color }),
       }).catch(() => {});
     },
-    [myRole]
+    [myRole],
   );
 
   // --- PROPOSE RESET (Opponent Approval Flow) ---
   const proposeReset = useCallback(
-    async (options?: { targetStage?: number; newGridSize?: number; newColorCount?: number }) => {
+    async (options?: {
+      targetStage?: number;
+      newGridSize?: number;
+      newColorCount?: number;
+    }) => {
       const current = currentRoomStateRef.current;
       if (!current || !myRole) return;
 
@@ -639,9 +675,11 @@ export function useOnlineMultiplayer() {
             setRoomState(data.roomState);
           }
         }
-      } catch {}
+      } catch {
+        /* intentionally ignored */
+      }
     },
-    [myRole]
+    [myRole],
   );
 
   // --- ACCEPT RESET ---
@@ -661,11 +699,13 @@ export function useOnlineMultiplayer() {
           setRoomState(data.roomState);
           sendPeerData({ type: 'reset_accepted', state: data.roomState });
           setSystemMessage(
-            `Reset accepted! Round ${data.roomState.roundNumber} • Player ${data.roomState.firstTurnPlayer} starts.`
+            `Reset accepted! Round ${data.roomState.roundNumber} • Player ${data.roomState.firstTurnPlayer} starts.`,
           );
         }
       }
-    } catch {}
+    } catch {
+      /* intentionally ignored */
+    }
   }, [myRole]);
 
   // --- DECLINE RESET ---
@@ -673,7 +713,9 @@ export function useOnlineMultiplayer() {
     const current = currentRoomStateRef.current;
     if (!current || !myRole) return;
 
-    setRoomState((prev) => (prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null));
+    setRoomState((prev) =>
+      prev ? { ...prev, resetProposal: null, rematchRequestedBy: null } : null,
+    );
     sendPeerData({ type: 'reset_declined', role: myRole });
     setSystemMessage('You declined the reset proposal.');
 
@@ -683,7 +725,9 @@ export function useOnlineMultiplayer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: myRole }),
       });
-    } catch {}
+    } catch {
+      /* intentionally ignored */
+    }
   }, [myRole]);
 
   // --- UPDATE SETTINGS ---
@@ -710,9 +754,11 @@ export function useOnlineMultiplayer() {
             sendPeerData({ type: 'settings_updated', state: data.roomState });
           }
         }
-      } catch {}
+      } catch {
+        /* intentionally ignored */
+      }
     },
-    [myRole]
+    [myRole],
   );
 
   // --- LEAVE ROOM ---
@@ -754,20 +800,15 @@ export function useOnlineMultiplayer() {
         body: JSON.stringify({ role: myRole, emoji }),
       }).catch(() => {});
     },
-    [myRole]
+    [myRole],
   );
 
-  const setOnEmoteCallback = useCallback(
-    (cb: (role: 1 | 2, emoji: string) => void) => {
-      onEmoteCallbackRef.current = cb;
-    },
-    []
-  );
+  const setOnEmoteCallback = useCallback((cb: (role: 1 | 2, emoji: string) => void) => {
+    onEmoteCallbackRef.current = cb;
+  }, []);
 
   const isMyTurn =
-    Boolean(roomState) &&
-    roomState?.status === 'playing' &&
-    roomState?.turn === myRole;
+    Boolean(roomState) && roomState?.status === 'playing' && roomState?.turn === myRole;
 
   return {
     roomState,

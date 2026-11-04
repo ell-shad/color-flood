@@ -23,7 +23,6 @@ interface MultiplayerEmotesProps {
 export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
   opponent,
   myRole,
-  activeTurn,
   onSendEmote,
   p1Name,
   p2Name,
@@ -33,11 +32,7 @@ export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
 
   // Determine which player is actively pressing
   const currentSender: 1 | 2 =
-    opponent === 'online'
-      ? (myRole || 1)
-      : opponent === 'bot'
-      ? 1
-      : localSender;
+    opponent === 'online' ? myRole || 1 : opponent === 'bot' ? 1 : localSender;
 
   const handleEmoteClick = (emoji: string) => {
     if (disabled) return;

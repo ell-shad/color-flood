@@ -58,14 +58,17 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
             badge = (
               <span className="text-[9px] font-black text-rose-300 flex items-center gap-0.5">
                 <Crown className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                <span className="truncate max-w-[36px]">{(p2Name || 'P2').slice(0, 3)}</span>
+                <span className="truncate max-w-[36px]">
+                  {(p2Name || 'P2').slice(0, 3)}
+                </span>
               </span>
             );
           } else if (isPassed) {
             statusBg = 'bg-slate-850 border-slate-700 text-slate-400';
             badge = <span className="text-[8px] font-mono text-slate-400">Tied</span>;
           } else if (isCurrent) {
-            statusBg = 'bg-indigo-950/70 border-indigo-500 text-indigo-200 ring-1 ring-indigo-400/40 shadow-sm shadow-indigo-500/20';
+            statusBg =
+              'bg-indigo-950/70 border-indigo-500 text-indigo-200 ring-1 ring-indigo-400/40 shadow-sm shadow-indigo-500/20';
             badge = (
               <span className="text-[9px] font-black text-amber-300 flex items-center gap-0.5 animate-pulse">
                 <Swords className="w-2.5 h-2.5 text-amber-400 shrink-0" />
@@ -88,9 +91,7 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
               <div className="text-[8px] font-mono text-slate-400 my-0.5">
                 {stage.colorCount}c
               </div>
-              <div className="h-4 flex items-center justify-center">
-                {badge}
-              </div>
+              <div className="h-4 flex items-center justify-center">{badge}</div>
             </div>
           );
         })}

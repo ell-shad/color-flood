@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Github, Linkedin, Info, Sparkles } from 'lucide-react';
+import { Github, Linkedin, Info } from 'lucide-react';
 
 import {
   GridSize,
@@ -133,7 +133,10 @@ export default function App() {
   const [roundNumber, setRoundNumber] = useState(1);
   const [firstTurnPlayer, setFirstTurnPlayer] = useState<1 | 2>(1);
   const [currentStage, setCurrentStage] = useState(1);
-  const [stageWins, setStageWins] = useState<{ 1: number[]; 2: number[] }>({ 1: [], 2: [] });
+  const [stageWins, setStageWins] = useState<{ 1: number[]; 2: number[] }>({
+    1: [],
+    2: [],
+  });
 
   // --- Modals & Local Reset Confirmations ---
   const [showSettings, setShowSettings] = useState(false);
@@ -183,9 +186,12 @@ export default function App() {
       startingTurn: 1 | 2 = 1,
       targetRound = 1,
       targetStage = 1,
-      persistedStageWins = { 1: [], 2: [] }
+      persistedStageWins = { 1: [], 2: [] },
     ) => {
-      const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(size, colors);
+      const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(
+        size,
+        colors,
+      );
       setTwoPlayerState({
         grid,
         turn: startingTurn,
@@ -210,7 +216,7 @@ export default function App() {
       setIsBotThinking(false);
       setLastMovingPlayer(startingTurn);
     },
-    [challengeType]
+    [challengeType],
   );
 
   // Initialize on first mount
@@ -218,7 +224,8 @@ export default function App() {
     initSoloGame(gridSize, colorCount);
     const startStage = PROGRESSIVE_STAGES[0];
     const initSize = challengeType === 'progressive' ? startStage.gridSize : gridSize;
-    const initColors = challengeType === 'progressive' ? startStage.colorCount : colorCount;
+    const initColors =
+      challengeType === 'progressive' ? startStage.colorCount : colorCount;
     initMultiplayerGame(initSize, initColors, 1, 1, 1, { 1: [], 2: [] });
   }, [initSoloGame, initMultiplayerGame, gridSize, colorCount, challengeType]);
 
@@ -305,31 +312,38 @@ export default function App() {
 
       if (opponent === 'bot' && sender === 1) {
         if (Math.random() < 0.6) {
-          setTimeout(() => {
-            const botReactions = ['🤖', '😎', '😂', '🔥', '👏', '🤔', '💀', '😡', '😭'];
-            const botPick =
-              emoji === '😡'
-                ? Math.random() < 0.5 ? '😡' : '😂'
-                : emoji === '😭'
-                ? Math.random() < 0.5 ? '😎' : '😭'
-                : botReactions[Math.floor(Math.random() * botReactions.length)];
-            playEmotePopSound();
-            const botId = `${Date.now()}-${Math.random()}`;
-            const botEmote: ActiveEmote = {
-              id: botId,
-              sender: 2,
-              emoji: botPick,
-              timestamp: Date.now(),
-            };
-            setActiveEmotes((prev) => [...prev.slice(-3), botEmote]);
-            setTimeout(() => {
-              setActiveEmotes((prev) => prev.filter((e) => e.id !== botId));
-            }, 2200);
-          }, 600 + Math.random() * 450);
+          setTimeout(
+            () => {
+              const botReactions = ['🤖', '😎', '😂', '🔥', '👏', '🤔', '💀', '😡', '😭'];
+              const botPick =
+                emoji === '😡'
+                  ? Math.random() < 0.5
+                    ? '😡'
+                    : '😂'
+                  : emoji === '😭'
+                    ? Math.random() < 0.5
+                      ? '😎'
+                      : '😭'
+                    : botReactions[Math.floor(Math.random() * botReactions.length)];
+              playEmotePopSound();
+              const botId = `${Date.now()}-${Math.random()}`;
+              const botEmote: ActiveEmote = {
+                id: botId,
+                sender: 2,
+                emoji: botPick,
+                timestamp: Date.now(),
+              };
+              setActiveEmotes((prev) => [...prev.slice(-3), botEmote]);
+              setTimeout(() => {
+                setActiveEmotes((prev) => prev.filter((e) => e.id !== botId));
+              }, 2200);
+            },
+            600 + Math.random() * 450,
+          );
         }
       }
     },
-    [opponent, sendOnlineEmote]
+    [opponent, sendOnlineEmote],
   );
 
   useEffect(() => {
@@ -343,7 +357,7 @@ export default function App() {
     (moves: number) => {
       setHighScores((prev) => {
         const existingIndex = prev.findIndex(
-          (s) => s.size === gridSize && s.colors === colorCount
+          (s) => s.size === gridSize && s.colors === colorCount,
         );
         let newScores: HighScore[];
         if (existingIndex > -1) {
@@ -360,24 +374,21 @@ export default function App() {
         return newScores;
       });
     },
-    [gridSize, colorCount]
+    [gridSize, colorCount],
   );
 
   // --- Series Score Update ---
-  const updateSeriesScore = useCallback(
-    (winner: 'p1_won' | 'p2_won' | 'draw') => {
-      setSeriesScore((prev) => {
-        const updated = {
-          p1: winner === 'p1_won' ? prev.p1 + 1 : prev.p1,
-          p2: winner === 'p2_won' ? prev.p2 + 1 : prev.p2,
-          draws: winner === 'draw' ? prev.draws + 1 : prev.draws,
-        };
-        localStorage.setItem('color-flood-2p-series', JSON.stringify(updated));
-        return updated;
-      });
-    },
-    []
-  );
+  const updateSeriesScore = useCallback((winner: 'p1_won' | 'p2_won' | 'draw') => {
+    setSeriesScore((prev) => {
+      const updated = {
+        p1: winner === 'p1_won' ? prev.p1 + 1 : prev.p1,
+        p2: winner === 'p2_won' ? prev.p2 + 1 : prev.p2,
+        draws: winner === 'draw' ? prev.draws + 1 : prev.draws,
+      };
+      localStorage.setItem('color-flood-2p-series', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const resetSeriesScore = useCallback(() => {
     const cleared = { p1: 0, p2: 0, draws: 0 };
@@ -454,7 +465,7 @@ export default function App() {
         grid,
         currentCells,
         opponentCells,
-        colorIndex
+        colorIndex,
       );
 
       const nextP1Cells = turn === 1 ? newCells : p1Cells;
@@ -465,7 +476,7 @@ export default function App() {
       const totalCells = currentState.grid.length * currentState.grid.length;
       const activeColorCount =
         currentState.challengeType === 'progressive'
-          ? (PROGRESSIVE_STAGES[currentState.currentStage - 1]?.colorCount || 4)
+          ? PROGRESSIVE_STAGES[currentState.currentStage - 1]?.colorCount || 4
           : colorCount;
 
       const gameOutcome = checkMultiplayerGameOver(
@@ -477,7 +488,7 @@ export default function App() {
         nextP2Color,
         newGrid,
         nextP1Cells,
-        nextP2Cells
+        nextP2Cells,
       );
 
       const nextStageWins = {
@@ -486,9 +497,15 @@ export default function App() {
       };
 
       if (gameOutcome !== 'playing' && currentState.challengeType === 'progressive') {
-        if (gameOutcome === 'p1_won' && !nextStageWins[1].includes(currentState.currentStage)) {
+        if (
+          gameOutcome === 'p1_won' &&
+          !nextStageWins[1].includes(currentState.currentStage)
+        ) {
           nextStageWins[1].push(currentState.currentStage);
-        } else if (gameOutcome === 'p2_won' && !nextStageWins[2].includes(currentState.currentStage)) {
+        } else if (
+          gameOutcome === 'p2_won' &&
+          !nextStageWins[2].includes(currentState.currentStage)
+        ) {
           nextStageWins[2].push(currentState.currentStage);
         }
         setStageWins(nextStageWins);
@@ -532,7 +549,11 @@ export default function App() {
       } else if (opponent === 'bot') {
         if (turn === 1 && gain >= Math.max(5, Math.floor(totalCells * 0.08))) {
           setTimeout(() => {
-            triggerEmote(2, Math.random() < 0.4 ? '😭' : Math.random() < 0.5 ? '😮' : '💀', false);
+            triggerEmote(
+              2,
+              Math.random() < 0.4 ? '😭' : Math.random() < 0.5 ? '😮' : '💀',
+              false,
+            );
           }, 350);
         } else if (turn === 2 && gain >= Math.max(4, Math.floor(totalCells * 0.07))) {
           setTimeout(() => {
@@ -541,7 +562,7 @@ export default function App() {
         }
       }
     },
-    [colorCount, updateSeriesScore, opponent, triggerEmote, currentTheme]
+    [colorCount, updateSeriesScore, opponent, triggerEmote, currentTheme],
   );
 
   // Bot Turn Automation
@@ -560,16 +581,12 @@ export default function App() {
     setIsBotThinking(true);
     const activeColorCount =
       twoPlayerState.challengeType === 'progressive'
-        ? (PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4)
+        ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4
         : colorCount;
 
     const timer = setTimeout(() => {
       const currentState = twoPlayerStateRef.current;
-      if (
-        !currentState ||
-        currentState.status !== 'playing' ||
-        currentState.turn !== 2
-      ) {
+      if (!currentState || currentState.status !== 'playing' || currentState.turn !== 2) {
         setIsBotThinking(false);
         return;
       }
@@ -582,7 +599,7 @@ export default function App() {
         currentState.p1Color,
         currentState.p2Color,
         activeColorCount,
-        botDifficulty
+        botDifficulty,
       );
 
       setIsBotThinking(false);
@@ -619,7 +636,7 @@ export default function App() {
         roomState.p1Color,
         roomState.p2Color,
         roomState.colorCount,
-        'master'
+        'master',
       );
       setHint(bestColor);
       setHintGain(maxGain);
@@ -628,7 +645,7 @@ export default function App() {
       const activePlayer = twoPlayerState.turn;
       const activeColors =
         twoPlayerState.challengeType === 'progressive'
-          ? (PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4)
+          ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4
           : colorCount;
       const { bestColor, maxGain } = getBestMultiplayerMove(
         twoPlayerState.grid,
@@ -638,7 +655,7 @@ export default function App() {
         twoPlayerState.p1Color,
         twoPlayerState.p2Color,
         activeColors,
-        'master'
+        'master',
       );
       setHint(bestColor);
       setHintGain(maxGain);
@@ -691,7 +708,7 @@ export default function App() {
         nextFirstPlayer,
         nextRound,
         targetStage,
-        stageWins
+        stageWins,
       );
     } else {
       initMultiplayerGame(
@@ -700,7 +717,7 @@ export default function App() {
         nextFirstPlayer,
         nextRound,
         currentStage,
-        stageWins
+        stageWins,
       );
     }
     setShowLocalResetConfirm(false);
@@ -732,7 +749,14 @@ export default function App() {
     setGridSize(size);
     initSoloGame(size, colorCount);
     if (challengeType !== 'progressive') {
-      initMultiplayerGame(size, colorCount, firstTurnPlayer, roundNumber, currentStage, stageWins);
+      initMultiplayerGame(
+        size,
+        colorCount,
+        firstTurnPlayer,
+        roundNumber,
+        currentStage,
+        stageWins,
+      );
     }
     if (opponent === 'online' && roomState && roomState.challengeType !== 'progressive') {
       updateRoomSettings({ gridSize: size });
@@ -743,7 +767,14 @@ export default function App() {
     setColorCount(count);
     initSoloGame(gridSize, count);
     if (challengeType !== 'progressive') {
-      initMultiplayerGame(gridSize, count, firstTurnPlayer, roundNumber, currentStage, stageWins);
+      initMultiplayerGame(
+        gridSize,
+        count,
+        firstTurnPlayer,
+        roundNumber,
+        currentStage,
+        stageWins,
+      );
     }
     if (opponent === 'online' && roomState && roomState.challengeType !== 'progressive') {
       updateRoomSettings({ colorCount: count });
@@ -755,9 +786,23 @@ export default function App() {
     if (type === 'progressive') {
       const s1 = PROGRESSIVE_STAGES[0];
       setCurrentStage(1);
-      initMultiplayerGame(s1.gridSize, s1.colorCount, firstTurnPlayer, roundNumber, 1, stageWins);
+      initMultiplayerGame(
+        s1.gridSize,
+        s1.colorCount,
+        firstTurnPlayer,
+        roundNumber,
+        1,
+        stageWins,
+      );
     } else {
-      initMultiplayerGame(gridSize, colorCount, firstTurnPlayer, roundNumber, currentStage, stageWins);
+      initMultiplayerGame(
+        gridSize,
+        colorCount,
+        firstTurnPlayer,
+        roundNumber,
+        currentStage,
+        stageWins,
+      );
     }
     if (opponent === 'online' && roomState) {
       updateRoomSettings({ challengeType: type });
@@ -825,8 +870,10 @@ export default function App() {
             setOpponent(opp);
             if (opp !== 'online') {
               const startStage = PROGRESSIVE_STAGES[0];
-              const sSize = challengeType === 'progressive' ? startStage.gridSize : gridSize;
-              const sColor = challengeType === 'progressive' ? startStage.colorCount : colorCount;
+              const sSize =
+                challengeType === 'progressive' ? startStage.gridSize : gridSize;
+              const sColor =
+                challengeType === 'progressive' ? startStage.colorCount : colorCount;
               initMultiplayerGame(sSize, sColor, 1, 1, 1, { 1: [], 2: [] });
             }
           }}
@@ -932,7 +979,7 @@ export default function App() {
                 gameState={twoPlayerState}
                 gridSize={
                   twoPlayerState.challengeType === 'progressive'
-                    ? (PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.gridSize || 10)
+                    ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.gridSize || 10
                     : gridSize
                 }
                 opponent={opponent}
@@ -953,17 +1000,18 @@ export default function App() {
                   mode === 'solo'
                     ? soloState.grid
                     : opponent === 'online' && roomState
-                    ? roomState.grid
-                    : twoPlayerState.grid
+                      ? roomState.grid
+                      : twoPlayerState.grid
                 }
                 gridSize={
                   mode === 'solo'
                     ? gridSize
                     : opponent === 'online' && roomState
-                    ? roomState.gridSize
-                    : twoPlayerState.challengeType === 'progressive'
-                    ? (PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.gridSize || 10)
-                    : gridSize
+                      ? roomState.gridSize
+                      : twoPlayerState.challengeType === 'progressive'
+                        ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.gridSize ||
+                          10
+                        : gridSize
                 }
                 mode={mode}
                 opponent={opponent}
@@ -1008,14 +1056,13 @@ export default function App() {
                     : (opponent === 'online' && roomState
                         ? roomState.gridSize
                         : twoPlayerState.challengeType === 'progressive'
-                        ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.gridSize || 10
-                        : gridSize) ** 2
+                          ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]
+                              ?.gridSize || 10
+                          : gridSize) ** 2
                 }
                 opponent={opponent}
                 seriesScore={
-                  opponent === 'online' && roomState
-                    ? roomState.series
-                    : seriesScore
+                  opponent === 'online' && roomState ? roomState.series : seriesScore
                 }
                 challengeType={
                   opponent === 'online' && roomState
@@ -1047,17 +1094,19 @@ export default function App() {
                 activeTurn={
                   opponent === 'online' && roomState
                     ? roomState.turn
-                    : (twoPlayerState?.turn || 1)
+                    : twoPlayerState?.turn || 1
                 }
                 activeEmotes={activeEmotes}
                 onSendEmote={(sender, emoji) => triggerEmote(sender, emoji, true)}
-                p1Name={opponent === 'online' && roomState ? roomState.p1Name : 'Player 1'}
+                p1Name={
+                  opponent === 'online' && roomState ? roomState.p1Name : 'Player 1'
+                }
                 p2Name={
                   opponent === 'online' && roomState
                     ? roomState.p2Name
                     : opponent === 'bot'
-                    ? 'AI Bot'
-                    : 'Player 2'
+                      ? 'AI Bot'
+                      : 'Player 2'
                 }
                 disabled={
                   (opponent === 'online' && roomState?.status !== 'playing') ||
@@ -1072,29 +1121,30 @@ export default function App() {
                 mode === 'solo'
                   ? colorCount
                   : opponent === 'online' && roomState
-                  ? roomState.colorCount
-                  : twoPlayerState.challengeType === 'progressive'
-                  ? (PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4)
-                  : colorCount
+                    ? roomState.colorCount
+                    : twoPlayerState.challengeType === 'progressive'
+                      ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount ||
+                        4
+                      : colorCount
               }
               mode={mode}
               onSelectColor={
                 mode === 'solo'
                   ? handleSoloColorClick
                   : opponent === 'online'
-                  ? (col) => {
-                      setLastMovingPlayer(myRole || 1);
-                      sendOnlineMove(col);
-                    }
-                  : executeLocalMultiplayerMove
+                    ? (col) => {
+                        setLastMovingPlayer(myRole || 1);
+                        sendOnlineMove(col);
+                      }
+                    : executeLocalMultiplayerMove
               }
               disabled={
                 mode === 'solo'
                   ? soloState.status !== 'playing'
                   : opponent === 'online'
-                  ? !isMyTurn || roomState?.status !== 'playing'
-                  : twoPlayerState.status !== 'playing' ||
-                    (opponent === 'bot' && twoPlayerState.turn === 2)
+                    ? !isMyTurn || roomState?.status !== 'playing'
+                    : twoPlayerState.status !== 'playing' ||
+                      (opponent === 'bot' && twoPlayerState.turn === 2)
               }
               hint={hint}
               hintGain={hintGain}
@@ -1110,9 +1160,7 @@ export default function App() {
                   : twoPlayerState.p2Color
               }
               activeTurn={
-                opponent === 'online' && roomState
-                  ? roomState.turn
-                  : twoPlayerState.turn
+                opponent === 'online' && roomState ? roomState.turn : twoPlayerState.turn
               }
               opponent={opponent}
               theme={currentTheme}
@@ -1131,9 +1179,7 @@ export default function App() {
         p2Name={roomState?.p2Name || 'Player 2'}
         isLocalConfirm={showLocalResetConfirm}
         onAccept={
-          opponent === 'online'
-            ? sendOnlineAcceptReset
-            : advanceLocalMultiplayerRound
+          opponent === 'online' ? sendOnlineAcceptReset : advanceLocalMultiplayerRound
         }
         onDecline={
           opponent === 'online'
@@ -1167,7 +1213,8 @@ export default function App() {
       <footer className="w-full max-w-lg mx-auto py-1 px-3 text-center shrink-0">
         <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
           <span>
-            Created by <span className="text-slate-400 font-semibold">Elshad Guliyev</span>
+            Created by{' '}
+            <span className="text-slate-400 font-semibold">Elshad Guliyev</span>
           </span>
           <div className="flex items-center gap-3">
             <a

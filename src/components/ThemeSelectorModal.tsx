@@ -45,8 +45,12 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
                 <Palette className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight">Board & Palette Themes</h3>
-                <p className="text-[11px] text-slate-400">Choose your favorite visual style</p>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Board & Palette Themes
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Choose your favorite visual style
+                </p>
               </div>
             </div>
             <button
@@ -80,7 +84,9 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
                       <span>{theme.name}</span>
                       {id === 'arcade' && (
-                        <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1 rounded">Classic</span>
+                        <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1 rounded">
+                          Classic
+                        </span>
                       )}
                     </span>
                     {isSelected && (

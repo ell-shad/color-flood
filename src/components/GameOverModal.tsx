@@ -5,7 +5,20 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, ChevronRight, RotateCcw, Swords, Crown, User, Bot, LogOut, Check, X, Clock, Sparkles } from 'lucide-react';
+import {
+  Trophy,
+  ChevronRight,
+  RotateCcw,
+  Swords,
+  Crown,
+  User,
+  Bot,
+  LogOut,
+  Check,
+  X,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 import { GameMode, MultiplayerOpponent, SeriesScore, ChallengeType } from '../types';
 
 interface GameOverModalProps {
@@ -126,19 +139,21 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   let winnerTitle = 'TIED BATTLE!';
   if (isP1Winner) {
     if (opponent === 'online' && myRole === 1) winnerTitle = 'YOU WON!';
-    else if (opponent === 'online' && myRole === 2) winnerTitle = `${name1.toUpperCase()} WON!`;
+    else if (opponent === 'online' && myRole === 2)
+      winnerTitle = `${name1.toUpperCase()} WON!`;
     else winnerTitle = `${name1.toUpperCase()} WINS!`;
   } else if (isP2Winner) {
     if (opponent === 'online' && myRole === 2) winnerTitle = 'YOU WON!';
-    else if (opponent === 'online' && myRole === 1) winnerTitle = `${name2.toUpperCase()} WON!`;
+    else if (opponent === 'online' && myRole === 1)
+      winnerTitle = `${name2.toUpperCase()} WON!`;
     else winnerTitle = `${name2.toUpperCase()} WINS!`;
   }
 
   const winnerColorClass = isP1Winner
     ? 'text-cyan-400'
     : isP2Winner
-    ? 'text-rose-400'
-    : 'text-amber-400';
+      ? 'text-rose-400'
+      : 'text-amber-400';
 
   const otherWantsRematch = rematchRequestedBy !== null && rematchRequestedBy !== myRole;
   const iRequestedRematch = rematchRequestedBy === myRole;
@@ -164,14 +179,18 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
 
           <div className="space-y-0.5">
-            <h2 className={`text-xl sm:text-2xl font-black italic tracking-tighter ${winnerColorClass}`}>
+            <h2
+              className={`text-xl sm:text-2xl font-black italic tracking-tighter ${winnerColorClass}`}
+            >
               {winnerTitle}
             </h2>
             <p className="text-slate-400 text-[11px]">
               {isProgressive ? (
                 <span className="text-amber-300 font-semibold flex items-center justify-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>Stage {currentStage} complete! Next up: Stage {nextStageNum}</span>
+                  <span>
+                    Stage {currentStage} complete! Next up: Stage {nextStageNum}
+                  </span>
                 </span>
               ) : isDraw ? (
                 'Both rivals conquered the exact same number of cells!'
@@ -195,9 +214,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 <span className="truncate">{name1}</span>
               </div>
               <p className="text-lg font-mono font-black text-cyan-400 leading-none">
-                {p1Count} <span className="text-[10px] font-normal text-slate-400">cells</span>
+                {p1Count}{' '}
+                <span className="text-[10px] font-normal text-slate-400">cells</span>
               </p>
-              <span className="text-[10px] font-mono text-slate-400">{p1Percent}% territory</span>
+              <span className="text-[10px] font-mono text-slate-400">
+                {p1Percent}% territory
+              </span>
             </div>
 
             <div
@@ -216,9 +238,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 <span className="truncate">{name2}</span>
               </div>
               <p className="text-lg font-mono font-black text-rose-400 leading-none">
-                {p2Count} <span className="text-[10px] font-normal text-slate-400">cells</span>
+                {p2Count}{' '}
+                <span className="text-[10px] font-normal text-slate-400">cells</span>
               </p>
-              <span className="text-[10px] font-mono text-slate-400">{p2Percent}% territory</span>
+              <span className="text-[10px] font-mono text-slate-400">
+                {p2Percent}% territory
+              </span>
             </div>
           </div>
 
@@ -227,7 +252,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             <div className="bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 text-[11px] text-slate-300 flex items-center justify-between">
               <span className="text-slate-400">Series Score:</span>
               <span className="font-mono font-bold">
-                {name1.slice(0, 8)}: <span className="text-cyan-400">{seriesScore.p1}</span> — {name2.slice(0, 8)}:{' '}
+                {name1.slice(0, 8)}:{' '}
+                <span className="text-cyan-400">{seriesScore.p1}</span> —{' '}
+                {name2.slice(0, 8)}:{' '}
                 <span className="text-rose-400">{seriesScore.p2}</span>
               </span>
             </div>
@@ -272,8 +299,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                   {isProgressive
                     ? `Advance to Stage ${nextStageNum}`
                     : opponent === 'online'
-                    ? 'Request Rematch (Alternating Turns)'
-                    : 'Play Again'}
+                      ? 'Request Rematch (Alternating Turns)'
+                      : 'Play Again'}
                 </span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>

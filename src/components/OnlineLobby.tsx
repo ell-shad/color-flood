@@ -34,7 +34,7 @@ interface OnlineLobbyProps {
     playerName: string,
     gridSize: number,
     colorCount: number,
-    challengeType: ChallengeType
+    challengeType: ChallengeType,
   ) => void;
   onJoinRoom: (roomId: string, playerName: string) => void;
   onLeaveRoom: () => void;
@@ -43,12 +43,8 @@ interface OnlineLobbyProps {
 
 export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
   roomState,
-  myRole,
   connectionStatus,
   errorMessage,
-  systemMessage,
-  gridSize,
-  colorCount,
   onCreateRoom,
   onJoinRoom,
   onLeaveRoom,
@@ -62,7 +58,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
   const [invitedFromUrl, setInvitedFromUrl] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [selectedChallengeType, setSelectedChallengeType] = useState<ChallengeType>('progressive');
+  const [selectedChallengeType, setSelectedChallengeType] =
+    useState<ChallengeType>('progressive');
   const [customGridSize, setCustomGridSize] = useState<number>(10);
   const [customColorCount, setCustomColorCount] = useState<number>(4);
 
@@ -90,7 +87,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
       name,
       selectedChallengeType === 'progressive' ? 10 : customGridSize,
       selectedChallengeType === 'progressive' ? 4 : customColorCount,
-      selectedChallengeType
+      selectedChallengeType,
     );
   };
 
@@ -123,7 +120,9 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
         </div>
 
         <div className="space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Online Room Ready!</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+            Online Room Ready!
+          </h2>
           <p className="text-xs text-slate-400">
             Share this room code or public invite link with your friend to connect.
           </p>
@@ -145,7 +144,11 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
               onClick={handleCopyCode}
               className="flex-1 py-2 px-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedCode ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
               <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
             </button>
 
@@ -153,7 +156,11 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
               onClick={handleCopyLink}
               className="flex-1 py-2 px-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-cyan-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              {copiedLink ? (
+                <Check className="w-3.5 h-3.5" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5" />
+              )}
               <span>{copiedLink ? 'Link Copied!' : 'Share Link'}</span>
             </button>
           </div>
@@ -171,11 +178,17 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             <span>
               Type:{' '}
               <strong className="text-amber-300">
-                {roomState.challengeType === 'progressive' ? 'Progressive Track' : 'Standard'}
+                {roomState.challengeType === 'progressive'
+                  ? 'Progressive Track'
+                  : 'Standard'}
               </strong>
             </span>
-            <span>Grid: <strong className="text-slate-200">{roomState.gridSize}²</strong></span>
-            <span>Colors: <strong className="text-slate-200">{roomState.colorCount}</strong></span>
+            <span>
+              Grid: <strong className="text-slate-200">{roomState.gridSize}²</strong>
+            </span>
+            <span>
+              Colors: <strong className="text-slate-200">{roomState.colorCount}</strong>
+            </span>
           </div>
           <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-400 font-mono">
             <Wifi className="w-3 h-3" />
@@ -216,7 +229,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>
-              Invited to: <strong className="font-mono text-white text-sm">{inputRoomCode}</strong>
+              Invited to:{' '}
+              <strong className="font-mono text-white text-sm">{inputRoomCode}</strong>
             </span>
           </div>
           <button
@@ -229,7 +243,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
       )}
 
       {/* Error Notices */}
-      {errorMessage && (errorMessage.toLowerCase().includes('full') || errorMessage.includes('2/2')) ? (
+      {errorMessage &&
+      (errorMessage.toLowerCase().includes('full') || errorMessage.includes('2/2')) ? (
         <div className="bg-amber-950/60 border border-amber-500/50 p-3 rounded-xl space-y-2 text-left shadow-lg">
           <div className="flex items-start gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
@@ -237,10 +252,13 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-amber-200">Room is Full (2/2 Players)</span>
+                <span className="text-xs font-bold text-amber-200">
+                  Room is Full (2/2 Players)
+                </span>
               </div>
               <p className="text-[11px] text-amber-300/90 mt-0.5 leading-relaxed">
-                This room already has 2 players. Online matches are strictly 2 players only.
+                This room already has 2 players. Online matches are strictly 2 players
+                only.
               </p>
             </div>
             <button
@@ -291,7 +309,9 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             <PlusCircle className="w-3.5 h-3.5 text-indigo-400" />
             <span>Host New Match</span>
           </span>
-          <span className="text-[10px] text-indigo-300 font-mono">Opponents take turns</span>
+          <span className="text-[10px] text-indigo-300 font-mono">
+            Opponents take turns
+          </span>
         </div>
 
         {/* Challenge Type Selector */}

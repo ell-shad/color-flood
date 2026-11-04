@@ -152,14 +152,17 @@ const generateRoomCode = (): string => {
 };
 
 // Cleanup stale rooms older than 2 hours
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, room] of rooms.entries()) {
-    if (now - room.lastActive > 2 * 60 * 60 * 1000) {
-      rooms.delete(id);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [id, room] of rooms.entries()) {
+      if (now - room.lastActive > 2 * 60 * 60 * 1000) {
+        rooms.delete(id);
+      }
     }
-  }
-}, 5 * 60 * 1000);
+  },
+  5 * 60 * 1000,
+);
 
 // --- REST API Endpoints ---
 
@@ -188,7 +191,7 @@ app.post('/api/rooms', (req, res) => {
 
   const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(
     effectiveGridSize,
-    effectiveColorCount
+    effectiveColorCount,
   );
 
   const p1Token = 'p1_' + Math.random().toString(36).substring(2, 12);
@@ -245,7 +248,9 @@ app.post('/api/rooms/:roomId/join', (req, res) => {
   const room = rooms.get(roomId);
 
   if (!room) {
-    res.status(404).json({ error: `Room "${roomId}" not found. Please check code or create a new room.` });
+    res.status(404).json({
+      error: `Room "${roomId}" not found. Please check code or create a new room.`,
+    });
     return;
   }
 
@@ -334,7 +339,9 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
   }
 
   if (room.status !== 'playing') {
-    res.status(400).json({ error: 'Game is not active.', roomState: sanitizeRoomState(room) });
+    res
+      .status(400)
+      .json({ error: 'Game is not active.', roomState: sanitizeRoomState(room) });
     return;
   }
 
@@ -344,7 +351,9 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
   }
 
   if (color === room.p1Color || color === room.p2Color) {
-    res.status(400).json({ error: 'Color is occupied.', roomState: sanitizeRoomState(room) });
+    res
+      .status(400)
+      .json({ error: 'Color is occupied.', roomState: sanitizeRoomState(room) });
     return;
   }
 
@@ -355,7 +364,7 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
     room.grid,
     currentCells,
     opponentCells,
-    color
+    color,
   );
 
   if (role === 1) {
@@ -385,7 +394,7 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
     room.p2Color,
     room.grid,
     room.p1Cells,
-    room.p2Cells
+    room.p2Cells,
   );
 
   room.status = outcome;
@@ -393,12 +402,18 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
   if (outcome !== 'playing') {
     if (outcome === 'p1_won') {
       room.series.p1 += 1;
-      if (room.challengeType === 'progressive' && !room.stageWins[1].includes(room.currentStage)) {
+      if (
+        room.challengeType === 'progressive' &&
+        !room.stageWins[1].includes(room.currentStage)
+      ) {
         room.stageWins[1].push(room.currentStage);
       }
     } else if (outcome === 'p2_won') {
       room.series.p2 += 1;
-      if (room.challengeType === 'progressive' && !room.stageWins[2].includes(room.currentStage)) {
+      if (
+        room.challengeType === 'progressive' &&
+        !room.stageWins[2].includes(room.currentStage)
+      ) {
         room.stageWins[2].push(room.currentStage);
       }
     } else if (outcome === 'draw') {
@@ -416,7 +431,12 @@ app.post('/api/rooms/:roomId/move', (req, res) => {
 });
 
 // Helper: Start Next Round with Alternating First Turn
-function executeNextRound(room: OnlineRoom, targetStage?: number, newGridSize?: number, newColorCount?: number) {
+function executeNextRound(
+  room: OnlineRoom,
+  targetStage?: number,
+  newGridSize?: number,
+  newColorCount?: number,
+) {
   room.roundNumber += 1;
   // Alternating first turn: If P1 started last, P2 starts this round; if P2 started, P1 starts!
   const nextFirst = room.firstTurnPlayer === 1 ? 2 : 1;
@@ -441,7 +461,7 @@ function executeNextRound(room: OnlineRoom, targetStage?: number, newGridSize?: 
 
   const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(
     room.gridSize,
-    room.colorCount
+    room.colorCount,
   );
 
   room.grid = grid;
@@ -615,9 +635,11 @@ app.post('/api/rooms/:roomId/settings', (req, res) => {
   }
 
   if (themeId) room.themeId = String(themeId);
-  if (challengeType) room.challengeType = challengeType === 'progressive' ? 'progressive' : 'standard';
+  if (challengeType)
+    room.challengeType = challengeType === 'progressive' ? 'progressive' : 'standard';
   if (gridSize && room.challengeType !== 'progressive') room.gridSize = Number(gridSize);
-  if (colorCount && room.challengeType !== 'progressive') room.colorCount = Number(colorCount);
+  if (colorCount && room.challengeType !== 'progressive')
+    room.colorCount = Number(colorCount);
 
   room.lastActive = Date.now();
   const sanitized = sanitizeRoomState(room);
@@ -720,7 +742,9 @@ wss.on('connection', (ws: WebSocket) => {
             room.p2.ws = ws;
             room.p2.connected = true;
           }
-          ws.send(JSON.stringify({ type: 'bound_success', roomState: sanitizeRoomState(room) }));
+          ws.send(
+            JSON.stringify({ type: 'bound_success', roomState: sanitizeRoomState(room) }),
+          );
         }
       }
     } catch {
