@@ -19,6 +19,8 @@ interface TwoPlayerScoreboardProps {
   isBotThinking?: boolean;
   onGetHint: () => void;
   hint: number | null;
+  /** Hints are hidden entirely in online play, and off by default in local/bot. */
+  showHintButton?: boolean;
   activeEmotes?: ActiveEmote[];
   theme?: GameTheme;
   p1Name?: string;
@@ -38,6 +40,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
   isBotThinking = false,
   onGetHint,
   hint,
+  showHintButton = true,
   activeEmotes = [],
   theme = THEMES.arcade,
   p1Name,
@@ -135,25 +138,27 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
             Win: <strong className="text-slate-300">{targetToWin}</strong>
           </span>
 
-          <button
-            onClick={onGetHint}
-            disabled={
-              gameState.status !== 'playing' ||
-              (opponent === 'bot' && isP2Turn) ||
-              (opponent === 'online' && myRole !== gameState.turn)
-            }
-            className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 border transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
-              hint !== null
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                : 'bg-slate-800 text-slate-300 border-slate-700/60 hover:text-white'
-            }`}
-            title="Hint best move"
-          >
-            <Lightbulb
-              className={`w-3 h-3 ${hint !== null ? 'text-amber-400' : 'text-slate-400'}`}
-            />
-            <span>Hint</span>
-          </button>
+          {showHintButton && (
+            <button
+              onClick={onGetHint}
+              disabled={
+                gameState.status !== 'playing' ||
+                (opponent === 'bot' && isP2Turn) ||
+                (opponent === 'online' && myRole !== gameState.turn)
+              }
+              className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 border transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                hint !== null
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                  : 'bg-slate-800 text-slate-300 border-slate-700/60 hover:text-white'
+              }`}
+              title="Hint best move"
+            >
+              <Lightbulb
+                className={`w-3 h-3 ${hint !== null ? 'text-amber-400' : 'text-slate-400'}`}
+              />
+              <span>Hint</span>
+            </button>
+          )}
         </div>
       </div>
 

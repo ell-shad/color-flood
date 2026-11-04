@@ -19,7 +19,6 @@ import {
 
 import {
   generateSoloGrid,
-  getMaxSoloMoves,
   floodSolo,
   checkSoloWin,
   getBestSoloMove,
@@ -28,6 +27,7 @@ import {
   getBestMultiplayerMove,
   checkMultiplayerGameOver,
 } from './utils/floodLogic';
+import { maxSoloMovesLimit } from './utils/soloBalance';
 
 import { THEMES, PROGRESSIVE_STAGES } from './utils/themes';
 import { useOnlineMultiplayer } from './utils/useOnlineMultiplayer';
@@ -139,6 +139,16 @@ export default function App() {
   const [showLocalResetConfirm, setShowLocalResetConfirm] = useState(false);
   const [hint, setHint] = useState<number | null>(null);
   const [hintGain, setHintGain] = useState<number | undefined>(undefined);
+  // Solo hints are limited per game (Phase 2). Local/bot hints are opt-in and off by
+  // default; online play never exposes hints.
+  const [soloHintsLeft, setSoloHintsLeft] = useState(3);
+  const [showHints, setShowHints] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('color-flood-show-hints') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [lastMovingPlayer, setLastMovingPlayer] = useState<1 | 2>(1);
   const [activeEmotes, setActiveEmotes] = useState<ActiveEmote[]>([]);
@@ -166,12 +176,13 @@ export default function App() {
     setSoloState({
       grid: newGrid,
       moves: 0,
-      maxMoves: getMaxSoloMoves(size, colors),
+      maxMoves: maxSoloMovesLimit(size, colors),
       status: 'playing',
       history: [newGrid.map((r) => [...r])],
     });
     setHint(null);
     setHintGain(undefined);
+    setSoloHintsLeft(3);
   }, []);
 
   const initMultiplayerGame = useCallback(
@@ -256,6 +267,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('color-flood-overlay', String(showTerritoryOverlay));
   }, [showTerritoryOverlay]);
+
+  useEffect(() => {
+    localStorage.setItem('color-flood-show-hints', String(showHints));
+  }, [showHints]);
 
   // Sync last moving player in online mode
   useEffect(() => {
@@ -618,24 +633,19 @@ export default function App() {
   const handleGetHint = () => {
     if (mode === 'solo') {
       if (!soloState || soloState.status !== 'playing') return;
+      // Limited hints: 3 per solo game. Never free.
+      if (soloHintsLeft <= 0) return;
+      setSoloHintsLeft((n) => Math.max(0, n - 1));
       const best = getBestSoloMove(soloState.grid, colorCount);
       setHint(best);
       setHintGain(undefined);
     } else if (opponent === 'online') {
-      if (!roomState || roomState.status !== 'playing' || !myRole) return;
-      const { bestColor, maxGain } = getBestMultiplayerMove(
-        roomState.grid,
-        myRole,
-        roomState.p1Cells,
-        roomState.p2Cells,
-        roomState.p1Color,
-        roomState.p2Color,
-        roomState.colorCount,
-        'master',
-      );
-      setHint(bestColor);
-      setHintGain(maxGain);
+      // Hints are disabled entirely in online play (they would reveal a near-optimal
+      // move to both players for free).
+      return;
     } else {
+      // Local and bot matches: hints are opt-in and off by default.
+      if (!showHints) return;
       if (!twoPlayerState || twoPlayerState.status !== 'playing') return;
       const activePlayer = twoPlayerState.turn;
       const activeColors =
@@ -906,6 +916,8 @@ export default function App() {
             onChangeBotDifficulty={setBotDifficulty}
             showTerritoryOverlay={showTerritoryOverlay}
             onToggleTerritoryOverlay={() => setShowTerritoryOverlay((prev) => !prev)}
+            showHints={showHints}
+            onToggleShowHints={() => setShowHints((prev) => !prev)}
             onResetSeries={resetSeriesScore}
             onDownloadIcon={handleDownloadIcon}
             onSetToEasiest={handleSetToEasiest}
@@ -942,6 +954,8 @@ export default function App() {
                 currentHighScore={currentHighScore}
                 onGetHint={handleGetHint}
                 hint={hint}
+                hintsLeft={soloHintsLeft}
+                colorCount={colorCount}
               />
             ) : opponent === 'online' && roomState ? (
               <TwoPlayerScoreboard
@@ -959,6 +973,7 @@ export default function App() {
                 seriesScore={roomState.series}
                 onGetHint={handleGetHint}
                 hint={hint}
+                showHintButton={false}
                 activeEmotes={activeEmotes}
                 p1Name={roomState.p1Name}
                 p2Name={roomState.p2Name}
@@ -982,6 +997,7 @@ export default function App() {
                 isBotThinking={isBotThinking}
                 onGetHint={handleGetHint}
                 hint={hint}
+                showHintButton={showHints}
                 activeEmotes={activeEmotes}
                 theme={currentTheme}
                 onRequestReset={handleInitiateReset}

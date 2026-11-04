@@ -11,7 +11,15 @@ import {
   ChallengeType,
 } from '../types';
 import { THEMES } from '../utils/themes';
-import { Eye, RotateCcw, Download, Sparkles, Palette, Trophy } from 'lucide-react';
+import {
+  Eye,
+  RotateCcw,
+  Download,
+  Sparkles,
+  Palette,
+  Trophy,
+  Lightbulb,
+} from 'lucide-react';
 
 interface SettingsPanelProps {
   gridSize: GridSize;
@@ -25,6 +33,8 @@ interface SettingsPanelProps {
   onChangeBotDifficulty: (diff: BotDifficulty) => void;
   showTerritoryOverlay: boolean;
   onToggleTerritoryOverlay: () => void;
+  showHints: boolean;
+  onToggleShowHints: () => void;
   onResetSeries: () => void;
   onDownloadIcon: () => void;
   onSetToEasiest?: () => void;
@@ -45,6 +55,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeBotDifficulty,
   showTerritoryOverlay,
   onToggleTerritoryOverlay,
+  showHints,
+  onToggleShowHints,
   onResetSeries,
   onDownloadIcon,
   onSetToEasiest,
@@ -239,6 +251,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   </strong>
                 </span>
               </button>
+
+              {opponent !== 'online' && (
+                <button
+                  onClick={onToggleShowHints}
+                  className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
+                  title="Show the hint button in local and bot matches (off by default; online play never shows hints)"
+                >
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                  <span>
+                    Hints:{' '}
+                    <strong className="text-white">{showHints ? 'ON' : 'OFF'}</strong>
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={onResetSeries}

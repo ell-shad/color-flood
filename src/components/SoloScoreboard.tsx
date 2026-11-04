@@ -1,12 +1,15 @@
 import React from 'react';
-import { Trophy, Lightbulb } from 'lucide-react';
+import { Trophy, Lightbulb, Star } from 'lucide-react';
 import { SoloGameState } from '../types';
+import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
 
 interface SoloScoreboardProps {
   gameState: SoloGameState;
   currentHighScore: number | null;
   onGetHint: () => void;
   hint: number | null;
+  hintsLeft: number;
+  colorCount: number;
 }
 
 export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
@@ -14,9 +17,18 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
   currentHighScore,
   onGetHint,
   hint,
+  hintsLeft,
+  colorCount,
 }) => {
   const isLossRisk =
     gameState.moves >= gameState.maxMoves - 3 && gameState.status === 'playing';
+  const hintsExhausted = hintsLeft <= 0;
+
+  // Stars are only meaningful once the board is solved.
+  const stars: SoloStars | null =
+    gameState.status === 'won'
+      ? rateSoloStars(gameState.moves, gameState.grid.length, colorCount)
+      : null;
 
   return (
     <div className="w-full grid grid-cols-3 gap-3 sm:gap-4 mb-6">
@@ -48,12 +60,28 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
             {currentHighScore || '--'}
           </p>
         </div>
+        {stars !== null && (
+          <div
+            className="flex items-center justify-center gap-0.5 mt-1"
+            aria-label={`${stars} of 3 stars`}
+          >
+            {[1, 2, 3].map((n) => (
+              <Star
+                key={n}
+                className={`w-3.5 h-3.5 ${
+                  n <= stars ? 'text-amber-400 fill-amber-400' : 'text-slate-600'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Hint Button */}
+      {/* Hint Button (limited per game) */}
       <button
         onClick={onGetHint}
-        disabled={gameState.status !== 'playing'}
+        disabled={gameState.status !== 'playing' || hintsExhausted}
+        aria-label={`Smart hint, ${hintsLeft} left`}
         className={`bg-slate-850/60 border rounded-2xl p-3 sm:p-4 text-center transition-all group disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
           hint !== null
             ? 'border-indigo-400/80 bg-indigo-950/30'
@@ -69,6 +97,13 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
               hint !== null ? 'text-amber-400 animate-bounce' : 'text-indigo-400'
             }`}
           />
+          <span
+            className={`text-xs font-mono font-bold ${
+              hintsExhausted ? 'text-slate-600' : 'text-indigo-300'
+            }`}
+          >
+            {hintsLeft}
+          </span>
         </div>
       </button>
     </div>
