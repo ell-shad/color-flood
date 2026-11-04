@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState } from 'react';
 import { User, Bot, Sparkles, Lightbulb, Globe, Copy, Check } from 'lucide-react';
 import {

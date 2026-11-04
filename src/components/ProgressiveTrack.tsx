@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { Crown, Lock, Swords, Sparkles } from 'lucide-react';
 import { PROGRESSIVE_STAGES } from '../utils/themes';

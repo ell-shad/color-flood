@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 // Synthesize pleasant arcade audio blips without any external audio asset files
 export const playEmotePopSound = () => {
   try {

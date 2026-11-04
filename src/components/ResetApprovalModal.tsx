@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RotateCcw, Check, X, Clock, HelpCircle } from 'lucide-react';

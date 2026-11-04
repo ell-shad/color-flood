@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 export type GridSize = 10 | 12 | 14 | 16 | 18;
 export type ColorCount = 4 | 5 | 6 | 7 | 8;
 export type GameMode = 'solo' | 'multiplayer';

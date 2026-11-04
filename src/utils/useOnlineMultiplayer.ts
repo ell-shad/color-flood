@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Peer, DataConnection } from 'peerjs';
 import { OnlineRoomState, ChallengeType, ResetProposal, ThemeId } from '../types';

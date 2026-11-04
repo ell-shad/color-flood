@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { Github, Linkedin, Info } from 'lucide-react';

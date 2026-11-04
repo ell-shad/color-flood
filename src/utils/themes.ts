@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { ThemeId, GameTheme } from '../types';
 
 export const THEMES: Record<ThemeId, GameTheme> = {

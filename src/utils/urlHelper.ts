@@ -1,9 +1,4 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
  * Generates the publicly accessible URL for sharing.
  * In AI Studio, development instances use 'ais-dev-' which requires authorization.
  * 'ais-pre-' is the public shared app URL that anyone can open from distance.

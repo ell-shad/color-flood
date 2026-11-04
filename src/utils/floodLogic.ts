@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { BotDifficulty, PlayerId, GridSize, ColorCount } from '../types';
 
 export const COLORS = [
