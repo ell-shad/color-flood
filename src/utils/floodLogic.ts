@@ -1,4 +1,25 @@
 import { BotDifficulty, PlayerId, GridSize, ColorCount } from '../types';
+import {
+  connectedRegionFlat,
+  countRegionFlat,
+  expandTerritoryFlat,
+  bestMultiplayerMoveFlat,
+  bestSoloMoveFlat,
+  checkMultiplayerGameOverFlat,
+  floodFlat,
+  generateSoloGridFlat,
+  generateTwoPlayerGridFlat,
+  legalColorsFlat,
+  toFlat,
+  toNested,
+  type Rng,
+} from './engine';
+
+/**
+ * Compatibility adapter layer. The single source of truth for game rules lives in
+ * `engine.ts` (flat typed arrays + index BFS) and is shared by client and server;
+ * this module preserves the original nested-grid / string-key API for existing callers.
+ */
 
 export const COLORS = [
   '#FF595E', // 0: Coral Red
@@ -25,54 +46,35 @@ export const COLOR_NAMES = [
 export const GRID_SIZES: GridSize[] = [10, 12, 14, 16, 18];
 export const COLOR_COUNTS: ColorCount[] = [4, 5, 6, 7, 8];
 
+const idxToKey = (idx: number, size: number): string => {
+  const r = Math.floor(idx / size);
+  const c = idx % size;
+  return `${r},${c}`;
+};
+
+const keysToIdx = (keys: string[], size: number): number[] =>
+  keys.map((k) => {
+    const [r, c] = k.split(',').map(Number);
+    return r * size + c;
+  });
+
 // --- Solo Utilities ---
 
-export const generateSoloGrid = (size: number, colorCount: number): number[][] => {
-  return Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => Math.floor(Math.random() * colorCount)),
-  );
-};
+export const generateSoloGrid = (
+  size: number,
+  colorCount: number,
+  rng: Rng = Math.random,
+): number[][] => toNested(generateSoloGridFlat(size, colorCount, rng), size);
 
 export const getMaxSoloMoves = (size: number, colorCount: number): number => {
   return Math.floor(size * 1.5 + colorCount * 2);
 };
 
 export const floodSolo = (grid: number[][], targetColor: number): number[][] => {
-  const size = grid.length;
   const startColor = grid[0][0];
   if (startColor === targetColor) return grid;
-
-  const newGrid = grid.map((row) => [...row]);
-  const queue: [number, number][] = [[0, 0]];
-  const visited = new Set<string>();
-  visited.add('0,0');
-
-  while (queue.length > 0) {
-    const [r, c] = queue.shift()!;
-    newGrid[r][c] = targetColor;
-
-    const neighbors = [
-      [r + 1, c],
-      [r - 1, c],
-      [r, c + 1],
-      [r, c - 1],
-    ];
-
-    for (const [nr, nc] of neighbors) {
-      if (
-        nr >= 0 &&
-        nr < size &&
-        nc >= 0 &&
-        nc < size &&
-        !visited.has(`${nr},${nc}`) &&
-        grid[nr][nc] === startColor
-      ) {
-        visited.add(`${nr},${nc}`);
-        queue.push([nr, nc]);
-      }
-    }
-  }
-  return newGrid;
+  const size = grid.length;
+  return toNested(floodFlat(toFlat(grid), size, targetColor), size);
 };
 
 export const checkSoloWin = (grid: number[][]): boolean => {
@@ -82,61 +84,19 @@ export const checkSoloWin = (grid: number[][]): boolean => {
 
 export const countConnectedSolo = (grid: number[][]): number => {
   const size = grid.length;
-  const startColor = grid[0][0];
-  const queue: [number, number][] = [[0, 0]];
-  const visited = new Set<string>();
-  visited.add('0,0');
-  let count = 0;
-
-  while (queue.length > 0) {
-    const [r, c] = queue.shift()!;
-    count++;
-
-    const neighbors = [
-      [r + 1, c],
-      [r - 1, c],
-      [r, c + 1],
-      [r, c - 1],
-    ];
-
-    for (const [nr, nc] of neighbors) {
-      if (
-        nr >= 0 &&
-        nr < size &&
-        nc >= 0 &&
-        nc < size &&
-        !visited.has(`${nr},${nc}`) &&
-        grid[nr][nc] === startColor
-      ) {
-        visited.add(`${nr},${nc}`);
-        queue.push([nr, nc]);
-      }
-    }
-  }
-  return count;
+  return countRegionFlat(toFlat(grid), size);
 };
 
 export const getBestSoloMove = (grid: number[][], colorCount: number): number | null => {
-  let bestColor = -1;
-  let maxNewCells = -1;
-
-  for (let i = 0; i < colorCount; i++) {
-    if (i === grid[0][0]) continue;
-    const testGrid = floodSolo(grid, i);
-    const connectedCells = countConnectedSolo(testGrid);
-
-    if (connectedCells > maxNewCells) {
-      maxNewCells = connectedCells;
-      bestColor = i;
-    }
-  }
-  return bestColor !== -1 ? bestColor : null;
+  const size = grid.length;
+  return bestSoloMoveFlat(toFlat(grid), size, colorCount);
 };
 
 // --- Multiplayer (Territory Flood) Utilities ---
 
 /**
  * Finds all cells connected to a starting coordinate that have the given color.
+ * Returned in BFS discovery order ("r,c" keys), matching the legacy implementation.
  */
 export const findConnectedComponent = (
   grid: number[][],
@@ -145,37 +105,19 @@ export const findConnectedComponent = (
   targetColor: number,
 ): string[] => {
   const size = grid.length;
-  const queue: [number, number][] = [[startR, startC]];
-  const visited = new Set<string>();
-  visited.add(`${startR},${startC}`);
-  const result: string[] = [`${startR},${startC}`];
-
-  while (queue.length > 0) {
-    const [r, c] = queue.shift()!;
-    const neighbors = [
-      [r + 1, c],
-      [r - 1, c],
-      [r, c + 1],
-      [r, c - 1],
-    ];
-
-    for (const [nr, nc] of neighbors) {
-      if (
-        nr >= 0 &&
-        nr < size &&
-        nc >= 0 &&
-        nc < size &&
-        !visited.has(`${nr},${nc}`) &&
-        grid[nr][nc] === targetColor
-      ) {
-        visited.add(`${nr},${nc}`);
-        result.push(`${nr},${nc}`);
-        queue.push([nr, nc]);
-      }
-    }
-  }
-  return result;
+  const startIdx = startR * size + startC;
+  return connectedRegionFlat(toFlat(grid), size, startIdx, targetColor).map((idx) =>
+    idxToKey(idx, size),
+  );
 };
+
+export interface TwoPlayerGridResult {
+  grid: number[][];
+  p1Cells: string[];
+  p2Cells: string[];
+  p1Color: number;
+  p2Color: number;
+}
 
 /**
  * Generate a fair 2-Player grid where:
@@ -185,51 +127,21 @@ export const findConnectedComponent = (
 export const generateTwoPlayerGrid = (
   size: number,
   colorCount: number,
-): {
-  grid: number[][];
-  p1Cells: string[];
-  p2Cells: string[];
-  p1Color: number;
-  p2Color: number;
-} => {
-  let attempts = 0;
-  while (attempts < 100) {
-    attempts++;
-    const grid = generateSoloGrid(size, colorCount);
-
-    const p1Color = grid[0][0];
-    let p2Color = grid[size - 1][size - 1];
-
-    if (p2Color === p1Color) {
-      // Pick a different color for P2
-      p2Color = (p1Color + 1 + Math.floor(Math.random() * (colorCount - 1))) % colorCount;
-      grid[size - 1][size - 1] = p2Color;
-    }
-
-    const p1Cells = findConnectedComponent(grid, 0, 0, p1Color);
-    const p2Cells = findConnectedComponent(grid, size - 1, size - 1, p2Color);
-
-    const p2Set = new Set(p2Cells);
-    const hasOverlap = p1Cells.some((c) => p2Set.has(c));
-
-    if (!hasOverlap) {
-      return { grid, p1Cells, p2Cells, p1Color, p2Color };
-    }
-  }
-
-  // Fallback guaranteed separation
-  const grid = generateSoloGrid(size, colorCount);
-  const p1Color = 0;
-  const p2Color = 1;
-  grid[0][0] = p1Color;
-  grid[size - 1][size - 1] = p2Color;
-  const p1Cells = findConnectedComponent(grid, 0, 0, p1Color);
-  const p2Cells = findConnectedComponent(grid, size - 1, size - 1, p2Color);
-  return { grid, p1Cells, p2Cells, p1Color, p2Color };
+  rng: Rng = Math.random,
+): TwoPlayerGridResult => {
+  const board = generateTwoPlayerGridFlat(size, colorCount, rng);
+  return {
+    grid: toNested(board.cells, size),
+    p1Cells: board.p1Idx.map((idx) => idxToKey(idx, size)),
+    p2Cells: board.p2Idx.map((idx) => idxToKey(idx, size)),
+    p1Color: board.p1Color,
+    p2Color: board.p2Color,
+  };
 };
 
 /**
  * Simulates or performs player territory expansion with a new chosen color.
+ * `newCells` keeps insertion order (original cells, then BFS discoveries).
  */
 export const expandPlayerTerritory = (
   grid: number[][],
@@ -242,48 +154,19 @@ export const expandPlayerTerritory = (
   gain: number;
 } => {
   const size = grid.length;
-  const newGrid = grid.map((row) => [...row]);
-  const opponentSet = new Set(opponentCells);
-  const updatedSet = new Set(currentCells);
-  const queue: [number, number][] = [];
-
-  // Update all current territory cells to the new color
-  for (const cellKey of currentCells) {
-    const [r, c] = cellKey.split(',').map(Number);
-    newGrid[r][c] = targetColor;
-    queue.push([r, c]);
-  }
-
-  // Flood fill into adjacent cells of color `targetColor` that are not owned by the opponent
-  while (queue.length > 0) {
-    const [r, c] = queue.shift()!;
-    const neighbors = [
-      [r + 1, c],
-      [r - 1, c],
-      [r, c + 1],
-      [r, c - 1],
-    ];
-
-    for (const [nr, nc] of neighbors) {
-      if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
-        const key = `${nr},${nc}`;
-        if (
-          !updatedSet.has(key) &&
-          !opponentSet.has(key) &&
-          newGrid[nr][nc] === targetColor
-        ) {
-          updatedSet.add(key);
-          queue.push([nr, nc]);
-        }
-      }
-    }
-  }
-
-  const newCells = Array.from(updatedSet);
+  const currentIdx = keysToIdx(currentCells, size);
+  const opponentIdx = keysToIdx(opponentCells, size);
+  const { newGrid, newCells, gain } = expandTerritoryFlat(
+    toFlat(grid),
+    size,
+    currentIdx,
+    opponentIdx,
+    targetColor,
+  );
   return {
-    newGrid,
-    newCells,
-    gain: newCells.length - currentCells.length,
+    newGrid: toNested(newGrid, size),
+    newCells: newCells.map((idx) => idxToKey(idx, size)),
+    gain,
   };
 };
 
@@ -295,15 +178,7 @@ export const getLegalMultiplayerColors = (
   p1Color: number,
   p2Color: number,
   colorCount: number,
-): number[] => {
-  const legal: number[] = [];
-  for (let i = 0; i < colorCount; i++) {
-    if (i !== p1Color && i !== p2Color) {
-      legal.push(i);
-    }
-  }
-  return legal;
-};
+): number[] => legalColorsFlat(p1Color, p2Color, colorCount);
 
 /**
  * Evaluates the best multiplayer move for a player or AI Bot.
@@ -318,86 +193,18 @@ export const getBestMultiplayerMove = (
   colorCount: number,
   difficulty: BotDifficulty = 'master',
 ): { bestColor: number; maxGain: number; evaluations: Record<number, number> } => {
-  const currentCells = activePlayer === 1 ? p1Cells : p2Cells;
-  const opponentCells = activePlayer === 1 ? p2Cells : p1Cells;
-  const myColor = activePlayer === 1 ? p1Color : p2Color;
-  const oppColor = activePlayer === 1 ? p2Color : p1Color;
-
-  const legalColors = getLegalMultiplayerColors(myColor, oppColor, colorCount);
-  const evaluations: Record<number, number> = {};
-
-  if (legalColors.length === 0) {
-    return { bestColor: 0, maxGain: 0, evaluations: {} };
-  }
-
-  // Compute gain for each legal color
-  for (const c of legalColors) {
-    const { gain } = expandPlayerTerritory(grid, currentCells, opponentCells, c);
-    evaluations[c] = gain;
-  }
-
-  // Easy Bot: 60% chance to pick random legal color, 40% best
-  if (difficulty === 'easy') {
-    if (Math.random() < 0.6) {
-      const randomColor = legalColors[Math.floor(Math.random() * legalColors.length)];
-      return {
-        bestColor: randomColor,
-        maxGain: evaluations[randomColor] || 0,
-        evaluations,
-      };
-    }
-  }
-
-  // Medium Bot: purely greedy (highest immediate gain)
-  if (difficulty === 'medium') {
-    let bestC = legalColors[0];
-    let maxG = -1;
-    for (const c of legalColors) {
-      const g = evaluations[c];
-      if (g > maxG) {
-        maxG = g;
-        bestC = c;
-      }
-    }
-    return { bestColor: bestC, maxGain: maxG, evaluations };
-  }
-
-  // Master Bot: Lookahead / Minimax-heuristic:
-  // Maximizes myGain - (0.7 * opponent's max reply gain) + territory position value
-  let bestScore = -Infinity;
-  let bestColor = legalColors[0];
-
-  for (const c of legalColors) {
-    const { newGrid, newCells, gain } = expandPlayerTerritory(
-      grid,
-      currentCells,
-      opponentCells,
-      c,
-    );
-
-    // Simulate opponent's best response
-    const opponentLegal = getLegalMultiplayerColors(c, oppColor, colorCount);
-    let maxOppGain = 0;
-    for (const oppC of opponentLegal) {
-      const oppSimulation = expandPlayerTerritory(newGrid, opponentCells, newCells, oppC);
-      if (oppSimulation.gain > maxOppGain) {
-        maxOppGain = oppSimulation.gain;
-      }
-    }
-
-    // Heuristic score: High personal gain, deny opponent gain
-    const strategicScore = gain * 1.5 - maxOppGain * 0.8;
-    if (strategicScore > bestScore) {
-      bestScore = strategicScore;
-      bestColor = c;
-    }
-  }
-
-  return {
-    bestColor,
-    maxGain: evaluations[bestColor] || 0,
-    evaluations,
-  };
+  const size = grid.length;
+  return bestMultiplayerMoveFlat(
+    toFlat(grid),
+    size,
+    activePlayer,
+    keysToIdx(p1Cells, size),
+    keysToIdx(p2Cells, size),
+    p1Color,
+    p2Color,
+    colorCount,
+    difficulty,
+  );
 };
 
 /**
@@ -414,39 +221,17 @@ export const checkMultiplayerGameOver = (
   p1Cells: string[],
   p2Cells: string[],
 ): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
-  const majorityThreshold = Math.floor(totalCells / 2) + 1;
-
-  // Immediate majority winner
-  if (p1Count >= majorityThreshold) return 'p1_won';
-  if (p2Count >= majorityThreshold) return 'p2_won';
-
-  // All cells occupied
-  if (p1Count + p2Count >= totalCells) {
-    if (p1Count > p2Count) return 'p1_won';
-    if (p2Count > p1Count) return 'p2_won';
-    return 'draw';
-  }
-
-  // Check if both players are blocked from making any expansions
-  const p1Legal = getLegalMultiplayerColors(p1Color, p2Color, colorCount);
-  const p2Legal = getLegalMultiplayerColors(p2Color, p1Color, colorCount);
-
-  const p1CanGain = p1Legal.some((c) => {
-    const { gain } = expandPlayerTerritory(grid, p1Cells, p2Cells, c);
-    return gain > 0;
-  });
-
-  const p2CanGain = p2Legal.some((c) => {
-    const { gain } = expandPlayerTerritory(grid, p2Cells, p1Cells, c);
-    return gain > 0;
-  });
-
-  // If both players can no longer capture new cells
-  if (!p1CanGain && !p2CanGain) {
-    if (p1Count > p2Count) return 'p1_won';
-    if (p2Count > p1Count) return 'p2_won';
-    return 'draw';
-  }
-
-  return 'playing';
+  const size = grid.length;
+  return checkMultiplayerGameOverFlat(
+    totalCells,
+    p1Count,
+    p2Count,
+    colorCount,
+    p1Color,
+    p2Color,
+    toFlat(grid),
+    size,
+    keysToIdx(p1Cells, size),
+    keysToIdx(p2Cells, size),
+  );
 };

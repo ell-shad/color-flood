@@ -34,6 +34,9 @@ const ITERS = itersArg >= 0 ? Number(args[itersArg + 1]) : 200;
 const colorCount = 8;
 
 function bench(name: string, fn: () => void): number {
+  // Warmup so JIT tiering settles before the timed loop.
+  const warmup = Math.max(50, Math.floor(ITERS / 5));
+  for (let i = 0; i < warmup; i++) fn();
   const start = performance.now();
   fn();
   const ms = performance.now() - start;
@@ -108,12 +111,12 @@ if (NEW) {
   sink = 0;
   show('floodFlat', 'NEW', () => {
     for (let i = 0; i < ITERS; i++)
-      sink += NEW.floodFlat(soloFlat.cells, size, i % colorCount)[0];
+      sink += NEW.floodFlat(soloFlat, size, i % colorCount)[0];
   });
   sink = 0;
   show('bestSoloMoveFlat', 'NEW', () => {
     for (let i = 0; i < ITERS; i++)
-      sink += NEW.bestSoloMoveFlat(soloFlat.cells, size, colorCount)!;
+      sink += NEW.bestSoloMoveFlat(soloFlat, size, colorCount)!;
   });
 
   console.log('\n--- multiplayer (NEW) ---');
@@ -130,20 +133,14 @@ if (NEW) {
   sink = 0;
   show('expandTerritoryFlat', 'NEW', () => {
     for (let i = 0; i < ITERS; i++) {
-      sink += NEW.expandTerritoryFlat(
-        mpFlat.cells,
-        size,
-        p1Idx,
-        p2Idx,
-        i % colorCount,
-      ).gain;
+      sink += NEW.expandTerritoryFlat(mpFlat, size, p1Idx, p2Idx, i % colorCount).gain;
     }
   });
 
   show('bestMultiplayerMoveFlat (master)', 'NEW', () => {
     for (let i = 0; i < ITERS; i++) {
       sink += NEW.bestMultiplayerMoveFlat(
-        mpFlat.cells,
+        mpFlat,
         size,
         1,
         p1Idx,
@@ -156,8 +153,8 @@ if (NEW) {
     }
   });
 
-  show('generateTwoPlayerGrid', 'NEW', () => {
-    for (let i = 0; i < ITERS / 5; i++) NEW.generateTwoPlayerGrid(size, colorCount);
+  show('generateTwoPlayerGridFlat', 'NEW', () => {
+    for (let i = 0; i < ITERS / 5; i++) NEW.generateTwoPlayerGridFlat(size, colorCount);
   });
 } else {
   console.log('\n(NEW engine not available yet — baseline run)');

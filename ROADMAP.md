@@ -53,7 +53,7 @@ The plan is therefore designed around **small, independently committed units of 
 | Phase | Status | Last commit | Notes |
 | ----- | ------ | ----------- | ----- |
 | 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
-| 1 — Engine | ⬜ | — | — |
+| 1 — Engine | ✅ | see P1 notes | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
 | 2 — Balance & AI | ⬜ | — | Solver calibration not yet run |
 | 3 — Online rewrite | ⬜ | — | — |
 | 4 — Front-end architecture | ⬜ | — | — |
@@ -120,16 +120,40 @@ index-based BFS; seedable RNG.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P1.1 | Benchmark current engine on 18x18 (ops/sec for flood, expand, best-move) before rewrite; record numbers in ledger notes | ⬜ |
-| P1.2 | New flat engine: `Uint8Array`/`Int32Array` grid (row-major), index-based BFS with ring-buffer queue (no `queue.shift()`), no `r,c` string keys, no string[] territories | ⬜ |
-| P1.3 | Pure-function API: `flood`, `expandTerritory`, `legalColors`, `gameOver`, `connectedRegion`, `regionIdMap`; immutability via copy-on-write or explicit clone | ⬜ |
-| P1.4 | Seedable RNG (`mulberry32`), thread through all generators (`generateSoloGrid`, `generateTwoPlayerGrid`, bot randomness); default remains nondeterministic at call sites | ⬜ |
-| P1.5 | Adapters so existing callers (App.tsx, server.ts, components) keep working; delete duplicate logic from `useOnlineMultiplayer.ts` where it diverges from engine | ⬜ |
-| P1.6 | Port all P0 tests to the new engine + property tests (old vs new engine parity on random boards) | ⬜ |
-| P1.7 | Benchmark after; record numbers; ledger note `BEFORE: … / AFTER: …` | ⬜ |
+| P1.1 | Benchmark current engine on 18x18 (ops/sec for flood, expand, best-move) before rewrite; record numbers in ledger notes | ✅ (`scripts/benchmark.ts`; numbers below) |
+| P1.2 | New flat engine: `Uint8Array`/`Int32Array` grid (row-major), index-based BFS with ring-buffer queue (no `queue.shift()`), no `r,c` string keys, no string[] territories | ✅ (`src/utils/engine.ts`) |
+| P1.3 | Pure-function API: `flood`, `expandTerritory`, `legalColors`, `gameOver`, `connectedRegion`, `regionIdMap`; immutability via copy-on-write or explicit clone | ✅ (floodFlat, expandTerritoryFlat + gain-only variant, legalColorsFlat, checkMultiplayerGameOverFlat, connectedRegionFlat, countRegionFlat, bestSoloMoveFlat, bestMultiplayerMoveFlat; `toFlat` rejects non-square grids with RangeError) |
+| P1.4 | Seedable RNG (`mulberry32`), thread through all generators (`generateSoloGrid`, `generateTwoPlayerGrid`, bot randomness); default remains nondeterministic at call sites | ✅ (optional `rng` param + `randomSeed()` helper; bot RNG threading lands with P2.6) |
+| P1.5 | Adapters so existing callers (App.tsx, server.ts, components) keep working; delete duplicate logic from `useOnlineMultiplayer.ts` where it diverges from engine | ✅ (`floodLogic.ts` is now a thin adapter over the engine; signatures unchanged — the hook had no duplicated engine logic, it already imported floodLogic) |
+| P1.6 | Port all P0 tests to the new engine + property tests (old vs new engine parity on random boards) | ✅ (`engineParity.test.ts`, 15 tests incl. seeded legacy-oracle comparisons; caught a real bug in the first optimized best-move — disconnected startColor blobs were wrongly traversable) |
+| P1.7 | Benchmark after; record numbers; ledger note `BEFORE: … / AFTER: …` | ✅ (`npm run bench` = interleaved A/B, noise-robust; numbers below) |
 
 **Phase 1 checks:** typecheck, tests, build, lint green; parity suite proves identical outputs to
-the old engine for the same seeds; benchmark ≥2x on 18x18 or documented as why-not.
+the old engine for the same seeds; benchmark ≥2x on 18x18 or documented as why-not. ✅
+
+### Phase 1 benchmark ledger (18x18, 8 colors)
+
+Absolute single-run numbers on this machine were too noisy (3x swing between processes), so the
+official metric is `npm run bench` (`scripts/abBench.ts`): OLD and NEW timed in alternating
+blocks in the same process — the ratio is robust to background load. Consistent across runs:
+
+| Operation | NEW/OLD time ratio | Meaning |
+| --------- | ------------------ | ------- |
+| single flood | 0.48 – 0.67 | ~1.5 – 2.1x faster |
+| best solo move (7-way greedy) | 0.55 – 0.80 | ~1.3 – 1.8x faster |
+| expand territory | 0.37 – 0.50 | ~2.0 – 2.7x faster |
+| master bot evaluation | 0.96 – 1.00 | at par (see note) |
+| generate 2-player board | 0.77 – 0.78 | ~1.3x faster |
+
+Note: the master bot is at par because its cost is dominated by ~7 candidates x (expand + up
+to 7 opponent-reply sims); the flat representation removes the string-key/shift overheads but
+the algorithmic shape is unchanged. The big win here comes in **P2.6**, which replaces this
+heuristic with time-boxed alpha-beta minimax running in a Web Worker.
+
+Raw per-op absolute numbers (warm, single process, 500 iters, run-dependent):
+floodSolo ~44–184k ops/s; expandPlayerTerritory ~47–118k; getBestMultiplayerMove ~1.6–4.6k;
+new floodFlat ~154–394k; expandTerritoryFlat ~121–657k; bestSoloMoveFlat ~78–785k. Treat the
+ratios above as the stable figure.
 
 ---
 

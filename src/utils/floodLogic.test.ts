@@ -278,7 +278,11 @@ describe('expandPlayerTerritory', () => {
   });
 
   it('does not mutate the input grid or cell lists', () => {
-    const grid = [[0, 1, 2]];
+    const grid = [
+      [0, 1, 2],
+      [1, 2, 2],
+      [3, 3, 1],
+    ];
     const snapshot = clone(grid);
     const currentCells = ['0,0'];
     const opponentCells = ['0,2'];
