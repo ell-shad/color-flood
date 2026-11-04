@@ -52,7 +52,7 @@ The plan is therefore designed around **small, independently committed units of 
 
 | Phase | Status | Last commit | Notes |
 | ----- | ------ | ----------- | ----- |
-| 0 — Safety net | 🟡 | — | Ledger + baseline created |
+| 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
 | 1 — Engine | ⬜ | — | — |
 | 2 — Balance & AI | ⬜ | — | Solver calibration not yet run |
 | 3 — Online rewrite | ⬜ | — | — |
@@ -95,16 +95,21 @@ Goal: never lose the existing behavior while we refactor. Baseline tests + hygie
 | | - `getLegalMultiplayerColors` (excludes both current colors) | ✅ |
 | | - `getBestMultiplayerMove` (easy randomness range, medium greedy, master lookahead denies opponent) | ✅ |
 | | - `checkMultiplayerGameOver` (majority, all-occupied, blocked-both, playing) | ✅ |
-| P0.4 | Add **ESLint 9 (flat config) + Prettier**, scripts `lint`, `format`; fix findings without changing behavior | ⬜ |
-| P0.5 | GitHub Actions CI: node 22 single job, steps = install → lint → typecheck → test → build | ⬜ |
-| P0.6 | Fix `npm start`: `cross-env NODE_ENV=production`, build then serve `dist` (`"start": "npm run build && cross-env NODE_ENV=production tsx server.ts"`) | ⬜ |
-| P0.7 | Remove `@google/genai` dependency and `process.env.GEMINI_API_KEY` `define` in `vite.config.ts` (key embedded in client bundle); refresh `package-lock.json` | ⬜ |
-| P0.8 | Rename package `react-example` → `color-flood` (version bump to 0.1.0) | ⬜ |
-| P0.9 | License consistency: LICENSE is MIT → remove Apache-2.0 `@license / SPDX` headers from all first-party files | ⬜ |
-| P0.10 | README fix: real clone URL (`github.com/ell-shad/color-flood`), correct grid options (10/12/14/16/18) and color counts (4–8), accurate project structure, note `npm start` builds+serves, remove fake screenshot | ⬜ |
+| P0.4 | Add **ESLint 9 (flat config) + Prettier**, scripts `lint`, `format`; fix findings without changing behavior | ✅ |
+| P0.5 | GitHub Actions CI: node 22 single job, steps = install → lint → typecheck → test → build | ✅ |
+| P0.6 | Fix `npm start`: `cross-env NODE_ENV=production`, build then serve `dist` (`"start": "npm run build && cross-env NODE_ENV=production tsx server.ts"`) | ✅ (verified: health endpoint + static bundle served) |
+| P0.7 | Remove `@google/genai` dependency and `process.env.GEMINI_API_KEY` `define` in `vite.config.ts` (key embedded in client bundle); refresh `package-lock.json` | ✅ |
+| P0.8 | Rename package `react-example` → `color-flood` (version bump to 0.1.0) | ✅ |
+| P0.9 | License consistency: LICENSE is MIT → remove Apache-2.0 `@license / SPDX` headers from all first-party files | ✅ (21 files) |
+| P0.10 | README fix: real clone URL (`github.com/ell-shad/color-flood`), correct grid options (10/12/14/16/18) and color counts (4–8), accurate project structure, note `npm start` builds+serves, remove fake screenshot | ✅ (fake picsum screenshot removed; progressive challenge + themes documented) |
 
-**Phase 0 checks:** `npm run typecheck && npm run test && npm run lint && npm run build` all green.
-**Deferred:** none known.
+**Phase 0 checks:** `npm run typecheck && npm run test && npm run lint && npm run build` all green ✅.
+**Deferred:** 10 react-hooks compiler warnings (`set-state-in-effect`, `refs`, `immutability`)
+in `App.tsx` / `OnlineLobby.tsx` / `useOnlineMultiplayer.ts` — resolving them requires the
+state-management restructure planned in **Phase 4** (rules intentionally downgraded to
+`warn` in `eslint.config.js` with a promotion note). Also noted: the engine assumes square
+grids (`nc < grid.length` is used as the column bound) — documented in tests, unaffected today
+since the game only builds N×N.
 
 ---
 
