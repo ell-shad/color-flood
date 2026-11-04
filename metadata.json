@@ -1,0 +1,5 @@
+{
+  "name": "Color Flood Master",
+  "description": "A strategic color-filling puzzle and 2-player territory capture battle game. Play solo to flood the grid or battle a friend or smart AI to conquer the most cells.",
+  "requestFramePermissions": []
+}
