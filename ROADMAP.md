@@ -83,18 +83,18 @@ Goal: never lose the existing behavior while we refactor. Baseline tests + hygie
 | ID | Task | Status |
 | -- | ---- | ------ |
 | P0.1 | Create ROADMAP.md with ledger + interruption protocol (this file) | ✅ |
-| P0.2 | Add **Vitest** (`npm i -D vitest`) and scripts (`test`, `test:watch`); wire into `tsconfig` if needed | ⬜ |
-| P0.3 | Unit tests for `src/utils/floodLogic.ts`: | ⬜ |
-| | - `generateSoloGrid` (dimensions, color range) | ⬜ |
-| | - `floodSolo` (recolors connected region only, no-op when same color, non-mutating) | ⬜ |
-| | - `checkSoloWin` (all-one-color, mixed grid) | ⬜ |
-| | - `countConnectedSolo` & `getBestSoloMove` (picks max-gain color) | ⬜ |
-| | - `findConnectedComponent` (diagonals excluded, boundaries) | ⬜ |
-| | - `generateTwoPlayerGrid` fairness over many runs: corners differ, territories disjoint, fallback path | ⬜ |
-| | - `expandPlayerTerritory` (respects opponent cells, gain accounting, no leakage into opponent) | ⬜ |
-| | - `getLegalMultiplayerColors` (excludes both current colors) | ⬜ |
-| | - `getBestMultiplayerMove` (easy randomness range, medium greedy, master lookahead denies opponent) | ⬜ |
-| | - `checkMultiplayerGameOver` (majority, all-occupied, blocked-both, playing) | ⬜ |
+| P0.2 | Add **Vitest** (`npm i -D vitest`) and scripts (`test`, `test:watch`); wire into `tsconfig` if needed | ✅ (vitest 3.2.7) |
+| P0.3 | Unit tests for `src/utils/floodLogic.ts`: | ✅ (36 tests) |
+| | - `generateSoloGrid` (dimensions, color range) | ✅ |
+| | - `floodSolo` (recolors connected region only, no-op when same color, non-mutating) | ✅ |
+| | - `checkSoloWin` (all-one-color, mixed grid) | ✅ |
+| | - `countConnectedSolo` & `getBestSoloMove` (picks max-gain color) | ✅ |
+| | - `findConnectedComponent` (diagonals excluded, boundaries) | ✅ |
+| | - `generateTwoPlayerGrid` fairness over many runs: corners differ, territories disjoint, fallback path | ✅ |
+| | - `expandPlayerTerritory` (respects opponent cells, gain accounting, no leakage into opponent) | ✅ |
+| | - `getLegalMultiplayerColors` (excludes both current colors) | ✅ |
+| | - `getBestMultiplayerMove` (easy randomness range, medium greedy, master lookahead denies opponent) | ✅ |
+| | - `checkMultiplayerGameOver` (majority, all-occupied, blocked-both, playing) | ✅ |
 | P0.4 | Add **ESLint 9 (flat config) + Prettier**, scripts `lint`, `format`; fix findings without changing behavior | ⬜ |
 | P0.5 | GitHub Actions CI: node 22 single job, steps = install → lint → typecheck → test → build | ⬜ |
 | P0.6 | Fix `npm start`: `cross-env NODE_ENV=production`, build then serve `dist` (`"start": "npm run build && cross-env NODE_ENV=production tsx server.ts"`) | ⬜ |
