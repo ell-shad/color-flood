@@ -53,7 +53,7 @@ The plan is therefore designed around **small, independently committed units of 
 | Phase | Status | Last commit | Notes |
 | ----- | ------ | ----------- | ----- |
 | 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
-| 1 — Engine | ✅ | see P1 notes | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
+| 1 — Engine | ✅ | 10ad383 | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
 | 2 — Balance & AI | ⬜ | — | Solver calibration not yet run |
 | 3 — Online rewrite | ⬜ | — | — |
 | 4 — Front-end architecture | ⬜ | — | — |
