@@ -423,13 +423,6 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         lastEmote: null,
       };
       store.set(roomId, room);
-      deps.bus.toToken(token, {
-        type: 'room_created',
-        roomId,
-        role: 1,
-        playerToken: token,
-        snapshot: snapshot(room, 1),
-      });
       return { roomId, token, role: 1 };
     },
 
@@ -446,13 +439,6 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           session.lastSeen = now();
           if (playerName?.trim()) session.name = playerName.trim();
           bump(room);
-          deps.bus.toToken(playerToken, {
-            type: 'room_joined',
-            roomId: room.roomId,
-            role,
-            playerToken,
-            snapshot: snapshot(room, role),
-          });
           return { ok: true, roomId: room.roomId, token: playerToken, role };
         }
       }
@@ -473,14 +459,8 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       };
       room.status = 'playing';
       bump(room);
-      deps.bus.toToken(token, {
-        type: 'room_joined',
-        roomId: room.roomId,
-        role: 2,
-        playerToken: token,
-        snapshot: snapshot(room, 2),
-      });
-      // Everyone sees the match started (P1's socket gets it via toRoom).
+      // Everyone with a bound socket sees the match start (the joiner's ack is
+      // sent by the transport layer right after binding).
       deps.bus.toRoom(room.roomId, {
         type: 'match_started',
         snapshot: { version: room.version, myRole: null, roomState: sanitize(room) },
@@ -497,14 +477,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       session.connected = true;
       session.lastSeen = now();
       bump(room);
-      deps.bus.toToken(playerToken, {
-        type: 'resumed',
-        roomId: room.roomId,
-        role,
-        playerToken,
-        snapshot: snapshot(room, role),
-      });
-      return { ok: true, token: playerToken, role };
+      return { ok: true, roomId: room.roomId, token: playerToken, role };
     },
 
     move(roomId, playerToken, color) {

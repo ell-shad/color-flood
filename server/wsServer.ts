@@ -150,6 +150,13 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
           case 'create_room': {
             const created = service.createRoom(parsed);
             bind(ws, created.roomId, created.token, created.role);
+            send(ws, {
+              type: 'room_created',
+              roomId: created.roomId,
+              role: created.role,
+              playerToken: created.token,
+              snapshot: service.snapshotFor(created.roomId, created.role),
+            });
             return;
           }
           case 'join_room': {
@@ -159,10 +166,15 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
               parsed.playerToken,
             );
             if (result.ok) {
-              bind(ws, result.roomId, result.token, result.role);
-              if (parsed.playerToken && result.token !== parsed.playerToken) {
-                fail('not_authenticated', 'unknown token — joined as a new player');
-              }
+              const role = result.role!;
+              bind(ws, result.roomId!, result.token!, role);
+              send(ws, {
+                type: 'room_joined',
+                roomId: result.roomId!,
+                role,
+                playerToken: result.token!,
+                snapshot: service.snapshotFor(result.roomId!, role),
+              });
             } else {
               fail(result.code, result.message);
             }
@@ -171,7 +183,16 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
           case 'resume': {
             const result = service.resume(parsed.roomId, parsed.playerToken);
             if (result.ok) {
-              bind(ws, parsed.roomId.toUpperCase(), parsed.playerToken, result.role);
+              const role = result.role!;
+              const roomId = result.roomId!;
+              bind(ws, roomId, parsed.playerToken, role);
+              send(ws, {
+                type: 'resumed',
+                roomId,
+                role,
+                playerToken: parsed.playerToken,
+                snapshot: service.snapshotFor(roomId, role),
+              });
             } else {
               fail(result.code, result.message);
             }

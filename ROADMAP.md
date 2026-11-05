@@ -55,7 +55,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
 | 1 — Engine | ✅ | 10ad383 | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
 | 2 — Balance & AI | ✅ | 3418f6b (P2.1–P2.5) + P2.6–P2.8 in next commit | Solver-calibrated limits+stars; competent ≥90% verified at all 25 configs; hints limited (3 solo / none online / opt-in local+bot); minimax master (beats legacy heur. 80%, slowest move 56ms) in Web Worker; bot ladder tests master 85% vs medium, medium 96% vs easy |
-| 3 — Online rewrite | ⬜ | — | — |
+| 3 — Online rewrite | 🟡 | 808a133 (P3.1/P3.2/P3.7) + P3.4 commit | Server-authoritative ws protocol + zod + token auth done; PeerJS/polling/REST removed from client+server; 13 protocol tests green. NEXT: P3.5 reconnection (heartbeat/60s grace/token resume/forfeit, turn timer), P3.6 hardening (helmet/CORS rate-limit/storage) |
 | 4 — Front-end architecture | ⬜ | — | — |
 | 5 — UX & accessibility | ⬜ | — | — |
 | 6 — Features | ⬜ | — | — |
@@ -177,7 +177,7 @@ Goal: solver-calibrated solo limits + stars; limited/removed hints; strong seede
 
 ---
 
-## Phase 3 — Online Multiplayer Rewrite ⬜
+## Phase 3 — Online Multiplayer Rewrite 🟡
 
 Known defects (confirmed by reading server.ts + useOnlineMultiplayer.ts): three sync layers
 (PeerJS + REST/1.2s polling + unused ws), host grid never sent on `POST /api/rooms` so polling
@@ -189,14 +189,14 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P3.1 | Design one **server-authoritative WebSocket protocol**, typed shared messages validated by **zod** (intent-only client messages) | ⬜ |
-| P3.2 | Server: token→role on every message; validate turn, color range, legality; clamp/validate settings (lobby-only changes or approved reset); max 2 players; server-generated room codes | ⬜ |
-| P3.3 | Broadcast state with monotonic `version`; client optimistic UI with rollback on rejection | ⬜ |
-| P3.4 | Remove PeerJS + REST polling + duplicate REST endpoints from the client and server | ⬜ |
+| P3.1 | Design one **server-authoritative WebSocket protocol**, typed shared messages validated by **zod** (intent-only client messages) | ✅ 808a133 `server/protocol.ts` shared by server+client |
+| P3.2 | Server: token→role on every message; validate turn, color range, legality; clamp/validate settings (lobby-only changes or approved reset); max 2 players; server-generated room codes | ✅ 808a133 `server/rooms.ts` (+14 unit tests) |
+| P3.3 | Broadcast state with monotonic `version`; client optimistic UI with rollback on rejection | ✅ P3.4 commit (version gate in new hook; rejected intents auto-`resume`) |
+| P3.4 | Remove PeerJS + REST polling + duplicate REST endpoints from the client and server | ✅ P3.4 commit (single ws protocol; `peerjs` uninstalled) |
 | P3.5 | Reconnection: heartbeat, 60 s grace, resume-by-token after refresh (localStorage with expiry), forfeit on timeout, optional turn timer (off/30/60 s) | ⬜ |
-| P3.6 | Server hardening: CORS restricted to APP_URL, body size limit, rate limiting, `helmet`, room storage behind a storage interface (in-memory default) | ⬜ |
-| P3.7 | Keep the fix for `joinRoom` role derivation (host reload via `?room=` must not become P2) | ⬜ |
-| P3.8 | Tests with two ws clients incl. cheating attempts: wrong turn, spoofed role, invalid color, oversized grid, duplicate room code, unauthenticated bind | ⬜ |
+| P3.6 | Server hardening: CORS restricted to APP_URL, body size limit, rate limiting, `helmet`, room storage behind a storage interface (in-memory default) | ⬜ (RoomStore seam + body/message caps + per-socket rate limit landed with P3.1; helmet/CORS/limiting remain) |
+| P3.7 | Keep the fix for `joinRoom` role derivation (host reload via `?room=` must not become P2) | ✅ 808a133 (role always derived from token) |
+| P3.8 | Tests with two ws clients incl. cheating attempts: wrong turn, spoofed role, invalid color, oversized grid, duplicate room code, unauthenticated bind | ✅ P3.4 commit `server/wsProtocol.test.ts` (13 live-socket tests: wrong turn, forged token, bad color, 9KiB close, no-proposal, settings lock, proposal flow, leave, rate limit, emote, resume, malformed) |
 
 **Phase 3 checks:** all checks green; manual two-browser match incl. refresh mid-game stays in sync.
 

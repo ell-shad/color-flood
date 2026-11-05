@@ -74,7 +74,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
     type: z.literal('move'),
     roomId: RoomId,
     playerToken: Token,
-    color: z.number().int().min(0).max(15),
+    color: z.number().int().min(-1).max(255),
   }),
 
   z.object({
@@ -121,30 +121,37 @@ export interface RoomSnapshot {
   roomState: OnlineRoomState;
 }
 
+export type SessionAckMessage = {
+  type: 'room_created' | 'room_joined' | 'resumed';
+  roomId: string;
+  role: 1 | 2;
+  playerToken: string;
+  snapshot: RoomSnapshot;
+};
+
+export type StateUpdateMessage = {
+  type:
+    | 'state_update'
+    | 'match_started'
+    | 'move_made'
+    | 'reset_proposed'
+    | 'reset_accepted'
+    | 'reset_declined'
+    | 'settings_updated'
+    | 'player_disconnected'
+    | 'player_left';
+  snapshot: RoomSnapshot;
+};
+
+export type EmoteMessage = {
+  type: 'player_emote';
+  emote: { role: 1 | 2; emoji: string; id: number };
+};
+
+export type ErrorMessage = { type: 'error'; code: string; message: string };
+
 export type ServerMessage =
-  | { type: 'pong' }
-  | {
-      type: 'room_created' | 'room_joined' | 'resumed';
-      roomId: string;
-      role: 1 | 2;
-      playerToken: string;
-      snapshot: RoomSnapshot;
-    }
-  | {
-      type:
-        | 'state_update'
-        | 'match_started'
-        | 'move_made'
-        | 'reset_proposed'
-        | 'reset_accepted'
-        | 'reset_declined'
-        | 'settings_updated'
-        | 'player_disconnected'
-        | 'player_left';
-      snapshot: RoomSnapshot;
-    }
-  | { type: 'player_emote'; emote: { role: 1 | 2; emoji: string; id: number } }
-  | { type: 'error'; code: string; message: string };
+  SessionAckMessage | StateUpdateMessage | EmoteMessage | ErrorMessage | { type: 'pong' };
 
 export type ServerErrorCode =
   | 'bad_message'
