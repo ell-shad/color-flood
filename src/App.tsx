@@ -31,6 +31,7 @@ import { maxSoloMovesLimit } from './utils/soloBalance';
 
 import { THEMES, PROGRESSIVE_STAGES } from './utils/themes';
 import { useOnlineMultiplayer } from './utils/useOnlineMultiplayer';
+import { requestBotMove } from './utils/botWorkerClient';
 
 import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
@@ -594,6 +595,9 @@ export default function App() {
         ? PROGRESSIVE_STAGES[twoPlayerState.currentStage - 1]?.colorCount || 4
         : colorCount;
 
+    // Set false when the effect is torn down (user acted, round ended, unmount).
+    let cancelled = false;
+
     const timer = setTimeout(() => {
       const currentState = twoPlayerStateRef.current;
       if (!currentState || currentState.status !== 'playing' || currentState.turn !== 2) {
@@ -601,22 +605,36 @@ export default function App() {
         return;
       }
 
-      const { bestColor } = getBestMultiplayerMove(
-        currentState.grid,
-        2,
-        currentState.p1Cells,
-        currentState.p2Cells,
-        currentState.p1Color,
-        currentState.p2Color,
-        activeColorCount,
-        botDifficulty,
-      );
-
-      setIsBotThinking(false);
-      executeLocalMultiplayerMove(bestColor);
+      // P2.7: bot runs in a Web Worker so the minimax search never blocks the UI.
+      // Stale responses (state changed while the worker computed) are dropped.
+      requestBotMove({
+        grid: currentState.grid,
+        activePlayer: 2,
+        p1Cells: currentState.p1Cells,
+        p2Cells: currentState.p2Cells,
+        p1Color: currentState.p1Color,
+        p2Color: currentState.p2Color,
+        colorCount: activeColorCount,
+        difficulty: botDifficulty,
+      }).then((bestColor) => {
+        if (cancelled) return;
+        if (
+          twoPlayerStateRef.current !== currentState ||
+          currentState.status !== 'playing' ||
+          currentState.turn !== 2
+        ) {
+          setIsBotThinking(false);
+          return;
+        }
+        setIsBotThinking(false);
+        executeLocalMultiplayerMove(bestColor);
+      });
     }, 420);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [
     mode,
     opponent,
@@ -661,6 +679,9 @@ export default function App() {
         twoPlayerState.p2Color,
         activeColors,
         'master',
+        // Hints run on the main thread: hard cap the search time so the UI
+        // never freezes (checked every 256 nodes).
+        { deadlineMs: 300, now: () => performance.now() },
       );
       setHint(bestColor);
       setHintGain(maxGain);

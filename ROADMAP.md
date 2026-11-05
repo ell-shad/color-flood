@@ -54,7 +54,7 @@ The plan is therefore designed around **small, independently committed units of 
 | ----- | ------ | ----------- | ----- |
 | 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
 | 1 — Engine | ✅ | 10ad383 | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
-| 2 — Balance & AI | ⬜ | — | Solver calibration not yet run |
+| 2 — Balance & AI | ✅ | 3418f6b (P2.1–P2.5) + P2.6–P2.8 in next commit | Solver-calibrated limits+stars; competent ≥90% verified at all 25 configs; hints limited (3 solo / none online / opt-in local+bot); minimax master (beats legacy heur. 80%, slowest move 56ms) in Web Worker; bot ladder tests master 85% vs medium, medium 96% vs easy |
 | 3 — Online rewrite | ⬜ | — | — |
 | 4 — Front-end architecture | ⬜ | — | — |
 | 5 — UX & accessibility | ⬜ | — | — |
@@ -123,7 +123,7 @@ index-based BFS; seedable RNG.
 | P1.1 | Benchmark current engine on 18x18 (ops/sec for flood, expand, best-move) before rewrite; record numbers in ledger notes | ✅ (`scripts/benchmark.ts`; numbers below) |
 | P1.2 | New flat engine: `Uint8Array`/`Int32Array` grid (row-major), index-based BFS with ring-buffer queue (no `queue.shift()`), no `r,c` string keys, no string[] territories | ✅ (`src/utils/engine.ts`) |
 | P1.3 | Pure-function API: `flood`, `expandTerritory`, `legalColors`, `gameOver`, `connectedRegion`, `regionIdMap`; immutability via copy-on-write or explicit clone | ✅ (floodFlat, expandTerritoryFlat + gain-only variant, legalColorsFlat, checkMultiplayerGameOverFlat, connectedRegionFlat, countRegionFlat, bestSoloMoveFlat, bestMultiplayerMoveFlat; `toFlat` rejects non-square grids with RangeError) |
-| P1.4 | Seedable RNG (`mulberry32`), thread through all generators (`generateSoloGrid`, `generateTwoPlayerGrid`, bot randomness); default remains nondeterministic at call sites | ✅ (optional `rng` param + `randomSeed()` helper; bot RNG threading lands with P2.6) |
+| P1.4 | Seedable RNG (`mulberry32`), thread through all generators (`generateSoloGrid`, `generateTwoPlayerGrid`, bot randomness); default remains nondeterministic at call sites | ✅ (bot RNG threaded in P2.6 via `BotMoveOptions.rng`) |
 | P1.5 | Adapters so existing callers (App.tsx, server.ts, components) keep working; delete duplicate logic from `useOnlineMultiplayer.ts` where it diverges from engine | ✅ (`floodLogic.ts` is now a thin adapter over the engine; signatures unchanged — the hook had no duplicated engine logic, it already imported floodLogic) |
 | P1.6 | Port all P0 tests to the new engine + property tests (old vs new engine parity on random boards) | ✅ (`engineParity.test.ts`, 15 tests incl. seeded legacy-oracle comparisons; caught a real bug in the first optimized best-move — disconnected startColor blobs were wrongly traversable) |
 | P1.7 | Benchmark after; record numbers; ledger note `BEFORE: … / AFTER: …` | ✅ (`npm run bench` = interleaved A/B, noise-robust; numbers below) |
@@ -157,22 +157,23 @@ ratios above as the stable figure.
 
 ---
 
-## Phase 2 — Balance & AI ⬜
+## Phase 2 — Balance & AI ✅
 
 Goal: solver-calibrated solo limits + stars; limited/removed hints; strong seeded bots in a worker.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P2.1 | Build stronger solver (greedy + beam search with 1–2 move lookahead) inside `sim` tooling | ⬜ |
-| P2.2 | `npm run sim` script: table of config → par estimate, greedy wins, solver wins, current limit | ⬜ |
-| P2.3 | Replace `floor(1.5*size + 2*colors)` with per-config par table + difficulty slack; target ~90%+ win rate at every config for a competent player, easy configs not trivial | ⬜ |
-| P2.4 | 1–3 star rating per solo game (e.g. ≤par =3★, +2 =2★, ≤limit =1★); persist per config | ⬜ |
-| P2.5 | Hints: 3 per solo game (or cost a star); removed from online; default-off in local/bot with a settings toggle (preserve availability offline) | ⬜ |
-| P2.6 | Master bot = time-boxed depth-limited minimax with alpha-beta, evaluation = territory diff + frontier size + reachable neutral cells; respect seeded RNG | ⬜ |
-| P2.7 | Run bot computation in a **Web Worker** for all bot matches; UI never blocks on 18x18 | ⬜ |
-| P2.8 | Seeded bot tests: master ≥70% wins vs medium; medium ≥70% vs easy | ⬜ |
+| P2.1 | Build stronger solver (greedy + beam search with 1–2 move lookahead) inside `sim` tooling | ✅ 3418f6b (`soloSolver.ts`: greedy = hint rule + beam) |
+| P2.2 | `npm run sim` script: table of config → par estimate, greedy wins, solver wins, current limit | ✅ 3418f6b (calibration + `--verify`, idempotent `--persist`) |
+| P2.3 | Replace `floor(1.5*size + 2*colors)` with per-config par table + difficulty slack; target ~90%+ win rate at every config for a competent player, easy configs not trivial | ✅ 3418f6b (limit = clamp(p90+1, par+2, par+8); verified 95–100% at all 25 configs) |
+| P2.4 | 1–3 star rating per solo game (e.g. ≤par =3★, +2 =2★, ≤limit =1★); persist per config | ✅ 3418f6b (rendered in SoloScoreboard; ⏸ per-config star record persistence deferred to Phase 4 storage helper) |
+| P2.5 | Hints: 3 per solo game (or cost a star); removed from online; default-off in local/bot with a settings toggle (preserve availability offline) | ✅ 3418f6b (3/game enforced; online removed; settings toggle persisted) |
+| P2.6 | Master bot = time-boxed depth-limited minimax with alpha-beta, evaluation = territory diff + frontier size + reachable neutral cells; respect seeded RNG | ✅ Beats legacy heuristic 16–4 (80%) on 10x10/5c; slowest move 56ms on 18x18/8c (avg 35ms) |
+| P2.7 | Run bot computation in a **Web Worker** for all bot matches; UI never blocks on 18x18 | ✅ `botWorker.ts` + `botWorkerClient.ts`: singleton worker, stale-response guard, sync fallback; bundled in dist |
+| P2.8 | Seeded bot tests: master ≥70% wins vs medium; medium ≥70% vs easy | ✅ `botStrength.test.ts`: master 85% vs medium, medium 96% vs easy (fully deterministic, 0.7s) |
 
 **Phase 2 checks:** checks green + `npm run sim` table meeting targets in the DoD.
+**Phase 2 result:** `npm run sim -- --verify` (200 boards/config): competent player ≥90% at all 25 configs + limit bounds par+2..par+8 enforced; solo limits recalibrated (e.g. 10x10/4c 23→14).
 
 ---
 

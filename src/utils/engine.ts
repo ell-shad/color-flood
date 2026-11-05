@@ -525,9 +525,279 @@ export interface BotMoveResult {
   evaluations: Record<number, number>;
 }
 
+export interface MinimaxOptions {
+  /** Hard ply cap (iterative deepening stops here). */
+  maxDepth?: number;
+  /** Deterministic node budget — the search aborts and keeps the last completed depth. */
+  nodeBudget?: number;
+  /** Optional wall-clock budget for the browser (checked every 256 nodes). */
+  deadlineMs?: number;
+  /** Injectable clock so tests can stay deterministic. */
+  now?: () => number;
+}
+
+const COUNT_WEIGHT = 100;
+const FRONTIER_CELL_WEIGHT = 2;
+const FRONTIER_COLOR_WEIGHT = 3;
+
+interface FrontierInfo {
+  cells: number;
+  colors: number;
+}
+
+/**
+ * Neutral cells adjacent to a territory and how many distinct neutral colors they
+ * have. Fewer distinct frontier colors is slightly better (more focused capture).
+ */
+const frontierInfo = (
+  cells: Uint8Array,
+  size: number,
+  ownIdx: readonly number[],
+  oppSet: Uint8Array,
+  scratch: Uint8Array,
+  scratchColors: Uint8Array,
+): FrontierInfo => {
+  if (ownIdx.length === 0) return { cells: 0, colors: 0 };
+  const total = size * size;
+  const ownColor = cells[ownIdx[0]];
+  scratch.fill(0);
+  scratchColors.fill(0);
+  let count = 0;
+  let colorKinds = 0;
+
+  for (const i of ownIdx) {
+    const col = i % size;
+    // down / up / right / left
+    const down = i + size;
+    if (down < total) {
+      const c = cells[down];
+      if (c !== ownColor && oppSet[down] === 0 && scratch[down] === 0) {
+        scratch[down] = 1;
+        count++;
+        if (scratchColors[c] === 0) {
+          scratchColors[c] = 1;
+          colorKinds++;
+        }
+      }
+    }
+    const up = i - size;
+    if (up >= 0) {
+      const c = cells[up];
+      if (c !== ownColor && oppSet[up] === 0 && scratch[up] === 0) {
+        scratch[up] = 1;
+        count++;
+        if (scratchColors[c] === 0) {
+          scratchColors[c] = 1;
+          colorKinds++;
+        }
+      }
+    }
+    if (col + 1 < size) {
+      const right = i + 1;
+      const c = cells[right];
+      if (c !== ownColor && oppSet[right] === 0 && scratch[right] === 0) {
+        scratch[right] = 1;
+        count++;
+        if (scratchColors[c] === 0) {
+          scratchColors[c] = 1;
+          colorKinds++;
+        }
+      }
+    }
+    if (col > 0) {
+      const left = i - 1;
+      const c = cells[left];
+      if (c !== ownColor && oppSet[left] === 0 && scratch[left] === 0) {
+        scratch[left] = 1;
+        count++;
+        if (scratchColors[c] === 0) {
+          scratchColors[c] = 1;
+          colorKinds++;
+        }
+      }
+    }
+  }
+  return { cells: count, colors: colorKinds };
+};
+
+/**
+ * Master bot: time-boxed depth-limited minimax with alpha-beta.
+ *
+ * Evaluation (from P1's perspective): territory difference + frontier cell count
+ * (reachable neutral cells bordering the territory) − distinct frontier color count,
+ * plus a decisive bonus for holding a majority. Moves are ordered by immediate gain
+ * for pruning. Iterative deepening keeps the best move from the last fully completed
+ * depth when the node/clock budget runs out, so results are deterministic for a fixed
+ * node budget (tests) and never block the caller for long (worker + deadlineMs).
+ */
+export const bestMultiplayerMoveMinimaxFlat = (
+  cells: Uint8Array,
+  size: number,
+  activePlayer: PlayerId,
+  p1Idx: readonly number[],
+  p2Idx: readonly number[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+  options: MinimaxOptions = {},
+): BotMoveResult => {
+  const total = size * size;
+  const majorityThreshold = Math.floor(total / 2) + 1;
+  const maxDepth = options.maxDepth ?? (total > 256 ? 5 : 6);
+  const nodeBudget = options.nodeBudget ?? 250_000;
+  const useClock = options.deadlineMs !== undefined && options.now !== undefined;
+  const deadline = useClock ? options.now!() + options.deadlineMs! : Infinity;
+  const now = options.now ?? Date.now;
+
+  const myIdx = activePlayer === 1 ? p1Idx : p2Idx;
+  const oppIdx = activePlayer === 1 ? p2Idx : p1Idx;
+  const myColor = activePlayer === 1 ? p1Color : p2Color;
+  const oppColor = activePlayer === 1 ? p2Color : p1Color;
+  const isP1 = activePlayer === 1;
+
+  const evaluations: Record<number, number> = {};
+  const legal = legalColorsFlat(myColor, oppColor, colorCount);
+  for (const c of legal) {
+    evaluations[c] = expandTerritoryGainFlat(cells, size, myIdx, oppIdx, c);
+  }
+  if (legal.length === 0) {
+    return { bestColor: 0, maxGain: 0, evaluations: {} };
+  }
+
+  // Root move order: highest immediate gain first (better pruning + sane fallback).
+  const ordered = [...legal].sort((a, b) => evaluations[b] - evaluations[a]);
+  let bestColor = ordered[0];
+
+  const scratch = new Uint8Array(total);
+  const scratchColors = new Uint8Array(16);
+  const oppSet = new Uint8Array(total);
+
+  const evaluate = (
+    board: Uint8Array,
+    boardP1: readonly number[],
+    boardP2: readonly number[],
+  ): number => {
+    const p1Count = boardP1.length;
+    const p2Count = boardP2.length;
+    if (p1Count >= majorityThreshold) return 1_000_000 + p1Count;
+    if (p2Count >= majorityThreshold) return -1_000_000 - p2Count;
+
+    oppSet.fill(0);
+    for (const i of boardP2) oppSet[i] = 1;
+    const f1 = frontierInfo(board, size, boardP1, oppSet, scratch, scratchColors);
+
+    oppSet.fill(0);
+    for (const i of boardP1) oppSet[i] = 1;
+    const f2 = frontierInfo(board, size, boardP2, oppSet, scratch, scratchColors);
+
+    return (
+      COUNT_WEIGHT * (p1Count - p2Count) +
+      FRONTIER_CELL_WEIGHT * (f1.cells - f2.cells) +
+      FRONTIER_COLOR_WEIGHT * (f2.colors - f1.colors)
+    );
+  };
+
+  let nodes = 0;
+  let aborted = false;
+
+  const search = (
+    board: Uint8Array,
+    boardP1: readonly number[],
+    boardP2: readonly number[],
+    boardP1Color: number,
+    boardP2Color: number,
+    turn: PlayerId,
+    depth: number,
+    alpha: number,
+    beta: number,
+  ): number => {
+    nodes++;
+    if (nodes > nodeBudget || (useClock && (nodes & 255) === 0 && now() > deadline)) {
+      aborted = true;
+      return evaluate(board, boardP1, boardP2);
+    }
+    if (depth === 0) return evaluate(board, boardP1, boardP2);
+
+    const turnIsP1 = turn === 1;
+    const tIdx = turnIsP1 ? boardP1 : boardP2;
+    const oIdx = turnIsP1 ? boardP2 : boardP1;
+    const tColor = turnIsP1 ? boardP1Color : boardP2Color;
+    const oColor = turnIsP1 ? boardP2Color : boardP1Color;
+
+    const moves = legalColorsFlat(tColor, oColor, colorCount)
+      .map((c) => [c, expandTerritoryGainFlat(board, size, tIdx, oIdx, c)] as const)
+      .sort((x, y) => y[1] - x[1]);
+    if (moves.length === 0) return evaluate(board, boardP1, boardP2);
+
+    let best = turnIsP1 ? -Infinity : Infinity;
+    for (const [c] of moves) {
+      const { newGrid, newCells } = expandTerritoryFlat(board, size, tIdx, oIdx, c);
+      const value = search(
+        newGrid,
+        turnIsP1 ? newCells : boardP1,
+        turnIsP1 ? boardP2 : newCells,
+        turnIsP1 ? c : boardP1Color,
+        turnIsP1 ? boardP2Color : c,
+        turnIsP1 ? 2 : 1,
+        depth - 1,
+        alpha,
+        beta,
+      );
+      if (turnIsP1) {
+        if (value > best) best = value;
+        if (best > alpha) alpha = best;
+      } else {
+        if (value < best) best = value;
+        if (best < beta) beta = best;
+      }
+      if (beta <= alpha) break;
+    }
+    return best;
+  };
+
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    aborted = false;
+    let depthBest = ordered[0];
+    let depthValue = isP1 ? -Infinity : Infinity;
+    for (const c of ordered) {
+      const { newGrid, newCells } = expandTerritoryFlat(cells, size, myIdx, oppIdx, c);
+      const value = search(
+        newGrid,
+        isP1 ? newCells : p1Idx,
+        isP1 ? p2Idx : newCells,
+        isP1 ? c : p1Color,
+        isP1 ? p2Color : c,
+        isP1 ? 2 : 1,
+        depth - 1,
+        -Infinity,
+        Infinity,
+      );
+      if (aborted) break;
+      if (isP1 ? value > depthValue : value < depthValue) {
+        depthValue = value;
+        depthBest = c;
+      }
+    }
+    if (aborted) break;
+    bestColor = depthBest;
+  }
+
+  return { bestColor, maxGain: evaluations[bestColor] ?? 0, evaluations };
+};
+
+export interface BotMoveOptions extends MinimaxOptions {
+  /**
+   * Injectable RNG for the easy bot's random choice — lets seeded tests exercise
+   * the easy path deterministically. Defaults to Math.random (legacy behavior).
+   */
+  rng?: Rng;
+}
+
 /**
  * Best multiplayer move for a player or AI bot.
- * Behavior (incl. tie-breaks and easy-bot randomness) mirrors the legacy implementation.
+ * - easy: seeded-random-ish greedy (0.6 random) — legacy behavior
+ * - medium: greedy highest immediate gain — legacy behavior
+ * - master: depth-limited alpha-beta minimax (bestMultiplayerMoveMinimaxFlat)
  */
 export const bestMultiplayerMoveFlat = (
   cells: Uint8Array,
@@ -539,6 +809,7 @@ export const bestMultiplayerMoveFlat = (
   p2Color: number,
   colorCount: number,
   difficulty: BotDifficulty = 'master',
+  options: BotMoveOptions = {},
 ): BotMoveResult => {
   const currentIdx = activePlayer === 1 ? p1Idx : p2Idx;
   const opponentIdx = activePlayer === 1 ? p2Idx : p1Idx;
@@ -556,10 +827,12 @@ export const bestMultiplayerMoveFlat = (
     evaluations[c] = expandTerritoryGainFlat(cells, size, currentIdx, opponentIdx, c);
   }
 
+  const rng = options.rng ?? Math.random;
+
   // Easy bot: 60% chance to pick a random legal color, otherwise falls through to
   // the master-style lookahead below (legacy behavior).
-  if (difficulty === 'easy' && Math.random() < 0.6) {
-    const randomColor = legal[Math.floor(Math.random() * legal.length)];
+  if (difficulty === 'easy' && rng() < 0.6) {
+    const randomColor = legal[Math.floor(rng() * legal.length)];
     return {
       bestColor: randomColor,
       maxGain: evaluations[randomColor] || 0,
@@ -581,7 +854,56 @@ export const bestMultiplayerMoveFlat = (
     return { bestColor: bestC, maxGain: maxG, evaluations };
   }
 
-  // Master bot: one-move lookahead — gain*1.5 minus 0.8 * opponent's best reply gain.
+  // Master bot: depth-limited alpha-beta minimax (replaces the legacy one-move
+  // lookahead in P2.6; the legacy heuristic stays exported for the parity oracle).
+  const minimax = bestMultiplayerMoveMinimaxFlat(
+    cells,
+    size,
+    activePlayer,
+    p1Idx,
+    p2Idx,
+    p1Color,
+    p2Color,
+    colorCount,
+    options,
+  );
+  return {
+    bestColor: minimax.bestColor,
+    maxGain: minimax.maxGain,
+    evaluations,
+  };
+};
+
+/**
+ * Legacy master heuristic (verbatim, kept as the parity-suite oracle): one-move
+ * lookahead — gain*1.5 minus 0.8 * opponent's best reply gain.
+ */
+export const bestMultiplayerMoveLegacyMasterFlat = (
+  cells: Uint8Array,
+  size: number,
+  activePlayer: PlayerId,
+  p1Idx: readonly number[],
+  p2Idx: readonly number[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+): BotMoveResult => {
+  const currentIdx = activePlayer === 1 ? p1Idx : p2Idx;
+  const opponentIdx = activePlayer === 1 ? p2Idx : p1Idx;
+  const myColor = activePlayer === 1 ? p1Color : p2Color;
+  const oppColor = activePlayer === 1 ? p2Color : p1Color;
+
+  const legal = legalColorsFlat(myColor, oppColor, colorCount);
+  const evaluations: Record<number, number> = {};
+
+  if (legal.length === 0) {
+    return { bestColor: 0, maxGain: 0, evaluations: {} };
+  }
+
+  for (const c of legal) {
+    evaluations[c] = expandTerritoryGainFlat(cells, size, currentIdx, opponentIdx, c);
+  }
+
   let bestScore = -Infinity;
   let bestColor = legal[0];
   for (const c of legal) {

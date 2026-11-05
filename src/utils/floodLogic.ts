@@ -12,6 +12,7 @@ import {
   legalColorsFlat,
   toFlat,
   toNested,
+  type BotMoveOptions,
   type Rng,
 } from './engine';
 
@@ -192,6 +193,7 @@ export const getBestMultiplayerMove = (
   p2Color: number,
   colorCount: number,
   difficulty: BotDifficulty = 'master',
+  options: BotMoveOptions = {},
 ): { bestColor: number; maxGain: number; evaluations: Record<number, number> } => {
   const size = grid.length;
   return bestMultiplayerMoveFlat(
@@ -204,6 +206,7 @@ export const getBestMultiplayerMove = (
     p2Color,
     colorCount,
     difficulty,
+    options,
   );
 };
 

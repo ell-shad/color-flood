@@ -12,7 +12,17 @@ import {
   getLegalMultiplayerColors,
   checkMultiplayerGameOver,
 } from './floodLogic';
-import { mulberry32, toFlat, toNested, generateSoloGridFlat } from './engine';
+import {
+  mulberry32,
+  toFlat,
+  toNested,
+  generateSoloGridFlat,
+  bestMultiplayerMoveLegacyMasterFlat,
+} from './engine';
+
+// Same key format as floodLogic's private keysToIdx ('r,c' row-major).
+const testKeysToIdx = (keys: string[], size: number): number[] =>
+  keys.map((k) => Number(k.split(',')[0]) * size + Number(k.split(',')[1]));
 
 /**
  * PARITY SUITE — the reference implementation (string keys, Set<string>, queue.shift()
@@ -468,29 +478,54 @@ describe('old engine vs new engine parity (seeded)', () => {
     }
   });
 
-  it('getBestMultiplayerMove matches legacy for medium and master', () => {
+  it('getBestMultiplayerMove matches legacy for medium (adapter)', () => {
     for (let seed = 0; seed < 25; seed++) {
       const size = sizes[seed % sizes.length];
       const colorCount = colorCounts[seed % colorCounts.length];
       const board = generateTwoPlayerGrid(size, colorCount, mulberry32(seed + 6000));
 
-      for (const difficulty of ['medium', 'master'] as const) {
-        const expected = legacyBestMultiplayerMove(board, 1, colorCount, difficulty);
-        const current = getBestMultiplayerMove(
-          board.grid,
-          1,
-          board.p1Cells,
-          board.p2Cells,
-          board.p1Color,
-          board.p2Color,
-          colorCount,
-          difficulty,
-        );
-        expect(current.bestColor, `seed=${seed + 6000} ${difficulty}`).toBe(
-          expected.bestColor,
-        );
-        expect(current.evaluations).toEqual(expected.evaluations);
-      }
+      const expected = legacyBestMultiplayerMove(board, 1, colorCount, 'medium');
+      const current = getBestMultiplayerMove(
+        board.grid,
+        1,
+        board.p1Cells,
+        board.p2Cells,
+        board.p1Color,
+        board.p2Color,
+        colorCount,
+        'medium',
+      );
+      expect(current.bestColor, `seed=${seed + 6000} medium`).toBe(expected.bestColor);
+      expect(current.evaluations).toEqual(expected.evaluations);
+    }
+  });
+
+  /**
+   * P2.6 deliberately changed the master bot from the one-move-lookahead heuristic to
+   * alpha-beta minimax. The legacy heuristic lives on as
+   * `bestMultiplayerMoveLegacyMasterFlat`; this test pins it to the verbatim legacy
+   * oracle so the reference behavior stays guarded.
+   */
+  it('legacy master heuristic is pinned (verbatim oracle) after P2.6 minimax switch', () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const size = sizes[seed % sizes.length];
+      const colorCount = colorCounts[seed % colorCounts.length];
+      const board = generateTwoPlayerGrid(size, colorCount, mulberry32(seed + 6000));
+      const expected = legacyBestMultiplayerMove(board, 1, colorCount, 'master');
+      const legacy = bestMultiplayerMoveLegacyMasterFlat(
+        toFlat(board.grid),
+        size,
+        1,
+        testKeysToIdx(board.p1Cells, size),
+        testKeysToIdx(board.p2Cells, size),
+        board.p1Color,
+        board.p2Color,
+        colorCount,
+      );
+      expect(legacy.bestColor, `seed=${seed + 6000} legacy-master`).toBe(
+        expected.bestColor,
+      );
+      expect(legacy.evaluations).toEqual(expected.evaluations);
     }
   });
 
