@@ -206,14 +206,14 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 ---
 
-## Phase 4 — Front-end Architecture ⬜
+## Phase 4 — Front-end Architecture 🔶 (P4.1–P4.5, P4.7, P4.8 done; P4.6 + lint promotion pending)
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P4.1 | Split `App.tsx` (~1,200 lines) into feature components/hooks | ⬜ |
-| P4.2 | Introduce `useGameSession()` exposing one view model (grid, territories, turn, legal colors, status, actions) with adapters for solo/local/bot/online; kill the `opponent === 'online' && roomState ? … : …` ternaries | ⬜ |
-| P4.3 | `useReducer` for local game state | ⬜ |
-| P4.4 | Fix init effect that re-creates both games on `gridSize/colorCount/challengeType` change (can wipe a game in progress) | ⬜ |
+| P4.1 | Split `App.tsx` (~1,200 lines) into feature components/hooks | ✅ fcb19bd (App 1,343→310 lines; usePrefs / useSoloGame / useLocalMatch / useGameSession) |
+| P4.2 | Introduce `useGameSession()` exposing one view model (grid, territories, turn, legal colors, status, actions) with adapters for solo/local/bot/online; kill the `opponent === 'online' && roomState ? … : …` ternaries | ✅ fcb19bd (online rooms coerced to TwoPlayerGameState in coerceRoom; derived view props feed GameGrid/palette/modal) |
+| P4.3 | `useReducer` for local game state | ✅ fcb19bd (solo + local/bot machines move engine calls into reducers; side-effect callbacks stay sync like before) |
+| P4.4 | Fix init effect that re-creates both games on `gridSize/colorCount/challengeType` change (can wipe a game in progress) | ✅ fcb19bd (reducer lazy initializers build the first boards; only explicit handlers re-create) |
 | P4.5 | Safe storage helper: try/catch, zod validation, versioned keys — corrupted localStorage must never white-screen the app | ⬜ |
 | P4.6 | Board rendering perf: replace per-cell framer-motion elements (up to 324 on 18x18) with CSS transitions or single canvas; memoize cells; verify smoothness on throttled mid-range mobile profile | ⬜ |
 | P4.7 | Remove dev-only "download icon" action from production settings; make `ais-dev-` URL rewrite in `urlHelper.ts` env-driven | ⬜ |
