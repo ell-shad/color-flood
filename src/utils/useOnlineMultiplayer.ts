@@ -306,7 +306,11 @@ export function useOnlineMultiplayer() {
     if (!stored) return;
     roomIdRef.current = stored.roomId;
     playerTokenRef.current = stored.token;
-    setConnectionStatus('connecting');
+    // Kick off the external system (WebSocket). The synchronous status
+    // transition inside connect() is intentional — the UI must render
+    // 'connecting' before the handshake resolves — so this one call is
+    // exempted; every other set-state-in-effect is an error now.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     connect();
   }, [connect]);
 

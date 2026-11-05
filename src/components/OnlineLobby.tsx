@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Globe,
   PlusCircle,
@@ -50,24 +50,21 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
     return loadStringOr('player-name', 'Player 1', 'color-flood-player-name');
   });
 
-  const [inputRoomCode, setInputRoomCode] = useState('');
-  const [invitedFromUrl, setInvitedFromUrl] = useState(false);
+  const [inputRoomCode, setInputRoomCode] = useState<string>(
+    () => new URLSearchParams(window.location.search).get('room')?.toUpperCase() ?? '',
+  );
+  // Check URL query params for ?room=CODE — read once at mount via lazy
+  // initializers (no setState-in-effect cascade; values never change before
+  // the user types or clears them).
+  const [invitedFromUrl, setInvitedFromUrl] = useState<boolean>(
+    () => !!new URLSearchParams(window.location.search).get('room'),
+  );
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [selectedChallengeType, setSelectedChallengeType] =
     useState<ChallengeType>('progressive');
   const [customGridSize, setCustomGridSize] = useState<number>(10);
   const [customColorCount, setCustomColorCount] = useState<number>(4);
-
-  // Check URL query params for ?room=CODE
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const roomParam = params.get('room');
-    if (roomParam) {
-      setInputRoomCode(roomParam.toUpperCase());
-      setInvitedFromUrl(true);
-    }
-  }, []);
 
   const clearUrlParam = () => {
     const url = new URL(window.location.href);

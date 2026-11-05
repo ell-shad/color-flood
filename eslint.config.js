@@ -16,12 +16,8 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // React-hooks compiler diagnostics: real issues, but resolving them requires the
-      // useGameSession/useReducer restructure planned in Phase 4 — fixing them during
-      // Phase 0 would change behavior. Promote these back to 'error' in Phase 4.
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/immutability': 'warn',
+      // P4 closed: all former warn-only cases were fixed or carry a one-line
+      // justification (external-system kickoff). Keep the compiler at 'error'.
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },

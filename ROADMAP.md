@@ -219,6 +219,8 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P4.7 | Remove dev-only "download icon" action from production settings; make `ais-dev-` URL rewrite in `urlHelper.ts` env-driven | ✅ cfb435f |
 | P4.8 | Audio: shared `AudioContext` (currently one per call), add move/win/lose sounds, persisted mute toggle | ✅ cfb435f (soundEffects.ts rebuilt, SettingsPanel toggle) |
 
+**Phase 4 checks:** tsc clean; 103 tests green; build ~3.0–3.2 s; lint **0 errors / 0 warnings** (9626bb4 closes the Phase 0 react-hooks deferral — all compiler rules promoted back to `error`); Chromium smoke test: solo & pass-and-play move/turn/badge flows verified with 0 console errors.
+
 ---
 
 ## Phase 5 — UX & Accessibility ⬜

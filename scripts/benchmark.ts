@@ -13,18 +13,22 @@ import {
   generateTwoPlayerGrid,
 } from '../src/utils/floodLogic';
 
-async function loadNew(): Promise<any> {
+// Specifier is assembled at runtime so bundlers never pre-bundle the hot path;
+// the type is the real engine's shape now that it exists.
+type EngineModule = typeof import('../src/utils/engine');
+
+async function loadNew(): Promise<EngineModule | null> {
   // Specifier is assembled at runtime so tsc does not try to resolve the module
   // before the new engine exists (baseline benchmark runs).
   const spec = '../src/utils/' + 'engine';
   try {
-    return await import(spec);
+    return (await import(spec)) as EngineModule;
   } catch {
     return null;
   }
 }
 
-const NEW: any = await loadNew();
+const NEW: EngineModule = await loadNew();
 
 const args = process.argv.slice(2);
 const sizeArg = args.indexOf('--size');
