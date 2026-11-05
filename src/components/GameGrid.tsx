@@ -1,7 +1,16 @@
 import React, { useMemo } from 'react';
-import { motion } from 'motion/react';
 import { GameMode, MultiplayerOpponent, GameTheme } from '../types';
 import { THEMES } from '../utils/themes';
+
+/**
+ * P4.6: board rendering used to run one framer-motion element per cell (up to
+ * 324 animation loops on 18x18). Cells are now plain `React.memo` divs:
+ *  - color updates ride CSS `transition: background-color` with the same 0.26 s
+ *    ease-out and the wave stagger from the pre-refactor version;
+ *  - the scale pop replays via a keyframe whose NAME alternates with each move
+ *    (`cell-pop-even` / `cell-pop-odd`), which restarts the animation for every
+ *    cell with zero JS animation loops and zero remounts.
+ */
 
 interface GameGridProps {
   grid: number[][];
@@ -14,7 +23,81 @@ interface GameGridProps {
   activeTurn?: 1 | 2;
   lastMovingPlayer?: 1 | 2;
   theme?: GameTheme;
+  /** Move counter: parity flips the pop keyframe so CSS can restart it. */
+  movesCount?: number;
 }
+
+interface GridCellProps {
+  color: string;
+  radiusClass: string;
+  glowClass: string;
+  /** Which start-corner halo to render, if any. */
+  startMarker: 'none' | 'p1' | 'p2';
+  p2Label: string;
+  showOverlay: boolean;
+  ownedMarker: 'none' | 'p1' | 'p2';
+  waveDelay: number;
+  popAnim: string;
+}
+
+/**
+ * P4.6: memoized cell — per-cell framer-motion loops replaced by a plain
+ * div. Following the original animation schedule:
+ *   backgroundColor 0.26s ease-out + wave delay, scale pop 0.32s ease-in-out.
+ */
+const GridCell = React.memo(function GridCell({
+  color,
+  radiusClass,
+  glowClass,
+  startMarker,
+  p2Label,
+  showOverlay,
+  ownedMarker,
+  waveDelay,
+  popAnim,
+}: GridCellProps) {
+  return (
+    <div
+      className={`relative ${radiusClass} shadow-inner flex items-center justify-center ${glowClass}`}
+      style={{
+        backgroundColor: color,
+        transition: 'background-color 0.26s ease-out',
+        transitionDelay: `${waveDelay}s`,
+        animation: `${popAnim} 0.32s ease-in-out ${waveDelay}s both`,
+      }}
+    >
+      {/* Starting Root Corner Animated Halo — visuals unchanged */}
+      {startMarker === 'p1' && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <span className="relative flex items-center justify-center">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded bg-cyan-400 opacity-40" />
+            <span className="relative bg-slate-950/90 text-cyan-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-cyan-400/70 shadow">
+              P1
+            </span>
+          </span>
+        </div>
+      )}
+      {startMarker === 'p2' && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <span className="relative flex items-center justify-center">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded bg-rose-400 opacity-40" />
+            <span className="relative bg-slate-950/90 text-rose-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-rose-400/70 shadow">
+              {p2Label}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* Subtle Territory Markers on Owned Cells */}
+      {showOverlay && startMarker === 'none' && ownedMarker === 'p1' && (
+        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-cyan-100/90 shadow-sm pointer-events-none" />
+      )}
+      {showOverlay && startMarker === 'none' && ownedMarker === 'p2' && (
+        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-rose-100/90 shadow-sm pointer-events-none" />
+      )}
+    </div>
+  );
+});
 
 export const GameGrid: React.FC<GameGridProps> = ({
   grid,
@@ -26,11 +109,17 @@ export const GameGrid: React.FC<GameGridProps> = ({
   showTerritoryOverlay = true,
   lastMovingPlayer = 1,
   theme = THEMES.arcade,
+  movesCount = 0,
 }) => {
   const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
   const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
 
   const activeColors = theme.colors;
+  const glowP1 = theme.glowP1;
+  const glowP2 = theme.glowP2;
+  const radius = theme.cellRadius;
+  const popAnim = movesCount % 2 === 0 ? 'cell-pop-even' : 'cell-pop-odd';
+  const p2Label = opponent === 'bot' ? 'BOT' : 'P2';
 
   return (
     <div
@@ -57,69 +146,33 @@ export const GameGrid: React.FC<GameGridProps> = ({
             const isP1Owned = mode === 'multiplayer' && p1Set.has(key);
             const isP2Owned = mode === 'multiplayer' && p2Set.has(key);
 
-            // Compute distance from active root for fluid wave animation
+            // Distance from the active root: same wave stagger as before.
             const distFromP1 = r + c;
             const distFromP2 = gridSize - 1 - r + (gridSize - 1 - c);
             const waveDist = lastMovingPlayer === 2 ? distFromP2 : distFromP1;
             const waveDelay = Math.min(0.24, waveDist * 0.014);
 
-            const cellColor = activeColors[colorIdx] || '#FF595E';
+            let glowClass = '';
+            if (showTerritoryOverlay && isP1Owned) glowClass = glowP1;
+            else if (showTerritoryOverlay && isP2Owned) glowClass = glowP2;
+
+            let ownedMarker: 'none' | 'p1' | 'p2' = 'none';
+            if (isP1Owned) ownedMarker = 'p1';
+            else if (isP2Owned) ownedMarker = 'p2';
 
             return (
-              <motion.div
+              <GridCell
                 key={key}
-                initial={false}
-                animate={{
-                  backgroundColor: cellColor,
-                  scale: [1, 1.1, 0.98, 1],
-                }}
-                transition={{
-                  backgroundColor: { duration: 0.26, ease: 'easeOut', delay: waveDelay },
-                  scale: { duration: 0.32, ease: 'easeInOut', delay: waveDelay },
-                }}
-                className={`relative ${theme.cellRadius} shadow-inner flex items-center justify-center transition-shadow ${
-                  showTerritoryOverlay && isP1Owned ? theme.glowP1 : ''
-                } ${showTerritoryOverlay && isP2Owned ? theme.glowP2 : ''}`}
-              >
-                {/* Starting Root Corner 1 with Animated Halo */}
-                {isP1Start && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <span className="relative flex items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded bg-cyan-400 opacity-40" />
-                      <span className="relative bg-slate-950/90 text-cyan-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-cyan-400/70 shadow">
-                        P1
-                      </span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Starting Root Corner 2 with Animated Halo */}
-                {isP2Start && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <span className="relative flex items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded bg-rose-400 opacity-40" />
-                      <span className="relative bg-slate-950/90 text-rose-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-rose-400/70 shadow">
-                        {opponent === 'bot' ? 'BOT' : 'P2'}
-                      </span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Subtle Territory Markers on Owned Cells */}
-                {showTerritoryOverlay &&
-                  mode === 'multiplayer' &&
-                  !isP1Start &&
-                  !isP2Start && (
-                    <>
-                      {isP1Owned && (
-                        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-cyan-100/90 shadow-sm pointer-events-none" />
-                      )}
-                      {isP2Owned && (
-                        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-rose-100/90 shadow-sm pointer-events-none" />
-                      )}
-                    </>
-                  )}
-              </motion.div>
+                color={activeColors[colorIdx] || '#FF595E'}
+                radiusClass={radius}
+                glowClass={glowClass}
+                startMarker={isP1Start ? 'p1' : isP2Start ? 'p2' : 'none'}
+                p2Label={p2Label}
+                showOverlay={showTerritoryOverlay}
+                ownedMarker={ownedMarker}
+                waveDelay={waveDelay}
+                popAnim={popAnim}
+              />
             );
           }),
         )}

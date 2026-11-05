@@ -146,6 +146,8 @@ export interface GameSession {
   emoteBarDisabled: boolean;
   activeTurn: PlayerId;
   gridView: { grid: number[][]; gridSize: number; p1Cells: string[]; p2Cells: string[] };
+  /** Move counter for the board pop animation (P4.6 parity trick). */
+  gridMovesCount: number;
   totalCells: number;
   matchStatus: 'playing' | 'p1_won' | 'p2_won' | 'draw';
   rematchRequestedBy: number | null;
@@ -481,6 +483,8 @@ export function useGameSession(): GameSession {
     p1Cells: activeMatch?.p1Cells ?? localState?.p1Cells ?? [],
     p2Cells: activeMatch?.p2Cells ?? localState?.p2Cells ?? [],
   };
+  const gridMovesCount =
+    prefs.mode === 'solo' ? (soloState?.moves ?? 0) : (activeMatch?.movesCount ?? 0);
   const paletteDisabled =
     prefs.mode === 'solo'
       ? !soloState || soloState.status !== 'playing'
@@ -866,6 +870,7 @@ export function useGameSession(): GameSession {
     emoteBarDisabled,
     activeTurn,
     gridView,
+    gridMovesCount,
     totalCells,
     matchStatus,
     rematchRequestedBy,

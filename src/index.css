@@ -17,3 +17,35 @@ body {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* P4.6: cell scale pop, named twice so a keyframe NAME swap restarts the
+   animation without JS animation loops (framer-motion removed per cell). */
+@keyframes cell-pop-even {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-odd {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

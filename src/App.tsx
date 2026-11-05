@@ -184,6 +184,7 @@ export default function App() {
                 showTerritoryOverlay={session.showTerritoryOverlay}
                 lastMovingPlayer={session.lastMovingPlayer}
                 theme={session.currentTheme}
+                movesCount={session.gridMovesCount}
               />
 
               {/* Game Over Modal Overlay */}
