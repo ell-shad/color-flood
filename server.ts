@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { WebSocketServer } from 'ws';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { createRoomService, createInMemoryStore, type RoomService } from './server/rooms';
 import { mountWsServer } from './server/wsServer';
 import type { BroadcastBus } from './server/rooms';
@@ -14,6 +16,11 @@ import type { BroadcastBus } from './server/rooms';
  * Game logic lives in `server/rooms.ts` (server-authoritative); transport in
  * `server/wsServer.ts`. There is no game-over-REST surface: the client speaks
  * the single zod-validated WebSocket protocol on /api/ws.
+ *
+ * P3.6 hardening: helmet (CSP off until the PWA phase; the app relies on
+ * inline styles), CORS restricted to APP_URL (unset = same-origin only),
+ * an HTTP rate limit on /api, and 16 KiB JSON bodies. Message caps, per-
+ * socket rate limiting and the RoomStore seam landed with P3.1.
  */
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +47,49 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 export const createAppServer = () => {
   const app = express();
   app.disable('x-powered-by');
+
+  app.use(
+    helmet({
+      // CSP/COEP stay off until the PWA phase: the UI uses runtime-injected
+      // styles and (in dev) Vite HMR, both trip strict policies.
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  // CORS: only APP_URL may call /api cross-origin. Unset = same-origin only.
+  const allowedOrigin = process.env.APP_URL;
+  app.use('/api', (req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin) return next(); // curl / same-origin GET / health checks
+    const sameHost =
+      origin === `http://${req.headers.host}` || origin === `https://${req.headers.host}`;
+    if (sameHost) return next();
+    if (allowedOrigin && origin === allowedOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+      res.setHeader('Vary', 'Origin');
+      if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.sendStatus(204);
+        return;
+      }
+      return next();
+    }
+    res.status(403).json({ error: 'Forbidden origin.' });
+  });
+
+  // Light HTTP rate limit (per IP). The ws layer has its own per-socket guard.
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60_000,
+      limit: 120,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+    }),
+  );
+
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/api/health', (_req, res) => {

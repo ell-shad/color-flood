@@ -55,7 +55,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 0 — Safety net | ✅ | 710105d (P0.9) | DONE. 36 floodLogic tests, eslint+prettier+CI, prod start fixed, genai/GEMINI removed, package renamed, license headers consistent. 10 eslint warnings (react-hooks compiler diagnostics) deliberately deferred to Phase 4 |
 | 1 — Engine | ✅ | 10ad383 | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
 | 2 — Balance & AI | ✅ | 3418f6b (P2.1–P2.5) + P2.6–P2.8 in next commit | Solver-calibrated limits+stars; competent ≥90% verified at all 25 configs; hints limited (3 solo / none online / opt-in local+bot); minimax master (beats legacy heur. 80%, slowest move 56ms) in Web Worker; bot ladder tests master 85% vs medium, medium 96% vs easy |
-| 3 — Online rewrite | 🟡 | 808a133 (P3.1/P3.2/P3.7) + P3.4 commit | Server-authoritative ws protocol + zod + token auth done; PeerJS/polling/REST removed from client+server; 13 protocol tests green. NEXT: P3.5 reconnection (heartbeat/60s grace/token resume/forfeit, turn timer), P3.6 hardening (helmet/CORS rate-limit/storage) |
+| 3 — Online rewrite | ✅ | 808a133, 0ee6299, 20acb96, P3.6 commit | Single server-authoritative ws protocol (zod, token→role, versioned snapshots, optimistic UI), PeerJS/REST-polling/legacy REST removed, reconnection (heartbeat, 60 s grace + forfeit, resume-by-token w/ 2 h TTL), turn timer off/30/60, hardening (helmet, APP_URL CORS, rate limits); 95 tests incl. 13 live two-client protocol tests. MANUAL CHECK PENDING: two real browsers + refresh mid-game (see DoD) |
 | 4 — Front-end architecture | ⬜ | — | — |
 | 5 — UX & accessibility | ⬜ | — | — |
 | 6 — Features | ⬜ | — | — |
@@ -177,7 +177,11 @@ Goal: solver-calibrated solo limits + stars; limited/removed hints; strong seede
 
 ---
 
-## Phase 3 — Online Multiplayer Rewrite 🟡
+## Phase 3 — Online Multiplayer Rewrite ✅
+
+> Manual acceptance (pending user): open two browsers, finish a match with no desync, and
+> refresh mid-game with `?room=CODE` — the reloading player must resume by token with their
+> original role (P1 stays P1). Everything mechanizable is automated (95 tests).
 
 Known defects (confirmed by reading server.ts + useOnlineMultiplayer.ts): three sync layers
 (PeerJS + REST/1.2s polling + unused ws), host grid never sent on `POST /api/rooms` so polling
@@ -194,7 +198,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P3.3 | Broadcast state with monotonic `version`; client optimistic UI with rollback on rejection | ✅ P3.4 commit (version gate in new hook; rejected intents auto-`resume`) |
 | P3.4 | Remove PeerJS + REST polling + duplicate REST endpoints from the client and server | ✅ P3.4 commit (single ws protocol; `peerjs` uninstalled) |
 | P3.5 | Reconnection: heartbeat, 60 s grace, resume-by-token after refresh (localStorage with expiry), forfeit on timeout, optional turn timer (off/30/60 s) | ✅ P3.5 commit (ws heartbeat 25 s, 60 s grace + forfeit, session resume w/ 2 h TTL, turn timer off/30/60 host-only, 5 service tests) |
-| P3.6 | Server hardening: CORS restricted to APP_URL, body size limit, rate limiting, `helmet`, room storage behind a storage interface (in-memory default) | ⬜ (RoomStore seam + body/message caps + per-socket rate limit landed with P3.1; helmet/CORS/limiting remain) |
+| P3.6 | Server hardening: CORS restricted to APP_URL, body size limit, rate limiting, `helmet`, room storage behind a storage interface (in-memory default) | ✅ P3.6 commit (`helmet` CSP-off until PWA, APP_URL CORS + same-host allowance, 120 req/min HTTP limit, 16 KiB JSON; ws 8 KiB cap + 30 msg/2 s + RoomStore seam landed in P3.1) |
 | P3.7 | Keep the fix for `joinRoom` role derivation (host reload via `?room=` must not become P2) | ✅ 808a133 (role always derived from token) |
 | P3.8 | Tests with two ws clients incl. cheating attempts: wrong turn, spoofed role, invalid color, oversized grid, duplicate room code, unauthenticated bind | ✅ P3.4 commit `server/wsProtocol.test.ts` (13 live-socket tests: wrong turn, forged token, bad color, 9KiB close, no-proposal, settings lock, proposal flow, leave, rate limit, emote, resume, malformed) |
 

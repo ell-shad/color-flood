@@ -83,6 +83,8 @@ export function useOnlineMultiplayer() {
   const intentionalCloseRef = useRef<boolean>(false);
   const reconnectAttemptsRef = useRef<number>(0);
   const reconnectTimerRef = useRef<number | null>(null);
+  /** Latest `connect` (ws.onclose must reach it without a TDZ self-reference). */
+  const connectRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     myRoleRef.current = myRole;
@@ -280,7 +282,7 @@ export function useOnlineMultiplayer() {
         const backoff = Math.min(3000, 250 * 2 ** reconnectAttemptsRef.current);
         reconnectTimerRef.current = window.setTimeout(() => {
           setConnectionStatus('connecting');
-          connect();
+          connectRef.current();
         }, backoff);
         setSystemMessage('Reconnecting…');
       } else {
@@ -292,6 +294,12 @@ export function useOnlineMultiplayer() {
       /* close handler manages recovery */
     };
   }, [resync, routeMessage]);
+
+  // Keep the reconnect pointer fresh (declared BEFORE the resume effect so the
+  // ref is set on mount before any connect call).
+  useEffect(() => {
+    connectRef.current = connect;
+  });
 
   // P3.5: resume a stored session after a full page refresh.
   useEffect(() => {
