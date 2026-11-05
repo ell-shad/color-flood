@@ -6,49 +6,47 @@ import {
   checkMultiplayerGameOver,
 } from './floodLogic';
 import type { ServerMessage } from '../../server/protocol';
+import { z } from 'zod';
+import { loadJson, removeKey, saveJson } from './storage';
 
-const SESSION_KEY = 'color-flood-online-session';
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // matches the server's room GC window
 
-interface StoredSession {
-  roomId: string;
-  token: string;
-  expiresAt: number;
-}
+/** P4.5: the session goes through the safe, zod-validated storage helper. */
+const StoredSessionSchema = z.object({
+  roomId: z
+    .string()
+    .trim()
+    .min(4)
+    .max(8)
+    .regex(/^[A-Z0-9]+$/),
+  token: z.string().min(8).max(64),
+  expiresAt: z.number().finite(),
+});
+type StoredSession = z.infer<typeof StoredSessionSchema>;
 
 const loadSession = (): StoredSession | null => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession;
-    if (!parsed?.roomId || !parsed?.token) return null;
-    if (!Number.isFinite(parsed.expiresAt) || parsed.expiresAt < Date.now()) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
+  const stored = loadJson('session', StoredSessionSchema, 'color-flood-online-session');
+  if (!stored) return null;
+  // Explicit TTL check (the schema validates the shape, not liveness).
+  if (stored.expiresAt < Date.now()) {
+    removeKey('session');
     return null;
   }
+  return stored;
 };
 
 /** Exported for App's `?room=` deep link (share the exact storage format). */
 export const loadStoredSession = loadSession;
 
 const saveSession = (roomId: string | null, token: string | null) => {
-  try {
-    if (roomId && token) {
-      const stored: StoredSession = {
-        roomId,
-        token,
-        expiresAt: Date.now() + SESSION_TTL_MS,
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(stored));
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
-  } catch {
-    /* storage may be unavailable — session resume is best-effort */
+  if (roomId && token) {
+    saveJson('session', {
+      roomId,
+      token,
+      expiresAt: Date.now() + SESSION_TTL_MS,
+    } satisfies StoredSession);
+  } else {
+    removeKey('session');
   }
 };
 

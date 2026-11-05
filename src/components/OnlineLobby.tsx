@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { OnlineRoomState, ChallengeType } from '../types';
 import { getPublicShareUrl } from '../utils/urlHelper';
+import { loadStringOr, saveString } from '../utils/storage';
 
 interface OnlineLobbyProps {
   roomState: OnlineRoomState | null;
@@ -46,7 +47,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
   onClearError,
 }) => {
   const [playerName, setPlayerName] = useState(() => {
-    return localStorage.getItem('color-flood-player-name') || 'Player 1';
+    return loadStringOr('player-name', 'Player 1', 'color-flood-player-name');
   });
 
   const [inputRoomCode, setInputRoomCode] = useState('');
@@ -88,7 +89,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
 
   const handleNameChange = (name: string) => {
     setPlayerName(name);
-    localStorage.setItem('color-flood-player-name', name);
+    saveString('player-name', name.slice(0, 20));
   };
 
   const handleCopyCode = () => {

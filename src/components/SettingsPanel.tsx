@@ -19,6 +19,7 @@ import {
   Palette,
   Trophy,
   Lightbulb,
+  Volume2,
 } from 'lucide-react';
 
 interface SettingsPanelProps {
@@ -36,7 +37,11 @@ interface SettingsPanelProps {
   showHints: boolean;
   onToggleShowHints: () => void;
   onResetSeries: () => void;
-  onDownloadIcon: () => void;
+  /** P4.8: synthesized sound effects with a persisted mute. */
+  soundMuted?: boolean;
+  onToggleSound?: () => void;
+  /** Dev-only favicon util (P4.7) — undefined hides the row entirely. */
+  onDownloadIcon?: () => void;
   onSetToEasiest?: () => void;
   activeThemeId: ThemeId;
   onOpenThemeModal: () => void;
@@ -69,6 +74,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeChallengeType,
   turnTimerSec = 0,
   onChangeTurnTimerSec,
+  soundMuted = false,
+  onToggleSound,
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
 
@@ -305,6 +312,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </button>
               )}
 
+              {onToggleSound && (
+                <button
+                  onClick={onToggleSound}
+                  title="Synthesized move / win / loss sounds (P4.8)"
+                  className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    Sound:{' '}
+                    <strong className="text-white">{soundMuted ? 'OFF' : 'ON'}</strong>
+                  </span>
+                </button>
+              )}
+
               <button
                 onClick={onResetSeries}
                 className="text-xs text-rose-300 hover:text-rose-200 flex items-center gap-1 cursor-pointer bg-rose-950/40 px-2 py-1 rounded-lg border border-rose-500/30"
@@ -316,16 +337,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         )}
 
-        {/* Download Icon utility */}
-        <div className="pt-2 border-t border-slate-750">
-          <button
-            onClick={onDownloadIcon}
-            className="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700/50"
-          >
-            <Download className="w-3 h-3 text-indigo-400" />
-            <span>Download Favicon PNG (512x512)</span>
-          </button>
-        </div>
+        {/* Download Icon utility — dev-only (P4.7) */}
+        {onDownloadIcon && (
+          <div className="pt-2 border-t border-slate-750">
+            <button
+              onClick={onDownloadIcon}
+              className="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700/50"
+            >
+              <Download className="w-3 h-3 text-indigo-400" />
+              <span>Download Favicon PNG (512x512)</span>
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );

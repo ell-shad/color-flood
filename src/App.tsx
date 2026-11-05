@@ -32,6 +32,15 @@ import { maxSoloMovesLimit } from './utils/soloBalance';
 import { THEMES, PROGRESSIVE_STAGES } from './utils/themes';
 import { useOnlineMultiplayer, loadStoredSession } from './utils/useOnlineMultiplayer';
 import { requestBotMove } from './utils/botWorkerClient';
+import {
+  loadBool,
+  loadJson,
+  loadString,
+  loadStringOr,
+  saveJson,
+  saveString,
+} from './utils/storage';
+import { z } from 'zod';
 
 import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
@@ -45,7 +54,27 @@ import { OnlineLobby } from './components/OnlineLobby';
 import { MultiplayerEmotes } from './components/MultiplayerEmotes';
 import { ThemeSelectorModal } from './components/ThemeSelectorModal';
 import { ResetApprovalModal } from './components/ResetApprovalModal';
-import { playEmotePopSound } from './utils/soundEffects';
+import {
+  playEmotePopSound,
+  playLoseSound,
+  playMoveSound,
+  playWinSound,
+  isMuted,
+  setMuted,
+} from './utils/soundEffects';
+
+// P4.5: persisted-state schemas — corrupted localStorage can never crash the app.
+const HighScoreSchema = z.object({
+  size: z.number().int().min(5).max(30),
+  colors: z.number().int().min(2).max(12),
+  moves: z.number().int().min(1).max(9999),
+});
+const HighScoresSchema = z.array(HighScoreSchema).max(50);
+const SeriesScoreSchema = z.object({
+  p1: z.number().int().min(0).max(999999),
+  p2: z.number().int().min(0).max(999999),
+  draws: z.number().int().min(0).max(999999),
+});
 
 export default function App() {
   // --- Online Multiplayer Hook ---
@@ -71,7 +100,7 @@ export default function App() {
 
   // --- Themes & Visual Style ---
   const [themeId, setThemeId] = useState<ThemeId>(() => {
-    const saved = localStorage.getItem('color-flood-theme');
+    const saved = loadStringOr('theme', 'arcade', 'color-flood-theme');
     return (saved as ThemeId) || 'arcade';
   });
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -92,7 +121,7 @@ export default function App() {
     if (!roomParam) return;
     const code = roomParam.toUpperCase().trim();
     if (loadStoredSession()) return;
-    const name = localStorage.getItem('color-flood-player-name') || 'Player 1';
+    const name = loadStringOr('player-name', 'Player 1', 'color-flood-player-name');
     void joinRoom(code, name);
   }, [joinRoom]);
 
@@ -102,39 +131,39 @@ export default function App() {
   const [mode, setMode] = useState<GameMode>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('room')) return 'multiplayer';
-    const saved = localStorage.getItem('color-flood-mode');
+    const saved = loadString('mode', 'color-flood-mode');
     return saved === 'multiplayer' ? 'multiplayer' : 'solo';
   });
 
   const [gridSize, setGridSize] = useState<GridSize>(() => {
-    const saved = localStorage.getItem('color-flood-grid-size');
+    const saved = loadString('grid-size', 'color-flood-grid-size');
     return saved ? (Number(saved) as GridSize) : 10;
   });
 
   const [colorCount, setColorCount] = useState<ColorCount>(() => {
-    const saved = localStorage.getItem('color-flood-color-count');
+    const saved = loadString('color-count', 'color-flood-color-count');
     return saved ? (Number(saved) as ColorCount) : 4;
   });
 
   const [opponent, setOpponent] = useState<MultiplayerOpponent>(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('room')) return 'online';
-    const saved = localStorage.getItem('color-flood-opponent');
+    const saved = loadString('opponent', 'color-flood-opponent');
     return (saved as MultiplayerOpponent) || 'local';
   });
 
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>(() => {
-    const saved = localStorage.getItem('color-flood-bot-diff');
+    const saved = loadString('bot-diff', 'color-flood-bot-diff');
     return (saved as BotDifficulty) || 'easy';
   });
 
   const [challengeType, setChallengeType] = useState<ChallengeType>(() => {
-    const saved = localStorage.getItem('color-flood-challenge-type');
+    const saved = loadString('challenge-type', 'color-flood-challenge-type');
     return (saved as ChallengeType) || 'progressive';
   });
 
   const [showTerritoryOverlay, setShowTerritoryOverlay] = useState<boolean>(() => {
-    const saved = localStorage.getItem('color-flood-overlay');
+    const saved = loadString('overlay', 'color-flood-overlay');
     return saved !== 'false';
   });
 
@@ -153,15 +182,13 @@ export default function App() {
   const [showLocalResetConfirm, setShowLocalResetConfirm] = useState(false);
   const [hint, setHint] = useState<number | null>(null);
   const [hintGain, setHintGain] = useState<number | undefined>(undefined);
+  // P4.8: sound effects with a persisted mute toggle.
+  const [soundMuted, setSoundMuted] = useState<boolean>(() => isMuted());
   // Solo hints are limited per game (Phase 2). Local/bot hints are opt-in and off by
   // default; online play never exposes hints.
   const [soloHintsLeft, setSoloHintsLeft] = useState(3);
   const [showHints, setShowHints] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('color-flood-show-hints') === 'true';
-    } catch {
-      return false;
-    }
+    return loadBool('show-hints', false, 'color-flood-show-hints');
   });
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [lastMovingPlayer, setLastMovingPlayer] = useState<1 | 2>(1);
@@ -169,13 +196,17 @@ export default function App() {
 
   // --- High Scores & Series Scores ---
   const [highScores, setHighScores] = useState<HighScore[]>(() => {
-    const saved = localStorage.getItem('color-flood-high-scores');
-    return saved ? JSON.parse(saved) : [];
+    return loadJson('high-scores', HighScoresSchema, 'color-flood-high-scores') ?? [];
   });
 
   const [seriesScore, setSeriesScore] = useState<SeriesScore>(() => {
-    const saved = localStorage.getItem('color-flood-2p-series');
-    return saved ? JSON.parse(saved) : { p1: 0, p2: 0, draws: 0 };
+    return (
+      loadJson('2p-series', SeriesScoreSchema, 'color-flood-2p-series') ?? {
+        p1: 0,
+        p2: 0,
+        draws: 0,
+      }
+    );
   });
 
   // --- Game States ---
@@ -251,39 +282,39 @@ export default function App() {
 
   // Persist preferences
   useEffect(() => {
-    localStorage.setItem('color-flood-theme', themeId);
+    saveString('theme', themeId);
   }, [themeId]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-mode', mode);
+    saveString('mode', mode);
   }, [mode]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-grid-size', String(gridSize));
+    saveString('grid-size', String(gridSize));
   }, [gridSize]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-color-count', String(colorCount));
+    saveString('color-count', String(colorCount));
   }, [colorCount]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-opponent', opponent);
+    saveString('opponent', opponent);
   }, [opponent]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-bot-diff', botDifficulty);
+    saveString('bot-diff', botDifficulty);
   }, [botDifficulty]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-challenge-type', challengeType);
+    saveString('challenge-type', challengeType);
   }, [challengeType]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-overlay', String(showTerritoryOverlay));
+    saveString('overlay', String(showTerritoryOverlay));
   }, [showTerritoryOverlay]);
 
   useEffect(() => {
-    localStorage.setItem('color-flood-show-hints', String(showHints));
+    saveString('show-hints', String(showHints));
   }, [showHints]);
 
   // Sync last moving player in online mode
@@ -308,9 +339,18 @@ export default function App() {
           origin: { y: 0.55 },
           colors: currentTheme.colors.slice(0, roomState.colorCount),
         });
+        // P4.8: praise a win, commiserate a loss (mute is per device).
+        const iWon =
+          (roomState.status === 'p1_won' && myRole === 1) ||
+          (roomState.status === 'p2_won' && myRole === 2);
+        if (iWon) {
+          playWinSound();
+        } else if (myRole) {
+          playLoseSound();
+        }
       }
     }
-  }, [opponent, roomState?.status, roomState?.colorCount, currentTheme]);
+  }, [opponent, roomState?.status, roomState?.colorCount, currentTheme, myRole]);
 
   // --- Emote Interaction Handler ---
   const triggerEmote = useCallback(
@@ -394,7 +434,7 @@ export default function App() {
         } else {
           newScores = [...prev, { size: gridSize, colors: colorCount, moves }];
         }
-        localStorage.setItem('color-flood-high-scores', JSON.stringify(newScores));
+        saveJson('high-scores', newScores);
         return newScores;
       });
     },
@@ -409,7 +449,7 @@ export default function App() {
         p2: winner === 'p2_won' ? prev.p2 + 1 : prev.p2,
         draws: winner === 'draw' ? prev.draws + 1 : prev.draws,
       };
-      localStorage.setItem('color-flood-2p-series', JSON.stringify(updated));
+      saveJson('2p-series', updated);
       return updated;
     });
   }, []);
@@ -421,7 +461,7 @@ export default function App() {
     setCurrentStage(1);
     setRoundNumber(1);
     setFirstTurnPlayer(1);
-    localStorage.setItem('color-flood-2p-series', JSON.stringify(cleared));
+    saveJson('2p-series', cleared);
   }, []);
 
   // --- Reset to Easiest Setup ---
@@ -439,6 +479,7 @@ export default function App() {
     if (colorIndex === soloState.grid[0][0]) return;
 
     setLastMovingPlayer(1);
+    playMoveSound(colorIndex);
     const newGrid = floodSolo(soloState.grid, colorIndex);
     const newMoves = soloState.moves + 1;
     const isWin = checkSoloWin(newGrid);
@@ -465,7 +506,10 @@ export default function App() {
         origin: { y: 0.6 },
         colors: currentTheme.colors.slice(0, colorCount),
       });
+      playWinSound();
       updateHighScores(newMoves);
+    } else if (isLoss) {
+      playLoseSound();
     }
   };
 
@@ -481,6 +525,7 @@ export default function App() {
       if (turn === 2 && (colorIndex === p2Color || colorIndex === p1Color)) return;
 
       setLastMovingPlayer(turn);
+      playMoveSound(colorIndex);
 
       const currentCells = turn === 1 ? p1Cells : p2Cells;
       const opponentCells = turn === 1 ? p2Cells : p1Cells;
@@ -568,6 +613,7 @@ export default function App() {
             origin: { y: 0.55 },
             colors: currentTheme.colors.slice(0, activeColorCount),
           });
+          playWinSound();
         }
         updateSeriesScore(gameOutcome);
       } else if (opponent === 'bot') {
@@ -827,6 +873,14 @@ export default function App() {
     }
   };
 
+  // P4.8: sound mute toggle (persisted by the audio module).
+  const handleToggleSound = () => {
+    setSoundMuted((prev) => {
+      setMuted(!prev);
+      return !prev;
+    });
+  };
+
   const handleChangeChallengeType = (type: ChallengeType) => {
     setChallengeType(type);
     if (type === 'progressive') {
@@ -960,7 +1014,6 @@ export default function App() {
             showHints={showHints}
             onToggleShowHints={() => setShowHints((prev) => !prev)}
             onResetSeries={resetSeriesScore}
-            onDownloadIcon={handleDownloadIcon}
             onSetToEasiest={handleSetToEasiest}
             activeThemeId={themeId}
             onOpenThemeModal={() => setShowThemeModal(true)}
@@ -970,6 +1023,9 @@ export default function App() {
             onChangeTurnTimerSec={
               opponent === 'online' && myRole === 1 ? handleChangeTurnTimer : undefined
             }
+            soundMuted={soundMuted}
+            onToggleSound={handleToggleSound}
+            onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
           />
         )}
 
@@ -1190,6 +1246,7 @@ export default function App() {
                   : opponent === 'online'
                     ? (col) => {
                         setLastMovingPlayer(myRole || 1);
+                        playMoveSound(col);
                         sendOnlineMove(col);
                       }
                     : executeLocalMultiplayerMove
