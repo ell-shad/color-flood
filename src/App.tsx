@@ -93,6 +93,10 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="h-[100dvh] w-full max-w-full bg-[#0F172A] text-slate-100 font-sans selection:bg-indigo-500/30 flex flex-col justify-between overflow-x-hidden overflow-y-auto">
+        {/* P5.3: screen-reader announcer for moves/turns/results */}
+        <div aria-live="polite" role="status" className="sr-only">
+          {session.announce}
+        </div>
         {/* Top Streamlined Header */}
         <div className="w-full shrink-0">
           <Header

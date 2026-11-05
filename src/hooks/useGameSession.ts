@@ -163,6 +163,10 @@ export interface GameSession {
   undoSolo: () => void;
   canUndoSolo: boolean;
 
+  // --- Screen-reader announcements (P5.3) ---
+  /** Rendered into an aria-live="polite" region by App. */
+  announce: string;
+
   // --- Emote system ---
   activeEmotes: ActiveEmote[];
   triggerEmote: (sender: PlayerId, emoji: string, broadcastOnline?: boolean) => void;
@@ -542,6 +546,26 @@ export function useGameSession(): GameSession {
       ? !roomState || roomState.status !== 'playing'
       : !!localState && localState.status !== 'playing';
   const turnTimerEditable = prefs.opponent === 'online' && myRole === 1;
+
+  // --- P5.3: screen-reader announcements (derived — no cascading renders).
+  // Every move increments a counter suffix so polite live regions re-fire
+  // even when the message text repeats.
+  const announce = (() => {
+    if (prefs.mode === 'solo') {
+      const s = soloState;
+      if (!s) return '';
+      if (s.status === 'won') return `You solved the board in ${s.moves} moves!`;
+      if (s.status === 'lost') return `Out of moves after ${s.moves} moves. Game over.`;
+      return `Move ${s.moves} of ${s.maxMoves}`;
+    }
+    const m = activeMatch;
+    if (!m || prefs.mode !== 'multiplayer') return '';
+    if (m.status !== 'playing') {
+      if (m.status === 'draw') return 'Round drawn.';
+      return `${m.status === 'p1_won' ? playerNames.p1 : playerNames.p2} wins the round.`;
+    }
+    return `${playerNames[m.turn]} to move — ${m.movesCount} moves played`;
+  })();
 
   // ---------------------------------------------------------------
   // Actions
@@ -930,6 +954,8 @@ export function useGameSession(): GameSession {
     // Solo undo (P5.6)
     undoSolo: undoSoloBoard,
     canUndoSolo,
+    // Screen-reader announcements (P5.3)
+    announce,
     // Emotes
     activeEmotes,
     triggerEmote,

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Palette, Check, X } from 'lucide-react';
 import { ThemeId } from '../types';
 import { THEMES } from '../utils/themes';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface ThemeSelectorModalProps {
   isOpen: boolean;
@@ -17,6 +18,8 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
   onSelectTheme,
   onClose,
 }) => {
+  // P5.3: dialog semantics, focus trap, focus restore.
+  const panelRef = useModalA11y(isOpen);
   if (!isOpen) return null;
 
   return (
@@ -28,10 +31,15 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
       >
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Theme selection"
+          tabIndex={-1}
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+          className="w-full max-w-md bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col outline-none"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">

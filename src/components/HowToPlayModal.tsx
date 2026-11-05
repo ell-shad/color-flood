@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Swords, CheckCircle2 } from 'lucide-react';
 import { GameMode } from '../types';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface HowToPlayModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
   initialMode,
 }) => {
   const [activeTab, setActiveTab] = useState<'solo' | 'multiplayer'>(initialMode);
+  // P5.3: dialog semantics, focus trap, focus restore.
+  const panelRef = useModalA11y(isOpen);
 
   if (!isOpen) return null;
 
@@ -22,10 +25,15 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="How to play"
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-slate-900 border border-slate-750 w-full max-w-md rounded-2xl p-6 shadow-2xl relative text-slate-200 space-y-4 max-h-[90vh] overflow-y-auto"
+          className="bg-slate-900 border border-slate-750 w-full max-w-md rounded-2xl p-6 shadow-2xl relative text-slate-200 space-y-4 max-h-[90vh] overflow-y-auto outline-none"
         >
           {/* Header */}
           <div className="flex items-center justify-between">

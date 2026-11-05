@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RotateCcw, Check, X, Clock, HelpCircle } from 'lucide-react';
 import { ResetProposal, MultiplayerOpponent } from '../types';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface ResetApprovalModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
   onDecline,
   onCancelLocal,
 }) => {
+  // P5.3: dialog semantics, focus trap, focus restore (both variants).
+  const panelRef = useModalA11y(isOpen);
   if (!isOpen) return null;
 
   // Local Pass & Play Reset Confirmation
@@ -41,10 +44,15 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
         >
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm match reset"
+            tabIndex={-1}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 text-center"
+            className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 text-center outline-none"
           >
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
               <RotateCcw className="w-6 h-6 animate-spin-slow" />
@@ -96,10 +104,15 @@ export const ResetApprovalModal: React.FC<ResetApprovalModalProps> = ({
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
       >
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Board reset approval"
+          tabIndex={-1}
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 text-center"
+          className="w-full max-w-sm bg-slate-900 border border-slate-750 rounded-2xl p-5 shadow-2xl space-y-4 text-center outline-none"
         >
           {isRequester ? (
             <>

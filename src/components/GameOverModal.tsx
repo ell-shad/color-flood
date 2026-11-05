@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { GameMode, MultiplayerOpponent, SeriesScore, ChallengeType } from '../types';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface GameOverModalProps {
   mode: GameMode;
@@ -63,6 +64,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 }) => {
   const isSoloActive = mode === 'solo' && soloStatus !== 'playing';
   const isMultiplayerActive = mode === 'multiplayer' && multiplayerStatus !== 'playing';
+  const isOpen = isSoloActive || isMultiplayerActive;
+  // P5.3: dialog semantics, focus trap, focus restore (both variants).
+  const panelRef = useModalA11y(isOpen);
 
   if (!isSoloActive && !isMultiplayerActive) {
     return null;
@@ -74,10 +78,15 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
     return (
       <AnimatePresence>
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={isWon ? 'Solo victory' : 'Game over'}
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="absolute inset-0 z-20 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md rounded-2xl select-none"
+          className="absolute inset-0 z-20 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md rounded-2xl select-none outline-none"
         >
           <div className="text-center space-y-4 max-w-xs w-full">
             <div
@@ -159,10 +168,21 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   return (
     <AnimatePresence>
       <motion.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={
+          isDraw
+            ? 'Round drawn'
+            : isP1Winner || isP2Winner
+              ? 'Round victory'
+              : 'Game over'
+        }
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="absolute inset-0 z-20 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md rounded-2xl select-none"
+        className="absolute inset-0 z-20 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md rounded-2xl select-none outline-none"
       >
         <div className="text-center space-y-3 max-w-sm w-full">
           <div className="w-11 h-11 rounded-2xl mx-auto flex items-center justify-center shadow-lg bg-slate-900 border border-slate-700">
