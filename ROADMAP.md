@@ -227,12 +227,12 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P5.1 | Remove `maximum-scale=1, user-scalable=no` from viewport meta | ✅ 9874256 |
-| P5.2 | Keyboard: 1–8 color, H hint, U undo, R restart, Esc closes modals; visible focus styles | ✅ 9874256 (useKeyboardShortcuts, typing-suppressed; Esc closes app-level modals; :focus-visible indigo ring) |
+| P5.1 | Remove `maximum-scale=1, user-scalable=no` from viewport meta | ✅ 043ce6b |
+| P5.2 | Keyboard: 1–8 color, H hint, U undo, R restart, Esc closes modals; visible focus styles | ✅ 043ce6b (useKeyboardShortcuts, typing-suppressed; Esc closes app-level modals; :focus-visible indigo ring) |
 | P5.3 | Screen readers: aria-live for moves/turn/results; modals role="dialog", aria-modal, focus trap + restore | ⬜ |
 | P5.4 | Color-blind support: optional shape/pattern overlay + color-blind-safe theme; WCAG AA contrast for text/badges | ⬜ |
-| P5.5 | Respect `prefers-reduced-motion` (animations, confetti) | ✅ 9874256 (MotionConfig user + CSS media query + confetti gating) |
-| P5.6 | Solo undo: store diffs instead of full grids in history | ✅ 9874256 ({r,c,prev} diffs; Undo button + U key; gated to active play) |
+| P5.5 | Respect `prefers-reduced-motion` (animations, confetti) | ✅ 043ce6b (MotionConfig user + CSS media query + confetti gating) |
+| P5.6 | Solo undo: store diffs instead of full grids in history | ✅ 043ce6b ({r,c,prev} diffs; Undo button + U key; gated to active play) |
 | P5.7 | First-run interactive tutorial; clearer turn indicator; haptics on mobile; layout checks 320–1440 px portrait+landscape | ⬜ |
 | P5.8 | Lighthouse a11y ≥ 95 verified | ⬜ |
 
