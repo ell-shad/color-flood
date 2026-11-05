@@ -7,6 +7,51 @@ import {
 } from './floodLogic';
 import type { ServerMessage } from '../../server/protocol';
 
+const SESSION_KEY = 'color-flood-online-session';
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // matches the server's room GC window
+
+interface StoredSession {
+  roomId: string;
+  token: string;
+  expiresAt: number;
+}
+
+const loadSession = (): StoredSession | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredSession;
+    if (!parsed?.roomId || !parsed?.token) return null;
+    if (!Number.isFinite(parsed.expiresAt) || parsed.expiresAt < Date.now()) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+/** Exported for App's `?room=` deep link (share the exact storage format). */
+export const loadStoredSession = loadSession;
+
+const saveSession = (roomId: string | null, token: string | null) => {
+  try {
+    if (roomId && token) {
+      const stored: StoredSession = {
+        roomId,
+        token,
+        expiresAt: Date.now() + SESSION_TTL_MS,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(stored));
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  } catch {
+    /* storage may be unavailable — session resume is best-effort */
+  }
+};
+
 /**
  * Online multiplayer hook (Phase 3): ONE server-authoritative WebSocket protocol.
  *
@@ -15,6 +60,8 @@ import type { ServerMessage } from '../../server/protocol';
  * - Every state snapshot carries a monotonic `version`; stale ones are dropped.
  * - Rejected intents trigger an automatic re-sync (`resume`) so the UI can never
  *   wedge on an optimistic update.
+ * - P3.5: sessions survive a full page refresh — { roomId, token } persists in
+ *   localStorage with a TTL and auto-resumes on mount.
  */
 export function useOnlineMultiplayer() {
   const [roomState, setRoomState] = useState<OnlineRoomState | null>(null);
@@ -101,8 +148,9 @@ export function useOnlineMultiplayer() {
   const routeMessage = useCallback(
     (msg: ServerMessage) => {
       switch (msg.type) {
-        case 'pong':
+        case 'pong': {
           return;
+        }
         case 'room_created':
         case 'room_joined':
         case 'resumed': {
@@ -117,6 +165,7 @@ export function useOnlineMultiplayer() {
           reconnectAttemptsRef.current = 0;
           setConnectionStatus('connected');
           setErrorMessage(null);
+          saveSession(msg.roomId, msg.playerToken);
           applySnapshot(msg.snapshot);
           return;
         }
@@ -144,6 +193,21 @@ export function useOnlineMultiplayer() {
           return;
         }
         case 'error': {
+          // Auth failures mean the session is gone (expired room, new host, GC):
+          // drop the stored session instead of looping a resume that cannot win.
+          if (msg.code === 'not_authenticated' || msg.code === 'room_not_found') {
+            if (msg.code === 'not_authenticated') {
+              saveSession(null, null);
+              roomIdRef.current = null;
+              playerTokenRef.current = null;
+              setMyRole(null);
+              myRoleRef.current = null;
+              setConnectionStatus('disconnected');
+              setSystemMessage(null);
+            }
+            setErrorMessage(msg.message);
+            return;
+          }
           // Rejected intent: surface it and re-sync to a server-confirmed state.
           setErrorMessage(msg.message);
           resync();
@@ -228,6 +292,17 @@ export function useOnlineMultiplayer() {
       /* close handler manages recovery */
     };
   }, [resync, routeMessage]);
+
+  // P3.5: resume a stored session after a full page refresh.
+  useEffect(() => {
+    if (wsRef.current) return; // an active connection resumes itself on open
+    const stored = loadSession();
+    if (!stored) return;
+    roomIdRef.current = stored.roomId;
+    playerTokenRef.current = stored.token;
+    setConnectionStatus('connecting');
+    connect();
+  }, [connect]);
 
   // --- Optimistic updates (ported from the legacy hook) ----------------------
 
@@ -507,6 +582,7 @@ export function useOnlineMultiplayer() {
       gridSize?: number;
       colorCount?: number;
       challengeType?: ChallengeType;
+      turnTimerSec?: 0 | 30 | 60;
     }) => {
       const current = roomStateRef.current;
       if (!current) return;
@@ -518,6 +594,7 @@ export function useOnlineMultiplayer() {
               gridSize: settings.gridSize ?? prev.gridSize,
               colorCount: settings.colorCount ?? prev.colorCount,
               challengeType: settings.challengeType ?? prev.challengeType,
+              turnTimerSec: settings.turnTimerSec ?? prev.turnTimerSec,
               resetProposal: settings.challengeType ? null : prev.resetProposal,
             }
           : prev,
@@ -530,6 +607,7 @@ export function useOnlineMultiplayer() {
         gridSize: settings.gridSize,
         colorCount: settings.colorCount,
         challengeType: settings.challengeType,
+        turnTimerSec: settings.turnTimerSec,
       });
     },
     [send],
@@ -547,6 +625,7 @@ export function useOnlineMultiplayer() {
     intentionalCloseRef.current = true;
     playerTokenRef.current = null;
     roomIdRef.current = null;
+    saveSession(null, null);
     setMyRole(null);
     myRoleRef.current = null;
     setRoomState(null);

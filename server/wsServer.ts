@@ -25,7 +25,10 @@ interface Session {
 export interface MountedWs {
   sessionCount(): number;
   bus: BroadcastBus;
+  stop: () => void;
 }
+
+const HEARTBEAT_MS = 25_000;
 
 export const mountWsServer = (wss: WebSocketServer, service: RoomService): MountedWs => {
   const sessions = new WeakMap<WebSocket, Session>();
@@ -94,6 +97,13 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
       ws.close(1008, 'wrong path');
       return;
     }
+
+    // Liveness: browsers auto-pong ws ping frames. Silent sockets are killed so
+    // the service sees a clean close and starts its grace countdown.
+    (ws as WebSocket & { isAlive?: boolean }).isAlive = true;
+    ws.on('pong', () => {
+      (ws as WebSocket & { isAlive?: boolean }).isAlive = true;
+    });
 
     // Simple per-socket token bucket.
     const windowStart = { t: Date.now(), count: 0 };
@@ -228,6 +238,7 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
               gridSize: parsed.gridSize,
               colorCount: parsed.colorCount,
               challengeType: parsed.challengeType,
+              turnTimerSec: parsed.turnTimerSec,
             });
             if (!result.ok) fail(result.code ?? 'bad_message', result.message ?? 'error');
             return;
@@ -264,8 +275,30 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
     ws.on('error', () => unbind(ws));
   });
 
+  const heartbeat = setInterval(() => {
+    for (const client of wss.clients) {
+      const socket = client as WebSocket & { isAlive?: boolean };
+      if (socket.isAlive === false) {
+        try {
+          socket.terminate();
+        } catch {
+          /* ignore */
+        }
+        continue;
+      }
+      socket.isAlive = false;
+      try {
+        socket.ping();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, HEARTBEAT_MS);
+  heartbeat.unref();
+
   return {
     sessionCount: () => [...roomSockets.values()].reduce((n, s) => n + s.size, 0),
     bus,
+    stop: () => clearInterval(heartbeat),
   };
 };

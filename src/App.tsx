@@ -30,7 +30,7 @@ import {
 import { maxSoloMovesLimit } from './utils/soloBalance';
 
 import { THEMES, PROGRESSIVE_STAGES } from './utils/themes';
-import { useOnlineMultiplayer } from './utils/useOnlineMultiplayer';
+import { useOnlineMultiplayer, loadStoredSession } from './utils/useOnlineMultiplayer';
 import { requestBotMove } from './utils/botWorkerClient';
 
 import { Header } from './components/Header';
@@ -82,6 +82,19 @@ export default function App() {
       setThemeId(roomState.themeId as ThemeId);
     }
   }, [roomState?.themeId]);
+
+  // P3.5: auto-join a shared ?room= link. A stored session for the SAME room
+  // wins (the hook auto-resumes it, so a reloading host keeps P1 — P3.7); any
+  // other stored session means the player is already in a match and the URL
+  // is ignored rather than yanking them out of it.
+  useEffect(() => {
+    const roomParam = new URLSearchParams(window.location.search).get('room');
+    if (!roomParam) return;
+    const code = roomParam.toUpperCase().trim();
+    if (loadStoredSession()) return;
+    const name = localStorage.getItem('color-flood-player-name') || 'Player 1';
+    void joinRoom(code, name);
+  }, [joinRoom]);
 
   const currentTheme = useMemo(() => THEMES[themeId] || THEMES.arcade, [themeId]);
 
@@ -807,6 +820,13 @@ export default function App() {
     }
   };
 
+  // Online only (P3.5): per-turn timer; the server enforces host-only.
+  const handleChangeTurnTimer = (sec: 0 | 30 | 60) => {
+    if (opponent === 'online' && roomState) {
+      updateRoomSettings({ turnTimerSec: sec });
+    }
+  };
+
   const handleChangeChallengeType = (type: ChallengeType) => {
     setChallengeType(type);
     if (type === 'progressive') {
@@ -946,6 +966,10 @@ export default function App() {
             onOpenThemeModal={() => setShowThemeModal(true)}
             challengeType={challengeType}
             onChangeChallengeType={handleChangeChallengeType}
+            turnTimerSec={roomState?.turnTimerSec ?? 0}
+            onChangeTurnTimerSec={
+              opponent === 'online' && myRole === 1 ? handleChangeTurnTimer : undefined
+            }
           />
         )}
 

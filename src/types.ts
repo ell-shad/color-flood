@@ -86,6 +86,8 @@ export interface OnlineRoomState {
   stageWins: { 1: number[]; 2: number[] };
   resetProposal: ResetProposal | null;
   themeId?: ThemeId;
+  /** Optional per-turn move timer in seconds (0 = off). Host-configurable. */
+  turnTimerSec?: 0 | 30 | 60;
 }
 
 export interface ActiveEmote {

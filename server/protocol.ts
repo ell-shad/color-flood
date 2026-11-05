@@ -40,6 +40,8 @@ export const ColorCount = z
 export const ChallengeType = z.enum(['standard', 'progressive']);
 export const ThemeId = z.string().trim().min(1).max(32);
 export const Emoji = z.string().max(10);
+/** Optional per-turn move timer (P3.5): off or a fixed number of seconds. */
+export const TurnTimer = z.union([z.literal(0), z.literal(30), z.literal(60)]);
 
 // --- Client → Server --------------------------------------------------------
 
@@ -53,6 +55,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
     colorCount: ColorCount.optional(),
     challengeType: ChallengeType.optional(),
     themeId: ThemeId.optional(),
+    turnTimerSec: TurnTimer.optional(),
   }),
 
   z.object({
@@ -97,6 +100,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
     gridSize: GridSize.optional(),
     colorCount: ColorCount.optional(),
     challengeType: ChallengeType.optional(),
+    turnTimerSec: TurnTimer.optional(),
   }),
 
   z.object({ type: z.literal('leave'), roomId: RoomId, playerToken: Token }),

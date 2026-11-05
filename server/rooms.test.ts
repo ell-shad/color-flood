@@ -22,12 +22,16 @@ const silentBus = () => {
 const makeService = () => {
   const store = createInMemoryStore();
   const bus = silentBus();
+  let clock = 1_000_000;
   const service = createRoomService({
     store,
     bus,
-    now: (() => Date.now()) as () => number,
+    now: () => clock,
   });
-  return { service, bus, store };
+  const advance = (ms: number) => {
+    clock += ms;
+  };
+  return { service, bus, store, advance };
 };
 
 const setUpFullRoom = () => {
@@ -225,5 +229,119 @@ describe('P3.2 room service authority', () => {
     // Sanity only — the custom-store path is exercised in ws-server tests.
     void rooms;
     expect(service.activeRoomCount()).toBe(0);
+  });
+});
+
+describe('P3.5 reconnection, forfeits and turn timer', () => {
+  const legalColor = (
+    service: ReturnType<typeof createRoomService>,
+    roomId: string,
+  ): number => {
+    const st = service.readState(roomId)!;
+    const occupied = new Set([st.p1Color, st.p2Color]);
+    for (let c = 0; c < st.colorCount; c++) {
+      if (!occupied.has(c)) return c;
+    }
+    return 0;
+  };
+
+  it('forfeits a player still disconnected after the grace window', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host' });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+
+    // Before the grace: no forfeit, game continues.
+    service.socketClosed(joined.token);
+    advance(59_000);
+    expect(service.enforceDisconnects()).toBe(0);
+    expect(service.readState(created.roomId)!.status).toBe('playing');
+
+    // Past the 60 s grace: P2 forfeits, P1 gets the series credit.
+    advance(2_000); // 61 s since drop
+    expect(service.enforceDisconnects()).toBe(1);
+    const state = service.readState(created.roomId)!;
+    expect(state.status).toBe('p1_won');
+    expect(state.series.p1).toBe(1);
+    expect(state.p2Connected).toBe(false);
+
+    // Idempotent: a second sweep must not credit twice.
+    advance(5_000);
+    expect(service.enforceDisconnects()).toBe(0);
+    expect(service.readState(created.roomId)!.series.p1).toBe(1);
+  });
+
+  it('reconnecting inside the grace window cancels the forfeit', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host' });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+    service.socketClosed(joined.token);
+    advance(30_000);
+    // Resume (token reconnect) clears the countdown.
+    const back = service.joinRoom(created.roomId, 'Guest', joined.token);
+    expect(back.ok).toBe(true);
+    advance(90_000);
+    expect(service.enforceDisconnects()).toBe(0);
+    expect(service.readState(created.roomId)!.status).toBe('playing');
+  });
+
+  it('resume clears the disconnect countdown (service-level)', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host' });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+    service.socketClosed(joined.token);
+    // resume() is the other reconnect path — must clear disconnectedAt too.
+    const resumed = service.resume(created.roomId, joined.token);
+    expect(resumed.ok).toBe(true);
+    advance(120_000);
+    expect(service.enforceDisconnects()).toBe(0);
+    expect(service.readState(created.roomId)!.status).toBe('playing');
+  });
+
+  it('turn timer forfeits the slow player past the slack', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host', turnTimerSec: 30 });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+
+    // Host plays inside the window; timer restarts for P2's turn.
+    service.move(created.roomId, created.token, legalColor(service, created.roomId));
+    advance(29_000);
+    expect(service.enforceTurnTimers()).toBe(0);
+
+    advance(3_000); // 32 s > 30 s + 1.5 s slack
+    expect(service.enforceTurnTimers()).toBe(1);
+    const state = service.readState(created.roomId)!;
+    expect(state.status).toBe('p1_won'); // P2 (on turn) forfeited
+    expect(state.series.p1).toBe(1);
+  });
+
+  it('turn timer changes are host-only and validated', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host' });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+
+    // Guest tries to set a timer → denied (host-only).
+    const guestSet = service.updateSettings(created.roomId, joined.token, {
+      turnTimerSec: 30,
+    });
+    expect(guestSet.ok).toBe(false);
+    if (!guestSet.ok) expect(guestSet.code).toBe('settings_locked');
+
+    // Host sets it mid-game (timer is board-safe — allowed any time).
+    const hostSet = service.updateSettings(created.roomId, created.token, {
+      turnTimerSec: 60,
+    });
+    expect(hostSet.ok).toBe(true);
+    expect(service.readState(created.roomId)!.turnTimerSec).toBe(60);
+
+    // Host disables → no forfeit even when the previous window has passed.
+    service.updateSettings(created.roomId, created.token, { turnTimerSec: 0 });
+    advance(10 * 60_000);
+    expect(service.enforceTurnTimers()).toBe(0);
+    expect(service.readState(created.roomId)!.status).toBe('playing');
   });
 });

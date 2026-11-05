@@ -93,10 +93,14 @@ export const createAppServer = () => {
   return { app, server, service, wss, listen, stop, mount: () => mounted };
 };
 
-// Room GC
+// Room GC + P3.5 enforcement loops (unstoppable on unref'd timers).
 export const startRoomSweep = (svc: RoomService) => {
-  const id = setInterval(() => svc.sweep(2 * 60 * 60 * 1000), 5 * 60 * 1000);
-  id.unref();
+  const gc = setInterval(() => svc.sweep(2 * 60 * 60 * 1000), 5 * 60 * 1000);
+  gc.unref();
+  const grace = setInterval(() => svc.enforceDisconnects(), 5_000);
+  grace.unref();
+  const turn = setInterval(() => svc.enforceTurnTimers(), 1_000);
+  turn.unref();
 };
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

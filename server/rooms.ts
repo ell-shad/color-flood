@@ -32,6 +32,8 @@ export interface PlayerSession {
   name: string;
   connected: boolean;
   lastSeen: number;
+  /** When the socket dropped (grace countdown): 0 while connected. */
+  disconnectedAt: number;
 }
 
 export interface RoomInternal {
@@ -63,7 +65,16 @@ export interface RoomInternal {
   themeId: ThemeId;
   lastActive: number;
   lastEmote: { role: 1 | 2; emoji: string; id: number } | null;
+  /** Optional per-turn move timer: 0 (off) / 30 / 60. */
+  turnTimerSec: 0 | 30 | 60;
+  /** Server timestamp of the current turn's start. */
+  turnStartedAt: number;
 }
+
+/** Disconnect grace before an idle player forfeits the current game. */
+export const DISCONNECT_GRACE_MS = 60_000;
+/** Judging slack so a broadcast/in-flight move is not clipped by the timer. */
+const TURN_TIMER_SLACK_MS = 1500;
 
 /** Minimal storage seam (P3.6 may swap in a different backend). */
 export interface RoomStore {
@@ -110,6 +121,7 @@ export interface CreateRoomInput {
   colorCount?: number;
   challengeType?: ChallengeType;
   themeId?: string;
+  turnTimerSec?: 0 | 30 | 60;
 }
 
 /**
@@ -162,12 +174,23 @@ export interface RoomService {
       gridSize?: number;
       colorCount?: number;
       challengeType?: ChallengeType;
+      turnTimerSec?: 0 | 30 | 60;
     },
   ): RoomOpResult;
   leave(roomId: string, playerToken: string): RoomOpResult;
   emote(roomId: string, playerToken: string, emoji: string): RoomOpResult;
   /** Notify the service a socket dropped (marks disconnected, P3.5 adds grace). */
   socketClosed(playerToken: string): void;
+  /**
+   * P3.5: forfeit players who stayed disconnected past `graceMs` while a game
+   * was running. Returns the number of rooms affected.
+   */
+  enforceDisconnects(graceMs?: number): number;
+  /**
+   * P3.5: forfeit the current player when the configured turn timer expires.
+   * Returns the number of rooms affected.
+   */
+  enforceTurnTimers(): number;
   /** Read-only sanitized state (legacy REST transition + persistence checks). */
   readState(roomId: string): OnlineRoomState | null;
   /** Snapshot for a role (REST transition), or null. */
@@ -213,6 +236,7 @@ const sanitize = (room: RoomInternal): OnlineRoomState => ({
   p1Connected: room.p1.connected,
   p2Connected: room.p2 ? room.p2.connected : false,
   lastEmote: room.lastEmote,
+  turnTimerSec: room.turnTimerSec,
 });
 
 export const createRoomService = (deps: ServiceDeps): RoomService => {
@@ -301,6 +325,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     room.grid = newGrid;
     room.movesCount += 1;
     room.turn = role === 1 ? 2 : 1;
+    room.turnStartedAt = now();
 
     const totalCells = room.gridSize * room.gridSize;
     const outcome = checkMultiplayerGameOver(
@@ -340,6 +365,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     const nextFirst = room.firstTurnPlayer === 1 ? 2 : 1;
     room.firstTurnPlayer = nextFirst;
     room.turn = nextFirst;
+    room.turnStartedAt = now();
 
     if (room.challengeType === 'progressive') {
       if (targetStage !== undefined) {
@@ -396,6 +422,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           id: token,
           name: input.playerName?.trim() || 'Player 1',
           connected: true,
+          disconnectedAt: 0,
           lastSeen: now(),
         },
         p2: null,
@@ -421,6 +448,8 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         themeId: validTheme(input.themeId),
         lastActive: now(),
         lastEmote: null,
+        turnTimerSec: (input.turnTimerSec ?? 0) as 0 | 30 | 60,
+        turnStartedAt: now(),
       };
       store.set(roomId, room);
       return { roomId, token, role: 1 };
@@ -436,6 +465,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         if (role) {
           const session = role === 1 ? room.p1 : room.p2!;
           session.connected = true;
+          session.disconnectedAt = 0;
           session.lastSeen = now();
           if (playerName?.trim()) session.name = playerName.trim();
           bump(room);
@@ -455,6 +485,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         id: token,
         name: playerName?.trim() || 'Player 2',
         connected: true,
+        disconnectedAt: 0,
         lastSeen: now(),
       };
       room.status = 'playing';
@@ -475,6 +506,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       if (!role) return err('not_authenticated', 'Invalid token for this room.');
       const session = role === 1 ? room.p1 : room.p2!;
       session.connected = true;
+      session.disconnectedAt = 0;
       session.lastSeen = now();
       bump(room);
       return { ok: true, roomId: room.roomId, token: playerToken, role };
@@ -572,6 +604,14 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       if (settings.themeId !== undefined) {
         room.themeId = validTheme(settings.themeId);
       }
+      if (settings.turnTimerSec !== undefined) {
+        // Timer is board-safe, so the host may adjust it any time.
+        if (role !== 1) {
+          return err('settings_locked', 'Only the host can change the turn timer.');
+        }
+        room.turnTimerSec = settings.turnTimerSec;
+        room.turnStartedAt = Math.max(room.turnStartedAt, now());
+      }
       const structural =
         settings.gridSize !== undefined ||
         settings.colorCount !== undefined ||
@@ -643,11 +683,86 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         const session = role === 1 ? room.p1 : room.p2;
         if (!session || session.id !== playerToken) continue;
         session.connected = false;
+        session.disconnectedAt = now();
         session.lastSeen = now();
         bump(room);
         deps.bus.toRoom(room.roomId, stateMessage(room, 'player_disconnected'));
         return;
       }
+    },
+
+    enforceDisconnects(graceMs = DISCONNECT_GRACE_MS) {
+      const t = now();
+      let affected = 0;
+      for (const room of store.values()) {
+        if (room.status !== 'playing') continue;
+        const p1TimedOut =
+          !room.p1.connected &&
+          room.p1.disconnectedAt > 0 &&
+          t - room.p1.disconnectedAt > graceMs;
+        const p2TimedOut =
+          room.p2 !== null &&
+          !room.p2.connected &&
+          room.p2.disconnectedAt > 0 &&
+          t - room.p2.disconnectedAt > graceMs;
+        if (!p1TimedOut && !p2TimedOut) continue;
+        const droppedRole: 1 | 2 = p1TimedOut ? 1 : 2;
+        const winner: OnlineRoomState['status'] = droppedRole === 1 ? 'p2_won' : 'p1_won';
+        room.status = winner;
+        // Series credit for the winner (forfeit is a loss for the dropped player).
+        if (winner === 'p1_won') {
+          room.series.p1 += 1;
+          if (!room.stageWins[1].includes(room.currentStage)) {
+            room.stageWins[1].push(room.currentStage);
+          }
+        } else {
+          room.series.p2 += 1;
+          if (!room.stageWins[2].includes(room.currentStage)) {
+            room.stageWins[2].push(room.currentStage);
+          }
+        }
+        room.rematchRequestedBy = null;
+        room.resetProposal = null;
+        const dropped = droppedRole === 1 ? room.p1 : room.p2!;
+        dropped.disconnectedAt = 0;
+        bump(room);
+        deps.bus.toRoom(room.roomId, stateMessage(room, 'state_update'));
+        affected++;
+      }
+      return affected;
+    },
+
+    enforceTurnTimers() {
+      const t = now();
+      let affected = 0;
+      for (const room of store.values()) {
+        if (
+          room.status !== 'playing' ||
+          room.turnTimerSec === 0 ||
+          t - room.turnStartedAt <= room.turnTimerSec * 1000 + TURN_TIMER_SLACK_MS
+        ) {
+          continue;
+        }
+        const loser = room.turn;
+        room.status = loser === 1 ? 'p2_won' : 'p1_won';
+        if (room.status === 'p1_won') {
+          room.series.p1 += 1;
+          if (!room.stageWins[1].includes(room.currentStage)) {
+            room.stageWins[1].push(room.currentStage);
+          }
+        } else {
+          room.series.p2 += 1;
+          if (!room.stageWins[2].includes(room.currentStage)) {
+            room.stageWins[2].push(room.currentStage);
+          }
+        }
+        room.rematchRequestedBy = null;
+        room.resetProposal = null;
+        bump(room);
+        deps.bus.toRoom(room.roomId, stateMessage(room, 'state_update'));
+        affected++;
+      }
+      return affected;
     },
 
     sweep(maxIdleMs) {

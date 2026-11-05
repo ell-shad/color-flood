@@ -42,6 +42,9 @@ interface SettingsPanelProps {
   onOpenThemeModal: () => void;
   challengeType?: ChallengeType;
   onChangeChallengeType?: (type: ChallengeType) => void;
+  /** Online only (P3.5): optional per-turn move timer, host configurable. */
+  turnTimerSec?: 0 | 30 | 60;
+  onChangeTurnTimerSec?: (sec: 0 | 30 | 60) => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -64,6 +67,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onOpenThemeModal,
   challengeType = 'standard',
   onChangeChallengeType,
+  turnTimerSec = 0,
+  onChangeTurnTimerSec,
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
 
@@ -137,6 +142,40 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Standard Match</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Online Only: Per-Turn Move Timer (host configurable, any time) */}
+        {onChangeTurnTimerSec && (
+          <div className="space-y-1.5 pb-2.5 border-b border-slate-750">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                Turn Timer
+              </label>
+              <span className="text-[10px] text-amber-400 font-mono">
+                Running out forfeits the round
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([0, 30, 60] as const).map((sec) => (
+                <button
+                  key={sec}
+                  onClick={() => onChangeTurnTimerSec(sec)}
+                  title={
+                    sec === 0
+                      ? 'No move timer — take as long as you like'
+                      : `${sec} seconds per move`
+                  }
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    turnTimerSec === sec
+                      ? 'bg-amber-600 text-white shadow-md border border-amber-400/50'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
+                  }`}
+                >
+                  <span>{sec === 0 ? 'Off' : `${sec}s`}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
