@@ -620,7 +620,7 @@ export function useOnlineMultiplayer() {
       fetch(`/api/rooms/${current.roomId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: myRole, color }),
+        body: JSON.stringify({ role: myRole, color, playerToken: playerTokenRef.current }),
       }).catch(() => {});
     },
     [myRole],
@@ -655,6 +655,7 @@ export function useOnlineMultiplayer() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             role: myRole,
+            playerToken: playerTokenRef.current,
             targetStage: options?.targetStage,
             newGridSize: options?.newGridSize,
             newColorCount: options?.newColorCount,
@@ -686,7 +687,7 @@ export function useOnlineMultiplayer() {
       const res = await fetch(`/api/rooms/${current.roomId}/accept-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: myRole }),
+        body: JSON.stringify({ role: myRole, playerToken: playerTokenRef.current }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -718,7 +719,7 @@ export function useOnlineMultiplayer() {
       await fetch(`/api/rooms/${current.roomId}/decline-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: myRole }),
+        body: JSON.stringify({ role: myRole, playerToken: playerTokenRef.current }),
       });
     } catch {
       /* intentionally ignored */
@@ -740,7 +741,7 @@ export function useOnlineMultiplayer() {
         const res = await fetch(`/api/rooms/${current.roomId}/settings`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: myRole, ...settings }),
+          body: JSON.stringify({ role: myRole, playerToken: playerTokenRef.current, ...settings }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -792,7 +793,7 @@ export function useOnlineMultiplayer() {
       fetch(`/api/rooms/${current.roomId}/emote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: myRole, emoji }),
+        body: JSON.stringify({ role: myRole, emoji, playerToken: playerTokenRef.current }),
       }).catch(() => {});
     },
     [myRole],
