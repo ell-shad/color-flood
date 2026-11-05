@@ -49,3 +49,24 @@ body {
     transform: scale(1);
   }
 }
+
+/* P5.2: always-visible keyboard focus ring (brand indigo). */
+:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+/* P5.5: honor prefers-reduced-motion — collapse all animation/transition
+   runtimes (including the inline cell transition durations) and kill the
+   ping/loop halos; framer-motion additionally scales transforms via
+   MotionConfig reducedMotion="user". */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

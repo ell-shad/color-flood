@@ -1,5 +1,11 @@
 import { useEffect, useReducer, useRef, useState, useCallback } from 'react';
-import type { SoloGameState, HighScore, GridSize, ColorCount } from '../types';
+import type {
+  SoloGameState,
+  SoloMoveDiff,
+  HighScore,
+  GridSize,
+  ColorCount,
+} from '../types';
 import { generateSoloGrid, floodSolo, checkSoloWin } from '../utils/floodLogic';
 import { maxSoloMovesLimit } from '../utils/soloBalance';
 import { loadJson, saveJson } from '../utils/storage';
@@ -46,8 +52,26 @@ const updateHighScores = (
 
 // --- Reducer -----------------------------------------------------------------
 
+/**
+ * P5.6: history stores one repaint DIFF per move ({cell, previous color})
+ * instead of a full grid snapshot — 18x18 grids no longer snapshot 324 rows
+ * per move and undo restores exactly the cells the flood recolored
+ * (absorbed cells already had the move color, so they need no entry).
+ */
+const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] => {
+  const diff: SoloMoveDiff[] = [];
+  for (let r = 0; r < before.length; r++) {
+    for (let c = 0; c < before.length; c++) {
+      if (before[r][c] !== after[r][c]) diff.push({ r, c, prev: before[r][c] });
+    }
+  }
+  return diff;
+};
+
 type SoloAction =
-  { type: 'init'; size: GridSize; colors: ColorCount } | { type: 'move'; color: number };
+  | { type: 'init'; size: GridSize; colors: ColorCount }
+  | { type: 'move'; color: number }
+  | { type: 'undo' };
 
 const soloReducer = (
   state: SoloGameState | null,
@@ -61,7 +85,7 @@ const soloReducer = (
         moves: 0,
         maxMoves: maxSoloMovesLimit(action.size, action.colors),
         status: 'playing',
-        history: [grid.map((r) => [...r])],
+        history: [[]],
       };
     }
     case 'move': {
@@ -76,7 +100,21 @@ const soloReducer = (
         grid: newGrid,
         moves: newMoves,
         status: isWin ? 'won' : isLoss ? 'lost' : 'playing',
-        history: [...state.history, newGrid.map((r) => [...r])],
+        history: [...state.history, buildMoveDiff(state.grid, newGrid)],
+      };
+    }
+    case 'undo': {
+      // Only during active play: undoing past a recorded win/loss would
+      // double-fire the end-of-game presentation and skew stats.
+      if (!state || state.status !== 'playing' || state.history.length <= 1) return state;
+      const diff = state.history[state.history.length - 1];
+      const grid = state.grid.map((row) => [...row]);
+      for (const { r, c, prev } of diff) grid[r][c] = prev;
+      return {
+        ...state,
+        grid,
+        moves: state.moves - 1,
+        history: state.history.slice(0, -1),
       };
     }
   }
@@ -131,6 +169,11 @@ export function useSoloGame(
   );
   const move = useCallback((color: number) => dispatch({ type: 'move', color }), []);
 
+  // P5.6: one-step solo undo (U key / Undo button).
+  const undo = useCallback(() => dispatch({ type: 'undo' }), []);
+  const canUndo =
+    !!soloState && soloState.status === 'playing' && soloState.history.length > 1;
+
   const recordWin = useCallback((size: GridSize, colors: ColorCount, moves: number) => {
     setHighScores((prev) => updateHighScores(prev, size, colors, moves));
   }, []);
@@ -143,5 +186,15 @@ export function useSoloGame(
 
   const isPlaying = !!soloState && soloState.status === 'playing';
 
-  return { soloState, highScores, init, move, recordWin, currentBest, isPlaying };
+  return {
+    soloState,
+    highScores,
+    init,
+    move,
+    undo,
+    canUndo,
+    recordWin,
+    currentBest,
+    isPlaying,
+  };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Lightbulb, Star } from 'lucide-react';
+import { Trophy, Lightbulb, Star, Undo2 } from 'lucide-react';
 import { SoloGameState } from '../types';
 import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
 
@@ -10,6 +10,9 @@ interface SoloScoreboardProps {
   hint: number | null;
   hintsLeft: number;
   colorCount: number;
+  /** P5.2/P5.6: one-step undo (U key too). Absent = hidden (no online). */
+  onUndo?: () => void;
+  canUndo?: boolean;
 }
 
 export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
@@ -19,6 +22,8 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
   hint,
   hintsLeft,
   colorCount,
+  onUndo,
+  canUndo = false,
 }) => {
   const isLossRisk =
     gameState.moves >= gameState.maxMoves - 3 && gameState.status === 'playing';
@@ -47,6 +52,18 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
             /{gameState.maxMoves}
           </span>
         </p>
+        {onUndo && (
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo last move (U)"
+            title="Undo last move (U)"
+            className="mt-1 mx-auto flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-indigo-300 hover:bg-indigo-950/40 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="w-3 h-3" />
+            Undo
+          </button>
+        )}
       </div>
 
       {/* Best Score */}

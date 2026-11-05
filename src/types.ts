@@ -29,12 +29,21 @@ export interface ResetProposal {
   timestamp: number;
 }
 
+/** P5.6: one repaint entry of a solo move — enough to undo the flood exactly. */
+export interface SoloMoveDiff {
+  r: number;
+  c: number;
+  /** Board color at (r, c) before the move repainted it. */
+  prev: number;
+}
+
 export interface SoloGameState {
   grid: number[][];
   moves: number;
   maxMoves: number;
   status: 'playing' | 'won' | 'lost';
-  history: number[][][];
+  /** Per-move repaint diffs; index 0 is the initial board (empty diff). */
+  history: SoloMoveDiff[][];
 }
 
 export interface TwoPlayerGameState {

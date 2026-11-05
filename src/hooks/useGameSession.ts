@@ -28,6 +28,7 @@ import {
 } from '../utils/soundEffects';
 import { loadStoredSession, useOnlineMultiplayer } from '../utils/useOnlineMultiplayer';
 import { loadStringOr } from '../utils/storage';
+import { prefersReducedMotionSnapshot } from '../utils/motionPreferences';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
 import { useLocalMatch } from './useLocalMatch';
@@ -158,6 +159,10 @@ export interface GameSession {
   soloHintsLeft: number;
   getHint: () => void;
 
+  // --- Solo undo (P5.2 U key / P5.6 diff-based history) ---
+  undoSolo: () => void;
+  canUndoSolo: boolean;
+
   // --- Emote system ---
   activeEmotes: ActiveEmote[];
   triggerEmote: (sender: PlayerId, emoji: string, broadcastOnline?: boolean) => void;
@@ -241,12 +246,15 @@ export function useGameSession(): GameSession {
       },
       onRoundEnd: (outcome, colors) => {
         if (outcome !== 'draw') {
-          confetti({
-            particleCount: 180,
-            spread: 90,
-            origin: { y: 0.55 },
-            colors: currentTheme.colors.slice(0, colors),
-          });
+          // P5.5: the OS reduce-motion setting skips the burst; sound stays.
+          if (!prefersReducedMotionSnapshot()) {
+            confetti({
+              particleCount: 180,
+              spread: 90,
+              origin: { y: 0.55 },
+              colors: currentTheme.colors.slice(0, colors),
+            });
+          }
           playWinSound();
         }
       },
@@ -266,16 +274,21 @@ export function useGameSession(): GameSession {
     highScores,
     init: initSoloBoard,
     move: makeSoloMove,
+    undo: undoSoloBoard,
+    canUndo: canUndoSolo,
     recordWin: recordSoloWin,
   } = useSoloGame(
     {
       onWin: (moves) => {
-        confetti({
-          particleCount: 160,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: currentTheme.colors.slice(0, prefs.colorCount),
-        });
+        // P5.5: the OS reduce-motion setting skips the burst; sound stays.
+        if (!prefersReducedMotionSnapshot()) {
+          confetti({
+            particleCount: 160,
+            spread: 80,
+            origin: { y: 0.6 },
+            colors: currentTheme.colors.slice(0, prefs.colorCount),
+          });
+        }
         playWinSound();
         recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
       },
@@ -403,6 +416,37 @@ export function useGameSession(): GameSession {
       : prefs.themeId;
   const currentTheme = THEMES[themeId] || THEMES.arcade;
 
+  // Confetti/sound on Online Game Outcome (restored: dropped during the P4
+  // facade rewrite). Runs outside React state — presentation only.
+  useEffect(() => {
+    if (
+      prefs.opponent === 'online' &&
+      roomState &&
+      roomState.status !== 'playing' &&
+      roomState.status !== 'waiting'
+    ) {
+      if (roomState.status !== 'draw') {
+        // P5.5: respect the OS reduce-motion setting (sound is unaffected).
+        if (!prefersReducedMotionSnapshot()) {
+          confetti({
+            particleCount: 160,
+            spread: 80,
+            origin: { y: 0.55 },
+            colors: currentTheme.colors.slice(0, roomState.colorCount),
+          });
+        }
+        // P4.8: praise a win, commiserate a loss (mute is per device).
+        const iWon =
+          (roomState.status === 'p1_won' && myRole === 1) ||
+          (roomState.status === 'p2_won' && myRole === 2);
+        if (iWon) {
+          playWinSound();
+        } else if (myRole) {
+          playLoseSound();
+        }
+      }
+    }
+  }, [prefs.opponent, roomState, currentTheme, myRole]);
   // Online last-mover used to be a setState-in-effect mirror of room.turn:
   // deriving it is the same value with zero cascading renders.
   const onlineLastMover = roomState ? (roomState.turn === 1 ? 2 : 1) : null;
@@ -559,6 +603,9 @@ export function useGameSession(): GameSession {
       // move to both players for free).
       return;
     }
+    // Local and bot matches: hints are opt-in and off by default (parity with
+    // the pre-refactor handleGetHint).
+    if (!prefs.showHints) return;
     if (!localState || localState.status !== 'playing') return;
     const { bestColor, maxGain } = getBestMultiplayerMove(
       localState.grid,
@@ -579,6 +626,7 @@ export function useGameSession(): GameSession {
     prefs.mode,
     prefs.opponent,
     prefs.colorCount,
+    prefs.showHints,
     soloHintsLeft,
     soloState,
     localState,
@@ -879,6 +927,9 @@ export function useGameSession(): GameSession {
     hintGain,
     soloHintsLeft,
     getHint,
+    // Solo undo (P5.6)
+    undoSolo: undoSoloBoard,
+    canUndoSolo,
     // Emotes
     activeEmotes,
     triggerEmote,
