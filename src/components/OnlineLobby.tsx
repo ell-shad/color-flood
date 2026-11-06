@@ -13,6 +13,7 @@ import {
   Wifi,
   Users,
   Trophy,
+  Eye,
 } from 'lucide-react';
 import { OnlineRoomState, ChallengeType } from '../types';
 import { getPublicShareUrl } from '../utils/urlHelper';
@@ -33,8 +34,14 @@ interface OnlineLobbyProps {
     challengeType: ChallengeType,
   ) => void;
   onJoinRoom: (roomId: string, playerName: string) => void;
+  /** P6.6: watch a room at a receive-only seat (even when full). */
+  onSpectateRoom: (roomId: string, playerName: string) => void;
   onLeaveRoom: () => void;
   onClearError: () => void;
+  /** P6.6: protocol-level code of the last error (room_full offers watching). */
+  errorCode?: string | null;
+  /** P6.6: live spectator head count (shown on the waiting card). */
+  spectatorCount?: number;
 }
 
 export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
@@ -43,8 +50,11 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
   errorMessage,
   onCreateRoom,
   onJoinRoom,
+  onSpectateRoom,
   onLeaveRoom,
   onClearError,
+  errorCode = null,
+  spectatorCount = 0,
 }) => {
   const [playerName, setPlayerName] = useState(() => {
     return loadStringOr('player-name', 'Player 1', 'color-flood-player-name');
@@ -164,6 +174,17 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
           <span>Waiting for Player 2 to join...</span>
         </div>
+
+        {/* P6.6: live spectator head count (updates as seats come and go). */}
+        {spectatorCount > 0 && (
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-indigo-300 bg-indigo-950/40 py-1.5 px-3 rounded-xl border border-indigo-500/25">
+            <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span>
+              {spectatorCount} {spectatorCount === 1 ? 'spectator' : 'spectators'}{' '}
+              watching
+            </span>
+          </div>
+        )}
 
         {/* Config Summary */}
         <div className="space-y-1">
@@ -439,6 +460,25 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             <span>Join</span>
           </button>
         </div>
+        {/* P6.6: watch without a player seat — the default way in when the
+            room is actually full, and a shortcut for lurkers any other time. */}
+        <button
+          onClick={() => onSpectateRoom(inputRoomCode, playerName)}
+          disabled={!inputRoomCode.trim() || connectionStatus === 'connecting'}
+          className="w-full py-1.5 px-3.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 border border-slate-750 text-slate-300 hover:text-indigo-300 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <Eye className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Watch as Spectator</span>
+        </button>
+        {errorCode === 'room_full' && errorMessage && (
+          <button
+            onClick={() => onSpectateRoom(inputRoomCode, playerName)}
+            className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Room full — Watch instead</span>
+          </button>
+        )}
       </div>
     </div>
   );

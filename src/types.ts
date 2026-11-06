@@ -97,6 +97,8 @@ export interface OnlineRoomState {
   lastGains: { 1: number; 2: number };
   series: { p1: number; p2: number; draws: number };
   rematchRequestedBy: number | null;
+  /** How many live spectator sessions are watching right now. */
+  spectatorCount: number;
   p1Name: string;
   p2Name: string | null;
   p1Connected: boolean;

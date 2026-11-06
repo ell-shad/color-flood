@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MotionConfig } from 'motion/react';
-import { Github, Linkedin, Info, Flame } from 'lucide-react';
+import { Github, Linkedin, Info, Flame, Eye } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -187,6 +187,26 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* P6.6: Spectator banner — receive-only seat live view */}
+          {session.opponent === 'online' && session.spectating && (
+            <div className="max-w-lg mx-auto px-2 mt-1">
+              <div className="bg-indigo-950/80 border border-indigo-500/40 px-2.5 py-1 rounded-lg text-[11px] text-indigo-200 flex items-center gap-1.5 shadow-sm">
+                <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span className="truncate">
+                  Watching{' '}
+                  <strong className="text-cyan-300 font-semibold">
+                    {session.playerNames.p1 || 'Player 1'}
+                  </strong>{' '}
+                  vs{' '}
+                  <strong className="text-rose-300 font-semibold">
+                    {session.playerNames.p2 || 'Player 2'}
+                  </strong>{' '}
+                  · 👀 {session.spectatorCount}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Main Playable Area */}
@@ -218,7 +238,7 @@ export default function App() {
               challengeType={session.challengeType}
               onChangeChallengeType={session.handleChangeChallengeType}
               turnTimerSec={session.roomState?.turnTimerSec ?? 0}
-              onChangeTurnTimer={
+              onChangeTurnTimerSec={
                 session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
               }
               soundMuted={session.soundMuted}
@@ -241,8 +261,11 @@ export default function App() {
                 session.createOnlineRoom(name, gSize, cCount, cType, session.themeId)
               }
               onJoinRoom={session.joinOnlineRoom}
+              onSpectateRoom={session.spectateOnline}
               onLeaveRoom={session.leaveOnlineRoom}
               onClearError={session.clearOnlineError}
+              errorCode={session.onlineErrorCode}
+              spectatorCount={session.spectatorCount}
             />
           ) : (
             <div className="w-full flex flex-col items-center justify-between flex-1 max-h-[84vh]">
@@ -336,6 +359,9 @@ export default function App() {
                   myRole={session.myRole}
                   rematchRequestedBy={session.rematchRequestedBy}
                   onLeaveRoom={session.leaveOnlineRoom}
+                  spectating={session.spectating}
+                  isHost={session.myRole === 1}
+                  onHostRematch={session.hostOnlineRematch}
                 />
               </div>
 
@@ -355,21 +381,23 @@ export default function App() {
                 />
               )}
 
-              {/* Color Action Palette */}
-              <ColorPalette
-                colorCount={session.paletteColorCount}
-                mode={session.mode}
-                onSelectColor={session.pickColor}
-                disabled={session.paletteDisabled}
-                hint={session.hint}
-                hintGain={session.hintGain}
-                soloCurrentColor={session.soloState.grid[0][0]}
-                p1Color={session.activeMatch?.p1Color ?? 0}
-                p2Color={session.activeMatch?.p2Color ?? 0}
-                opponent={session.opponent}
-                theme={session.currentTheme}
-                turnStatus={turnStatus}
-              />
+              {/* Color Action Palette (hidden for spectator seats) */}
+              {!session.spectating && (
+                <ColorPalette
+                  colorCount={session.paletteColorCount}
+                  mode={session.mode}
+                  onSelectColor={session.pickColor}
+                  disabled={session.paletteDisabled}
+                  hint={session.hint}
+                  hintGain={session.hintGain}
+                  soloCurrentColor={session.soloState.grid[0][0]}
+                  p1Color={session.activeMatch?.p1Color ?? 0}
+                  p2Color={session.activeMatch?.p2Color ?? 0}
+                  opponent={session.opponent}
+                  theme={session.currentTheme}
+                  turnStatus={turnStatus}
+                />
+              )}
             </div>
           )}
         </main>

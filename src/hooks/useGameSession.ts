@@ -132,6 +132,16 @@ export interface GameSession {
   updateOnlineSettings: ReturnType<typeof useOnlineMultiplayer>['updateRoomSettings'];
   acceptOnlineRematch: () => void;
   declineOnlineRematch: () => void;
+  /** P6.6: this client holds a receive-only spectator seat. */
+  spectating: boolean;
+  /** P6.6: how many spectators are in the room right now. */
+  spectatorCount: number;
+  /** P6.6: protocol-level code of the last online error (e.g. room_full). */
+  onlineErrorCode: string | null;
+  /** P6.6: watch a room ownerless (no player seat). */
+  spectateOnline: (roomId: string, playerName?: string) => void;
+  /** P6.6: host-instant rematch (no proposal/accept dance). */
+  hostOnlineRematch: () => void;
 
   // --- Unified match state (P4.2) ---
   soloState: SoloGameState | null;
@@ -258,12 +268,16 @@ export function useGameSession(): GameSession {
   const {
     roomState,
     myRole,
+    isSpectator,
+    errorCode: onlineErrorCode,
     connectionStatus,
     systemMessage: onlineSystemMessage,
     errorMessage: onlineError,
     isMyTurn,
     createRoom,
     joinRoom,
+    spectateRoom,
+    hostRematch,
     makeMove: sendOnlineMove,
     proposeReset: proposeOnlineReset,
     acceptReset: acceptOnlineReset,
@@ -751,13 +765,13 @@ export function useGameSession(): GameSession {
     prefs.mode === 'solo'
       ? !soloState || soloState.status !== 'playing'
       : prefs.opponent === 'online'
-        ? !isMyTurn || !roomState || roomState.status !== 'playing'
+        ? !isMyTurn || !roomState || roomState.status !== 'playing' || isSpectator
         : !!localState &&
           (localState.status !== 'playing' ||
             (prefs.opponent === 'bot' && localState.turn === 2));
   const emoteBarDisabled =
     prefs.opponent === 'online'
-      ? !roomState || roomState.status !== 'playing'
+      ? !roomState || roomState.status !== 'playing' || isSpectator
       : !!localState && localState.status !== 'playing';
   const turnTimerEditable = prefs.opponent === 'online' && myRole === 1;
 
@@ -931,6 +945,25 @@ export function useGameSession(): GameSession {
     roomState,
     proposeOnlineReset,
   ]);
+
+  /** P6.6: host-instant rematch — same stage logic as the proposal path. */
+  const hostOnlineRematch = useCallback(() => {
+    if (!roomState) return;
+    if (roomState.challengeType === 'progressive') {
+      const nextStage = Math.min(5, (roomState.currentStage || 1) + 1);
+      void hostRematch({ targetStage: nextStage });
+      return;
+    }
+    void hostRematch();
+  }, [roomState, hostRematch]);
+
+  /** P6.6: watch a room without a player seat (lobby button, ?room= full flow). */
+  const spectateOnlineRoom = useCallback(
+    (roomId: string, playerName?: string) => {
+      void spectateRoom(roomId, playerName);
+    },
+    [spectateRoom],
+  );
 
   const advanceLocalMatchRound = advanceRound;
   const confirmLocalReset = useCallback(() => {
@@ -1142,6 +1175,12 @@ export function useGameSession(): GameSession {
     updateOnlineSettings: updateRoomSettings,
     acceptOnlineRematch: acceptOnlineReset,
     declineOnlineRematch: declineOnlineReset,
+    // P6.6 quick rematch & spectator seats
+    spectating: isSpectator,
+    spectatorCount: roomState?.spectatorCount ?? 0,
+    onlineErrorCode,
+    spectateOnline: spectateOnlineRoom,
+    hostOnlineRematch,
     // Unified state
     soloState,
     localState,

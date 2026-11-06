@@ -36,6 +36,12 @@ export interface PlayerSession {
   disconnectedAt: number;
 }
 
+/** P6.6: a spectator seat — receive-only, no reseat lifecycle to manage. */
+export interface SpectatorSession {
+  id: string; // spectatorToken
+  name: string;
+}
+
 export interface RoomInternal {
   roomId: string;
   version: number;
@@ -43,6 +49,8 @@ export interface RoomInternal {
   colorCount: number;
   p1: PlayerSession;
   p2: PlayerSession | null;
+  /** P6.6: live spectator seats (receive snapshots, can never act). */
+  spectators: SpectatorSession[];
   grid: number[][];
   turn: 1 | 2;
   firstTurnPlayer: 1 | 2;
@@ -136,7 +144,7 @@ export interface RoomOpResult {
   /** join/resume results */
   roomId?: string;
   token?: string;
-  role?: 1 | 2;
+  role?: 1 | 2 | 'spectator';
   /** leave (host) */
   closed?: boolean;
   /** reset proposals */
@@ -152,10 +160,22 @@ const err = (code: ServerErrorCode, message: string): RoomOpResult => ({
 
 export interface RoomService {
   createRoom(input: CreateRoomInput): { roomId: string; token: string; role: 1 };
+  /**
+   * P6.6: QUICK REMATCH — the host starts the next round instantly (as
+   * progressive stage advance or same-config standby round). Opposing
+   * consent is intentionally NOT needed: this is the host's call, and the
+   * restart is broadcast so every seat (and spectators) snaps to it.
+   */
+  forceRematch(
+    roomId: string,
+    playerToken: string,
+    opts: { targetStage?: number; newGridSize?: number; newColorCount?: number },
+  ): RoomOpResult;
   joinRoom(
     roomId: string,
     playerName: string | undefined,
     playerToken?: string,
+    spectator?: boolean,
   ): RoomOpResult;
   resume(roomId: string, playerToken: string): RoomOpResult;
   move(roomId: string, playerToken: string, color: number): RoomOpResult;
@@ -227,6 +247,8 @@ const sanitize = (room: RoomInternal): OnlineRoomState => ({
   series: room.series,
   rematchRequestedBy: room.rematchRequestedBy,
   resetProposal: room.resetProposal,
+  /** Live spectator seat count. */
+  spectatorCount: room.spectators.length,
   challengeType: room.challengeType,
   currentStage: room.currentStage,
   stageWins: room.stageWins,
@@ -426,6 +448,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           lastSeen: now(),
         },
         p2: null,
+        spectators: [],
         grid: board.grid,
         turn: 1,
         firstTurnPlayer: 1,
@@ -455,7 +478,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       return { roomId, token, role: 1 };
     },
 
-    joinRoom(roomId, playerName, playerToken) {
+    joinRoom(roomId, playerName, playerToken, spectator) {
       const room = findRoom(roomId);
       if (!room) return err('room_not_found', `Room "${roomId}" not found.`);
 
@@ -471,6 +494,32 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           bump(room);
           return { ok: true, roomId: room.roomId, token: playerToken, role };
         }
+      }
+
+      // P6.6: spectator seats never occupy the 2-player slots and exist on
+      // full rooms too. A dropped spectator seat is simply erased (no grace
+      // countdown — spectators have nothing to forfeit).
+      if (spectator) {
+        if (playerToken) {
+          const existing = room.spectators.find((s) => s.id === playerToken);
+          if (existing) {
+            if (playerName?.trim()) existing.name = playerName.trim();
+            bump(room);
+            return {
+              ok: true,
+              roomId: room.roomId,
+              token: playerToken,
+              role: 'spectator',
+            };
+          }
+        }
+        const token = randomUUID();
+        room.spectators.push({
+          id: token,
+          name: playerName?.trim() || 'Spectator',
+        });
+        bump(room);
+        return { ok: true, roomId: room.roomId, token, role: 'spectator' };
       }
 
       if (room.p2) {
@@ -503,7 +552,14 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       const room = findRoom(roomId);
       if (!room) return err('room_not_found', `Room "${roomId}" not found.`);
       const role = playerByToken(room, playerToken);
-      if (!role) return err('not_authenticated', 'Invalid token for this room.');
+      if (!role) {
+        // P6.6: a reconnecting spectator keeps its receive-only seat.
+        const spectatorIdx = room.spectators.findIndex((s) => s.id === playerToken);
+        if (spectatorIdx === -1) {
+          return err('not_authenticated', 'Invalid token for this room.');
+        }
+        return { ok: true, roomId: room.roomId, token: playerToken, role: 'spectator' };
+      }
       const session = role === 1 ? room.p1 : room.p2!;
       session.connected = true;
       session.disconnectedAt = 0;
@@ -585,6 +641,22 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       return { ok: true };
     },
 
+    forceRematch(roomId, playerToken, opts) {
+      const a = auth(roomId, playerToken);
+      if ('error' in a) return a.error;
+      const { room, role } = a;
+      if (role !== 1) {
+        return err('host_only', 'Only the host can start a rematch directly.');
+      }
+      if (room.status === 'playing' || room.status === 'waiting') {
+        return err('not_active', 'The match is not over yet.');
+      }
+      executeNextRound(room, opts.targetStage, opts.newGridSize, opts.newColorCount);
+      bump(room);
+      deps.bus.toRoom(room.roomId, stateMessage(room, 'reset_accepted'));
+      return { ok: true, approved: true };
+    },
+
     declineReset(roomId, playerToken) {
       const a = auth(roomId, playerToken);
       if ('error' in a) return a.error;
@@ -638,23 +710,39 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     },
 
     leave(roomId, playerToken) {
+      const room = findRoom(roomId);
+      if (!room) return err('room_not_found', `Room "${roomId}" not found.`);
+
+      // P6.6: a spectator leaving just erases the seat; players use auth().
+      const spectatorIdx = room.spectators.findIndex((s) => s.id === playerToken);
+      if (spectatorIdx !== -1) {
+        room.spectators.splice(spectatorIdx, 1);
+        bump(room);
+        deps.bus.toRoom(room.roomId, stateMessage(room, 'player_left'));
+        return { ok: true };
+      }
+
       const a = auth(roomId, playerToken);
       if ('error' in a) return a.error;
-      const { room, role } = a;
+      const { room: joinRoomState, role } = a;
       if (role === 1) {
-        deps.bus.toRoom(room.roomId, {
+        deps.bus.toRoom(joinRoomState.roomId, {
           type: 'player_left',
-          snapshot: { version: room.version, myRole: null, roomState: sanitize(room) },
+          snapshot: {
+            version: joinRoomState.version,
+            myRole: null,
+            roomState: sanitize(joinRoomState),
+          },
         });
-        store.delete(room.roomId);
+        store.delete(joinRoomState.roomId);
         return { ok: true, closed: true };
       }
-      room.p2 = null;
-      room.status = 'waiting';
-      room.rematchRequestedBy = null;
-      room.resetProposal = null;
-      bump(room);
-      deps.bus.toRoom(room.roomId, stateMessage(room, 'player_left'));
+      joinRoomState.p2 = null;
+      joinRoomState.status = 'waiting';
+      joinRoomState.rematchRequestedBy = null;
+      joinRoomState.resetProposal = null;
+      bump(joinRoomState);
+      deps.bus.toRoom(joinRoomState.roomId, stateMessage(joinRoomState, 'player_left'));
       return { ok: true };
     },
 
@@ -679,15 +767,24 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     socketClosed(playerToken) {
       for (const room of store.values()) {
         const role = playerByToken(room, playerToken);
-        if (!role) continue;
-        const session = role === 1 ? room.p1 : room.p2;
-        if (!session || session.id !== playerToken) continue;
-        session.connected = false;
-        session.disconnectedAt = now();
-        session.lastSeen = now();
-        bump(room);
-        deps.bus.toRoom(room.roomId, stateMessage(room, 'player_disconnected'));
-        return;
+        if (role) {
+          const session = role === 1 ? room.p1 : room.p2;
+          if (!session || session.id !== playerToken) continue;
+          session.connected = false;
+          session.disconnectedAt = now();
+          session.lastSeen = now();
+          bump(room);
+          deps.bus.toRoom(room.roomId, stateMessage(room, 'player_disconnected'));
+          return;
+        }
+        // Spectators have nothing to forfeit: their seat evaporates on drop.
+        const spectatorIdx = room.spectators.findIndex((s) => s.id === playerToken);
+        if (spectatorIdx !== -1) {
+          room.spectators.splice(spectatorIdx, 1);
+          bump(room);
+          deps.bus.toRoom(room.roomId, stateMessage(room, 'player_left'));
+          return;
+        }
       }
     },
 

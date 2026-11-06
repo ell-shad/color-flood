@@ -65,6 +65,9 @@ export const ClientMessage = z.discriminatedUnion('type', [
     // Optional: reconnect of a known player (role derived from token, never
     // from the client's claim — P3.7).
     playerToken: Token.optional(),
+    // P6.6: explicit spectator seat — allowed on FULL rooms; spectators only
+    // receive snapshots and can act on nothing.
+    spectator: z.boolean().optional(),
   }),
 
   z.object({
@@ -110,6 +113,17 @@ export const ClientMessage = z.discriminatedUnion('type', [
     playerToken: Token,
     emoji: Emoji,
   }),
+
+  // P6.6: quick rematch — the HOST alone may start the next round instantly
+  // (no proposal/accept dance). Same stage/config options as propose_reset.
+  z.object({
+    type: z.literal('host_rematch'),
+    roomId: RoomId,
+    playerToken: Token,
+    targetStage: z.number().int().min(1).max(5).optional(),
+    newGridSize: GridSize.optional(),
+    newColorCount: ColorCount.optional(),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessage>;
@@ -128,7 +142,7 @@ export interface RoomSnapshot {
 export type SessionAckMessage = {
   type: 'room_created' | 'room_joined' | 'resumed';
   roomId: string;
-  role: 1 | 2;
+  role: 1 | 2 | 'spectator';
   playerToken: string;
   snapshot: RoomSnapshot;
 };
@@ -167,4 +181,5 @@ export type ServerErrorCode =
   | 'bad_color'
   | 'no_proposal'
   | 'settings_locked'
+  | 'host_only'
   | 'too_fast';

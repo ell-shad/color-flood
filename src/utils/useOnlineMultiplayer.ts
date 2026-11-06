@@ -64,6 +64,10 @@ const saveSession = (roomId: string | null, token: string | null) => {
 export function useOnlineMultiplayer() {
   const [roomState, setRoomState] = useState<OnlineRoomState | null>(null);
   const [myRole, setMyRole] = useState<1 | 2 | null>(null);
+  /** P6.6: true while bound to a seat that watches instead of playing. */
+  const [isSpectator, setIsSpectator] = useState(false);
+  /** P6.6: protocol-level code of the last error (lobby reacts to room_full). */
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<
     'disconnected' | 'connecting' | 'connected' | 'error'
   >('disconnected');
@@ -159,13 +163,19 @@ export function useOnlineMultiplayer() {
           }
           playerTokenRef.current = msg.playerToken;
           roomIdRef.current = msg.roomId;
-          setMyRole(msg.role);
-          myRoleRef.current = msg.role;
+          const ackRole = msg.role;
+          const watching = ackRole === 'spectator';
+          setIsSpectator(watching);
+          setMyRole(watching ? null : ackRole);
+          myRoleRef.current = watching ? null : ackRole;
           intentionalCloseRef.current = false;
           reconnectAttemptsRef.current = 0;
+          setErrorCode(null);
           setConnectionStatus('connected');
           setErrorMessage(null);
-          saveSession(msg.roomId, msg.playerToken);
+          // Spectator seats are deliberately NOT persisted: a refresh re-enters
+          // through the room link (and never resurrects a playing session).
+          if (!watching) saveSession(msg.roomId, msg.playerToken);
           applySnapshot(msg.snapshot);
           return;
         }
@@ -193,6 +203,7 @@ export function useOnlineMultiplayer() {
           return;
         }
         case 'error': {
+          setErrorCode(msg.code);
           // Auth failures mean the session is gone (expired room, new host, GC):
           // drop the stored session instead of looping a resume that cannot win.
           if (msg.code === 'not_authenticated' || msg.code === 'room_not_found') {
@@ -202,9 +213,16 @@ export function useOnlineMultiplayer() {
               playerTokenRef.current = null;
               setMyRole(null);
               myRoleRef.current = null;
+              setIsSpectator(false);
               setConnectionStatus('disconnected');
               setSystemMessage(null);
             }
+            setErrorMessage(msg.message);
+            return;
+          }
+          // A full room is surfaced as-is (the lobby offers the spectator seat),
+          // and — with no binding yet — re-syncing would be a no-op anyway.
+          if (msg.code === 'room_full') {
             setErrorMessage(msg.message);
             return;
           }
@@ -444,6 +462,7 @@ export function useOnlineMultiplayer() {
         themeId,
         p1Name: playerName.trim() || 'Player 1',
         p2Name: null,
+        spectatorCount: 0,
         p1Connected: true,
         p2Connected: false,
         lastEmote: null,
@@ -481,6 +500,7 @@ export function useOnlineMultiplayer() {
     async (roomId: string, playerName: string) => {
       setConnectionStatus('connecting');
       setErrorMessage(null);
+      setErrorCode(null);
       setSystemMessage(`Joining room ${roomId.toUpperCase()}...`);
       connect();
       const token = playerTokenRef.current ?? undefined;
@@ -505,6 +525,67 @@ export function useOnlineMultiplayer() {
       trySend();
     },
     [connect, send],
+  );
+
+  /**
+   * P6.6: watch a room without taking a player seat. Works on full rooms (a
+   * full roster is exactly when "watch" is most interesting) and never holds
+   * game authority — the seat is erased as soon as the socket drops.
+   */
+  const spectateRoom = useCallback(
+    async (roomId: string, playerName?: string) => {
+      setConnectionStatus('connecting');
+      setErrorMessage(null);
+      setErrorCode(null);
+      setSystemMessage(`Joining room ${roomId.toUpperCase()} as a spectator...`);
+      connect();
+      // A stored PLAYER token for this room reconnects it first (P3.7 role
+      // derivation wins) — the server answers for the matching seat type.
+      const token = playerTokenRef.current ?? undefined;
+      const trySend = (attempt = 0) => {
+        if (attempt > 40) {
+          setConnectionStatus('error');
+          setErrorMessage('Could not reach the game server.');
+          return;
+        }
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          send({
+            type: 'join_room',
+            roomId: roomId.toUpperCase(),
+            playerName: playerName?.trim() ? playerName.trim() : undefined,
+            playerToken: token,
+            spectator: true,
+          });
+        } else {
+          window.setTimeout(() => trySend(attempt + 1), 25);
+        }
+      };
+      trySend();
+    },
+    [connect, send],
+  );
+
+  /** P6.6: host-only quick rematch (broadcast applies to every seat). */
+  const hostRematch = useCallback(
+    async (options?: {
+      targetStage?: number;
+      newGridSize?: number;
+      newColorCount?: number;
+    }) => {
+      const current = roomStateRef.current;
+      if (!current || myRoleRef.current !== 1) return;
+      setSystemMessage('Starting the next round...');
+      send({
+        type: 'host_rematch',
+        roomId: current.roomId,
+        playerToken: playerTokenRef.current,
+        targetStage: options?.targetStage,
+        newGridSize: options?.newGridSize,
+        newColorCount: options?.newColorCount,
+      });
+    },
+    [send],
   );
 
   const makeMove = useCallback(
@@ -638,6 +719,7 @@ export function useOnlineMultiplayer() {
     saveSession(null, null);
     setMyRole(null);
     myRoleRef.current = null;
+    setIsSpectator(false);
     setRoomState(null);
     setSystemMessage(null);
     versionRef.current = 0;
@@ -670,12 +752,16 @@ export function useOnlineMultiplayer() {
   return {
     roomState,
     myRole,
+    isSpectator,
+    errorCode,
     connectionStatus,
     errorMessage,
     systemMessage,
     isMyTurn,
     createRoom,
     joinRoom,
+    spectateRoom,
+    hostRematch,
     makeMove,
     proposeReset,
     acceptReset,

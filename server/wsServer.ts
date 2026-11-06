@@ -19,7 +19,7 @@ const MAX_SOCKETS_PER_TOKEN = 4;
 interface Session {
   roomId: string;
   token: string;
-  role: 1 | 2;
+  role: 1 | 2 | 'spectator';
 }
 
 export interface MountedWs {
@@ -36,7 +36,12 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
   const tokenSockets = new Map<string, Set<WebSocket>>();
   const roomSockets = new Map<string, Set<WebSocket>>();
 
-  const bind = (ws: WebSocket, roomId: string, token: string, role: 1 | 2) => {
+  const bind = (
+    ws: WebSocket,
+    roomId: string,
+    token: string,
+    role: 1 | 2 | 'spectator',
+  ) => {
     sessions.set(ws, { roomId, token, role });
     const tokenSet = tokenSockets.get(token) ?? new Set<WebSocket>();
     tokenSet.add(ws);
@@ -174,6 +179,7 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
               parsed.roomId,
               parsed.playerName,
               parsed.playerToken,
+              parsed.spectator,
             );
             if (result.ok) {
               const role = result.role!;
@@ -183,7 +189,10 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
                 roomId: result.roomId!,
                 role,
                 playerToken: result.token!,
-                snapshot: service.snapshotFor(result.roomId!, role),
+                snapshot: service.snapshotFor(
+                  result.roomId!,
+                  role === 'spectator' ? null : role,
+                ),
               });
             } else {
               fail(result.code, result.message);
@@ -201,7 +210,7 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
                 roomId,
                 role,
                 playerToken: parsed.playerToken,
-                snapshot: service.snapshotFor(roomId, role),
+                snapshot: service.snapshotFor(roomId, role === 'spectator' ? null : role),
               });
             } else {
               fail(result.code, result.message);
@@ -229,6 +238,17 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
           }
           case 'decline_reset': {
             const result = service.declineReset(parsed.roomId, parsed.playerToken);
+            if (!result.ok) fail(result.code ?? 'bad_message', result.message ?? 'error');
+            return;
+          }
+          case 'host_rematch': {
+            // P6.6: no ack needed — the executed round is broadcast to every
+            // seat (players reply synchronously, spectators watch).
+            const result = service.forceRematch(parsed.roomId, parsed.playerToken, {
+              targetStage: parsed.targetStage,
+              newGridSize: parsed.newGridSize,
+              newColorCount: parsed.newColorCount,
+            });
             if (!result.ok) fail(result.code ?? 'bad_message', result.message ?? 'error');
             return;
           }

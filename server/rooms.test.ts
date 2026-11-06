@@ -345,3 +345,152 @@ describe('P3.5 reconnection, forfeits and turn timer', () => {
     expect(service.readState(created.roomId)!.status).toBe('playing');
   });
 });
+
+describe('P6.6 spectator seats and host-instant rematch', () => {
+  const spectatorLegalColor = (
+    service: ReturnType<typeof createRoomService>,
+    roomId: string,
+  ) => {
+    const st = service.readState(roomId)!;
+    const occupied = new Set([st.p1Color, st.p2Color]);
+    for (let c = 0; c < st.colorCount; c++) {
+      if (!occupied.has(c)) return c;
+    }
+    return 0;
+  };
+
+  /** Full room + two spectator seats — the archive-fiction scenario. */
+  const setUpSpectatedRoom = () => {
+    const { service, bus, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host' });
+    const p2 = service.joinRoom(created.roomId, 'Guest');
+    if (!p2.ok) throw new Error('join failed');
+    const spec1 = service.joinRoom(created.roomId, 'Watcher 1', undefined, true);
+    if (!spec1.ok) throw new Error('spectate failed');
+    return {
+      service,
+      bus,
+      advance,
+      roomId: created.roomId,
+      p1Token: created.token,
+      p2Token: p2.token,
+      spec1Token: spec1.token!,
+    };
+  };
+
+  it('spectator seats bypass the 2-player cap and are counted', () => {
+    const { service, roomId, p1Token, spec1Token } = setUpSpectatedRoom();
+    expect(service.readState(roomId)!.spectatorCount).toBe(1);
+    // A second watcher is fine on an already-full roster.
+    const spec2 = service.joinRoom(roomId, 'Watcher 2', undefined, true);
+    expect(spec2.ok).toBe(true);
+    if (spec2.ok) expect(spec2.role).toBe('spectator');
+    expect(spec1Token).not.toBe(p1Token);
+    expect(service.readState(roomId)!.spectatorCount).toBe(2);
+    // …but a questionable third PLAYER still hits the roster wall.
+    const third = service.joinRoom(roomId, 'Third');
+    expect(third.ok).toBe(false);
+    if (!third.ok) expect(third.code).toBe('room_full');
+  });
+
+  it('spectator tokens hold no game authority (move/emote/propose all rejected)', () => {
+    const { service, roomId, spec1Token } = setUpSpectatedRoom();
+    const move = service.move(roomId, spec1Token, spectatorLegalColor(service, roomId));
+    expect(move.ok).toBe(false);
+    if (!move.ok) expect(move.code).toBe('not_authenticated');
+    const emote = service.emote(roomId, spec1Token, '🎉');
+    expect(emote.ok).toBe(false);
+    if (!emote.ok) expect(emote.code).toBe('not_authenticated');
+    const propose = service.proposeReset(roomId, spec1Token, {});
+    expect(propose.ok).toBe(false);
+    if (!propose.ok) expect(propose.code).toBe('not_authenticated');
+    const rematch = service.forceRematch(roomId, spec1Token, {});
+    expect(rematch.ok).toBe(false);
+    if (!rematch.ok) expect(rematch.code).toBe('not_authenticated');
+  });
+
+  it('a dropped spectator seat is erased by leave() and socketClosed() (no grace)', () => {
+    const { service, bus, roomId, spec1Token } = setUpSpectatedRoom();
+    const leave = service.leave(roomId, spec1Token);
+    expect(leave.ok).toBe(true);
+    expect(service.readState(roomId)!.spectatorCount).toBe(0);
+    expect(bus.inbox.at(-1)?.message.type).toBe('player_left');
+
+    // Re-spectate, then drop the socket — same immediate eviction.
+    const again = service.joinRoom(roomId, 'Watcher 1', undefined, true);
+    if (!again.ok) throw new Error('re-spectate failed');
+    expect(service.readState(roomId)!.spectatorCount).toBe(1);
+    service.socketClosed(again.token!);
+    expect(service.readState(roomId)!.spectatorCount).toBe(0);
+    expect(bus.inbox.at(-1)?.message.type).toBe('player_left');
+  });
+
+  it('spectator resume and token rebinds are idempotent', () => {
+    const { service, roomId, spec1Token } = setUpSpectatedRoom();
+    const resumed = service.resume(roomId, spec1Token);
+    expect(resumed.ok).toBe(true);
+    if (resumed.ok) expect(resumed.role).toBe('spectator');
+    expect(service.readState(roomId)!.spectatorCount).toBe(1);
+
+    // Re-join with the same token updates the seat instead of duplicating it.
+    const rebound = service.joinRoom(roomId, 'Renamed', spec1Token, true);
+    expect(rebound.ok).toBe(true);
+    if (rebound.ok) expect(rebound.token).toBe(spec1Token);
+    expect(service.readState(roomId)!.spectatorCount).toBe(1);
+  });
+
+  it('host_rematch executes the next round instantly (no consent, series kept)', () => {
+    const { service, bus, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host', turnTimerSec: 30 });
+    const p2 = service.joinRoom(created.roomId, 'Guest');
+    if (!p2.ok) throw new Error('join failed');
+    const spec = service.joinRoom(created.roomId, 'Watcher', undefined, true);
+    if (!spec.ok) throw new Error('spectate failed');
+
+    // End round 1: P1 moves inside the window, P2's clock expires.
+    service.move(
+      created.roomId,
+      created.token,
+      spectatorLegalColor(service, created.roomId),
+    );
+    advance(32_000);
+    expect(service.enforceTurnTimers()).toBe(1);
+    expect(service.readState(created.roomId)!.status).toBe('p1_won');
+    expect(service.readState(created.roomId)!.series.p1).toBe(1);
+
+    // The host alone starts the next round.
+    const rm = service.forceRematch(created.roomId, created.token, {});
+    expect(rm.ok).toBe(true);
+    const st = service.readState(created.roomId)!;
+    expect(st.status).toBe('playing');
+    expect(st.roundNumber).toBe(2);
+    expect(st.series.p1).toBe(1); // series persists across rounds
+    expect(st.rematchRequestedBy).toBeNull();
+    expect(st.turn).toBe(2); // first-turn alternation preserved
+    // The restart is broadcast so players and spectators snap to the new round.
+    expect(bus.inbox.at(-1)?.message.type).toBe('reset_accepted');
+    // The spectator seat survived the transition…
+    expect(st.spectatorCount).toBe(1);
+    // …and still cannot act on the fresh round.
+    const stillMuted = service.move(
+      created.roomId,
+      spec.token!,
+      spectatorLegalColor(service, created.roomId),
+    );
+    expect(stillMuted.ok).toBe(false);
+    if (!stillMuted.ok) expect(stillMuted.code).toBe('not_authenticated');
+  });
+
+  it('host_rematch is host-only and refused while a round is live', () => {
+    const { service, roomId, p1Token, p2Token } = setUpSpectatedRoom();
+    // Non-host (P2) → host_only.
+    const byP2 = service.forceRematch(roomId, p2Token, {});
+    expect(byP2.ok).toBe(false);
+    if (!byP2.ok) expect(byP2.code).toBe('host_only');
+    // Live round → not_active.
+    const live = service.forceRematch(roomId, p1Token, {});
+    expect(live.ok).toBe(false);
+    if (!live.ok) expect(live.code).toBe('not_active');
+    expect(service.readState(roomId)!.roundNumber).toBe(1);
+  });
+});

@@ -15,6 +15,7 @@ import {
   Sparkles,
   Link as LinkIcon,
   Play,
+  Eye,
 } from 'lucide-react';
 import { GameMode, MultiplayerOpponent, SeriesScore, ChallengeType } from '../types';
 import { useModalA11y } from '../hooks/useModalA11y';
@@ -41,6 +42,12 @@ interface GameOverModalProps {
   myRole?: 1 | 2 | null;
   rematchRequestedBy?: number | null;
   onLeaveRoom?: () => void;
+  /** P6.6: this viewer holds a receive-only spectator seat (guidance only). */
+  spectating?: boolean;
+  /** P6.6: true for role 1 — hosts start the next round without consent. */
+  isHost?: boolean;
+  /** P6.6: host-instant rematch (ignored unless isHost). */
+  onHostRematch?: () => void;
   /** P6.1: Wordle-style share sheet; non-null only for finished daily rounds. */
   dailyShareText?: string | null;
   /** P6.3: opens the replay viewer for the finished solo game. */
@@ -70,6 +77,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   myRole,
   rematchRequestedBy,
   onLeaveRoom,
+  spectating = false,
+  isHost = false,
+  onHostRematch,
   dailyShareText = null,
   onWatchReplay,
   shareBoardLink = null,
@@ -383,7 +393,15 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
           {/* Action Buttons with Approval Flow */}
           <div className="space-y-1.5 pt-1">
-            {opponent === 'online' && otherWantsRematch ? (
+            {opponent === 'online' && spectating ? (
+              <div className="bg-indigo-950/60 border border-indigo-500/40 p-2.5 rounded-xl text-xs text-indigo-200 flex items-start justify-center gap-2">
+                <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                <span>
+                  You're watching this match. The players decide when the next round
+                  begins.
+                </span>
+              </div>
+            ) : opponent === 'online' && otherWantsRematch ? (
               <div className="space-y-1.5">
                 <p className="text-xs text-amber-300 font-semibold animate-pulse">
                   Opponent wants to play next round!
@@ -410,6 +428,16 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 <Clock className="w-3.5 h-3.5 animate-spin-slow text-indigo-400" />
                 <span>Rematch proposed! Waiting for opponent approval...</span>
               </div>
+            ) : opponent === 'online' && isHost && onHostRematch ? (
+              <button
+                onClick={onHostRematch}
+                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-md shadow-emerald-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs sm:text-sm active:scale-95"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>
+                  {isProgressive ? `Start Stage ${nextStageNum} Now` : 'Rematch Now'}
+                </span>
+              </button>
             ) : (
               <button
                 onClick={onPlayAgain}
