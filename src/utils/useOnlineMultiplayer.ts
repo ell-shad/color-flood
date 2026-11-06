@@ -100,7 +100,13 @@ export function useOnlineMultiplayer() {
     () => () => {
       intentionalCloseRef.current = true;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      wsRef.current?.close();
+      // Detach synchronously so a dev StrictMode remount's resume effect can
+      // create a fresh socket instead of early-returning on a closing one.
+      const ws = wsRef.current;
+      wsRef.current = null;
+      if (ws && ws.readyState !== WebSocket.CLOSED) {
+        ws.close();
+      }
     },
     [],
   );
@@ -281,12 +287,16 @@ export function useOnlineMultiplayer() {
     };
 
     ws.onclose = () => {
+      // Detach only when this socket is still the active one — a late close of
+      // a superseded socket must never unset the live connection.
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+      }
       if (intentionalCloseRef.current) {
         intentionalCloseRef.current = false;
         setConnectionStatus('disconnected');
         return;
       }
-      wsRef.current = null;
       if (roomIdRef.current && playerTokenRef.current) {
         // Reconnect with backoff; the server keeps the room for dropped players.
         reconnectAttemptsRef.current += 1;
