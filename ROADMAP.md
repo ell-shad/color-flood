@@ -59,6 +59,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 4 — Front-end architecture | ✅ | 0670e62 (P4.6) | DONE. Hooks + reducers + unified useGameSession view model (0c755d6), board rendering perf — memoized cells + CSS animations (0670e62) |
 | 5 — UX & accessibility | ✅ | 28ef97e (P5.8) | DONE. Keyboard shortcuts + reduced motion (043ce6b), dialog semantics + focus trap + live announcements (5734230), color-blind support (09ed5f7), first-run tutorial/turn chip/haptics (ece4943), Lighthouse a11y 100/100 (28ef97e) |
 | 6 — Features | ✅ | 7169686 (P6.6) | DONE. P6.1 daily (`a273487`), P6.2 stats (`71da7dc`), P6.3 share+replay (`ff045b6`), P6.4 PWA (`a14b6b6`), P6.5 i18n **SKIPPED by user decision** (single language), P6.6 online: spectator seats + host-instant rematch + remembered name verified (`7169686`); E2E: 3-seat browser flow (host/P2/watcher), turn-timer forfeit → rematch broadcast, spectator authority audited |
+| 7 — Circle mode | 🟡 | — | P7.1 engine in progress |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -248,6 +249,19 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P6.4 | PWA: manifest, service worker, offline solo/local/bot, install prompt (`a14b6b6`) | ✅ |
 | P6.5 | i18n scaffold, no hard-coded UI strings, English + one more locale | ⊘ |
 | P6.6 | Online: spectator mode, quick rematch, remembered player name (`7169686`) | ✅ |
+
+---
+
+## Phase 7 — Circle (Wheel) Mode 🟡
+
+Polar wheel boards: concentric rings × radial sectors, hollow center, color-flood from the
+inner ring outward. Solo only; difficulty derived from the existing size ladder.
+
+| ID | Task | Status |
+| -- | ---- | ------ |
+| P7.1 | `circleEngine`: wheel geometry (rings×sectors from size), seeded generation (uniform inner ring), wrap-aware flood, win/count, greedy hint, move budget + greedy-solver sim validation | 🟡 |
+| P7.2 | Wheel UI: SVG annular-sector board, board-shape pref + settings switch, solo wiring (new game/move/undo/win-loss), seeded-daily stays classic | ⬜ |
+| P7.3 | Shape-aware hints/stats/high scores, share links + replay for wheel games, gates + browser E2E | ⬜ |
 
 ---
 
