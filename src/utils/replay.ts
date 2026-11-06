@@ -13,7 +13,7 @@ export const reconstructReplayStates = (
   finalGrid: number[][],
   history: SoloMoveDiff[][],
 ): number[][][] => {
-  const size = finalGrid.length;
+  const rows = finalGrid.length;
   const states: number[][][] = new Array(history.length).fill(null);
   let current = finalGrid.map((row) => [...row]);
   for (let i = history.length - 1; i >= 0; i--) {
@@ -21,7 +21,9 @@ export const reconstructReplayStates = (
     current = current.map((row) => [...row]);
     const diff = history[i];
     for (const { r, c, prev } of diff) {
-      if (r >= 0 && r < size && c >= 0 && c < size) current[r][c] = prev;
+      // P7.3: wheel boards are rings × sectors (rows ≠ columns), so the bound
+      // comes from each row's own length — not the row count.
+      if (r >= 0 && r < rows && c >= 0 && c < current[r].length) current[r][c] = prev;
     }
   }
   return states;

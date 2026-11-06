@@ -46,6 +46,27 @@ describe('reconstructReplayStates', () => {
     expect(states[0]).not.toBe(final); // defensive copy, no shared references
   });
 
+  it('restores wheel boards whose row count differs from the sector count', () => {
+    // P7.3: a 2-ring × 6-sector wheel — the column bound comes from each
+    // row's length, never from the ring count.
+    const final = [
+      [2, 2, 2, 2, 2, 2],
+      [2, 2, 2, 2, 2, 2],
+    ];
+    const move1: SoloMoveDiff[] = [
+      { r: 0, c: 0, prev: 1 },
+      { r: 0, c: 1, prev: 1 },
+      { r: 1, c: 5, prev: 1 },
+    ];
+    const states = reconstructReplayStates(final, [[], move1]);
+    expect(states).toHaveLength(2);
+    expect(states[1]).toEqual(final);
+    expect(states[0][0][0]).toBe(1);
+    expect(states[0][0][1]).toBe(1);
+    expect(states[0][1][5]).toBe(1); // beyond the ring count (2) — the old bug
+    expect(states[0][1][0]).toBe(2);
+  });
+
   it('does not mutate the input grid', () => {
     const final = [
       [0, 0],

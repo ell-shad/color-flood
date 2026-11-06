@@ -4,14 +4,30 @@ import {
   buildSoloShareLink,
   soloShareParamsFromSearch,
 } from './shareLink';
+import { WHEEL_GEOMETRY, generateSeededWheelBoard } from './circleEngine';
 
 describe('parseSoloShareParams', () => {
-  it('round-trips valid params', () => {
+  it('round-trips valid params (shape absent ⇒ classic)', () => {
     expect(parseSoloShareParams('?seed=123456789&size=12&colors=5')).toEqual({
       seed: 123456789,
       size: 12,
       colors: 5,
+      shape: 'classic',
     });
+  });
+
+  it('accepts an explicit topology and rejects unknown ones', () => {
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=wheel')).toEqual({
+      seed: 7,
+      size: 10,
+      colors: 4,
+      shape: 'wheel',
+    });
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=classic')).toMatchObject({
+      shape: 'classic',
+    });
+    // A malformed topology must not silently open a different board.
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=sphere')).toBeNull();
   });
 
   it('rejects every illegal dimension', () => {
@@ -26,6 +42,7 @@ describe('parseSoloShareParams', () => {
       seed: 7,
       size: 12,
       colors: 5,
+      shape: 'classic',
     });
   });
 });
@@ -37,6 +54,7 @@ describe('soloShareParamsFromSearch', () => {
       seed: 42,
       size: 10,
       colors: 4,
+      shape: 'classic',
     });
   });
 });
@@ -44,7 +62,7 @@ describe('soloShareParamsFromSearch', () => {
 describe('buildSoloShareLink', () => {
   it('carries exactly the share params on an absolute URL', () => {
     const link = buildSoloShareLink(
-      { seed: 42, size: 12, colors: 5 },
+      { seed: 42, size: 12, colors: 5, shape: 'classic' },
       'https://example.com/index.html',
     );
     const u = new URL(link);
@@ -53,16 +71,47 @@ describe('buildSoloShareLink', () => {
     expect(u.searchParams.get('size')).toBe('12');
     expect(u.searchParams.get('colors')).toBe('5');
     expect(u.searchParams.get('room')).toBeNull();
+    // P7.3: classic links stay byte-identical to the pre-wheel format.
+    expect(u.searchParams.get('shape')).toBeNull();
+  });
+
+  it('appends shape=wheel for wheel boards', () => {
+    const link = buildSoloShareLink(
+      { seed: 42, size: 14, colors: 6, shape: 'wheel' },
+      'https://example.com/',
+    );
+    const u = new URL(link);
+    expect(u.searchParams.get('shape')).toBe('wheel');
+    expect(u.searchParams.get('size')).toBe('14');
   });
 
   it('replaces pre-existing query params (a room never drags along)', () => {
     const link = buildSoloShareLink(
-      { seed: 7, size: 10, colors: 4 },
+      { seed: 7, size: 10, colors: 4, shape: 'classic' },
       'https://example.com/?room=AB12&utm=x',
     );
     const q = new URLSearchParams(new URL(link).search);
     expect(q.get('room')).toBeNull();
     expect(q.get('utm')).toBeNull();
     expect(q.get('seed')).toBe('7');
+  });
+});
+
+describe('P7.3 wheel share round-trip', () => {
+  it('rebuilds the identical wheel from the link params', () => {
+    const link = buildSoloShareLink(
+      { seed: 987654321, size: 12, colors: 6, shape: 'wheel' },
+      'https://example.com/',
+    );
+    const parsed = soloShareParamsFromSearch(new URL(link).search);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return; // narrowed
+    const shared = generateSeededWheelBoard(parsed.size, parsed.colors, parsed.seed);
+    const original = generateSeededWheelBoard(12, 6, 987654321);
+    expect(shared).toEqual(original);
+    expect(WHEEL_GEOMETRY[12]).toEqual({
+      rings: shared.length,
+      sectors: shared[0].length,
+    });
   });
 });

@@ -13,6 +13,7 @@ A strategic color-filling puzzle game built with React, Vite, and Tailwind CSS. 
   - **Symmetrical Color Locking**: Neither player can select their own or their rival's current color.
   - **Live Battle Meter**: Real-time domination percentage bar, series score tracker (Best of X), rematch flow, and active turn indicators.
 - **Dynamic Grid Sizes**: Play on 10x10, 12x12, 14x14, 16x16, or 18x18 grids.
+- **◉ Wheel Boards (solo)**: A polar mandala variant — flood outward from the center core across rings and radial sectors, with its own calibrated move budget, star thresholds, records and share links.
 - **Color Selection**: Choose between 4, 5, 6, 7, or 8 colors.
 - **Progressive Challenge**: A 5-stage gauntlet that keeps growing the board and adding colors.
 - **Smart Hint System**: Instant move calculations showing potential cell gains.

@@ -21,7 +21,7 @@ import type {
 } from '../types';
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { getBestMultiplayerMove, getBestSoloMove } from '../utils/floodLogic';
-import { bestWheelMove } from '../utils/circleEngine';
+import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import {
   playEmotePopSound,
   playLoseSound,
@@ -225,6 +225,8 @@ export interface GameSession {
     seed: number;
     size: GridSize;
     colors: ColorCount;
+    /** P7.3: the link carries its topology (wheel links reopen wheels). */
+    shape: BoardShape;
   }) => void;
   /** Absolute share-link URL for the finished board; null while playing. */
   soloShareUrl: string | null;
@@ -360,7 +362,7 @@ export function useGameSession(): GameSession {
     recordWin: recordSoloWin,
   } = useSoloGame(
     {
-      onWin: (moves) => {
+      onWin: (final) => {
         // P5.5: the OS reduce-motion setting skips the burst; sound stays.
         hapticWin(prefs.soundMuted); // P5.7
         if (!prefersReducedMotionSnapshot()) {
@@ -368,10 +370,7 @@ export function useGameSession(): GameSession {
             particleCount: 160,
             spread: 80,
             origin: { y: 0.6 },
-            colors: currentTheme.colors.slice(
-              0,
-              dailyRoundRef.current?.colors ?? prefs.colorCount,
-            ),
+            colors: currentTheme.colors.slice(0, final.boardColors),
           });
         }
         playWinSound(); // fires for every solo win; daily rounds additionally score a streak below
@@ -379,23 +378,22 @@ export function useGameSession(): GameSession {
         // boards are excluded from the per-config high-score tables (the
         // round config can differ from prefs, and replays shouldn't farm stars).
         recordDailyWin();
-        // P6.2: every completed solo game feeds the stats screen (config
-        // follows the daily round when one is active). P7: wheel rounds
-        // skip the square-keyed records until P7.3 re-keys them by shape.
-        if (soloShapeRef.current === 'classic') {
-          recordSoloGameEnd(true, moves);
-        }
-        if (!dailyRoundRef.current && soloShapeRef.current === 'classic') {
-          recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
+        // P6.2/P7.3: every completed solo game feeds the shape-aware stats
+        // screen; non-daily wins also join the shape-aware high-score table.
+        recordSoloGameEnd(final, true);
+        if (!dailyRoundRef.current) {
+          recordSoloWinRef.current?.(
+            final.shape,
+            final.boardSize,
+            final.boardColors as ColorCount,
+            final.moves,
+          );
         }
       },
-      onLose: (moves) => {
+      onLose: (final) => {
         hapticLose(prefs.soundMuted); // P5.7
         playLoseSound();
-        // P7: wheel losses join P7.3's shape-aware stats; no square-keyed rows.
-        if (soloShapeRef.current === 'classic') {
-          recordSoloGameEnd(false, moves); // P6.2
-        }
+        recordSoloGameEnd(final, false); // P6.2
       },
     },
     // P4.4: the first board is built lazily during this initial render.
@@ -492,19 +490,21 @@ export function useGameSession(): GameSession {
   // The ref is the source of truth so the callback stays reentrancy-safe.
   const soloStatsRef = useRef<SoloStats>(loadSoloStats());
   const [soloStatsState, setSoloStatsState] = useState<SoloStats>(() => loadSoloStats());
-  const recordSoloGameEnd = useCallback(
-    (won: boolean, moves: number) => {
-      const round = dailyRoundRef.current;
-      const config = round
-        ? { size: round.size, colors: round.colors }
-        : { size: prefs.gridSize, colors: prefs.colorCount };
-      const next = updateSoloStats(soloStatsRef.current, { ...config, moves, won });
-      soloStatsRef.current = next;
-      saveSoloStats(next);
-      setSoloStatsState(next);
-    },
-    [prefs.gridSize, prefs.colorCount],
-  );
+  const recordSoloGameEnd = useCallback((final: SoloGameState, won: boolean) => {
+    // Read the config off the BOARD: daily rounds override prefs, and wheels
+    // carry their ladder size + palette explicitly. P7.3 records by shape so a
+    // wheel result never lands in the square tables (or the other way round).
+    const next = updateSoloStats(soloStatsRef.current, {
+      shape: final.shape,
+      size: final.boardSize,
+      colors: final.boardColors,
+      moves: final.moves,
+      won,
+    });
+    soloStatsRef.current = next;
+    saveSoloStats(next);
+    setSoloStatsState(next);
+  }, []);
   const resetSoloStats = useCallback(() => {
     soloStatsRef.current = EMPTY_SOLO_STATS;
     saveSoloStats(EMPTY_SOLO_STATS);
@@ -518,12 +518,13 @@ export function useGameSession(): GameSession {
    * other board state reset. Room links keep priority (mount effect).
    */
   const startSharedBoard = useCallback(
-    (params: { seed: number; size: GridSize; colors: ColorCount }) => {
+    (params: { seed: number; size: GridSize; colors: ColorCount; shape: BoardShape }) => {
       prefs.setMode('solo');
       prefs.setGridSize(params.size);
       prefs.setColorCount(params.colors);
-      // P6.3 links are square boards; P7.3 adds ?shape= for wheel games.
-      initSoloBoard(params.size, params.colors, params.seed, 'classic');
+      // P7.3: the link carries its topology — a wheel link must reopen a wheel.
+      prefs.setBoardShape(params.shape);
+      initSoloBoard(params.size, params.colors, params.seed, params.shape);
       setSoloHintsLeft(3);
       setHint(null);
       setHintGain(undefined);
@@ -547,13 +548,13 @@ export function useGameSession(): GameSession {
   const soloShareUrl = (() => {
     if (prefs.mode !== 'solo' || !soloState || soloState.status === 'playing')
       return null;
-    // P7: wheel boards wait for P7.3 (?shape= + wheel reconstruction) so we
-    // never emit a square link that would rebuild the wrong topology.
-    if (soloState.shape !== 'classic') return null;
+    // P7.3: the link carries the topology and the LADDER size (a wheel's
+    // grid.length is its ring count, not its difficulty size).
     return buildSoloShareLink({
       seed: soloState.seed,
-      size: soloState.grid.length,
-      colors: soloState.boardColors,
+      size: soloState.boardSize,
+      colors: soloState.boardColors as ColorCount,
+      shape: soloState.shape,
     });
   })();
 
@@ -629,16 +630,6 @@ export function useGameSession(): GameSession {
   );
   useEffect(() => {
     recordSoloWinRef.current = recordSoloWin;
-  });
-
-  // P7: the win/loss callbacks below run through a ref because the solo
-  // machine's options object is built before its state exists. The shape ref
-  // lets them route records to the right topology (P7.2: wheel rounds skip
-  // the square-keyed high-score/stats tables until P7.3 makes them
-  // shape-aware).
-  const soloShapeRef = useRef<BoardShape>('classic');
-  useEffect(() => {
-    soloShapeRef.current = soloState?.shape ?? 'classic';
   });
 
   useEffect(() => {
@@ -768,9 +759,14 @@ export function useGameSession(): GameSession {
   const activeOnlineProposal =
     onlineActive && roomState?.resetProposal ? roomState.resetProposal : null;
 
+  // P7.3: best score follows the board on screen (shape + its own config).
   const currentHighScore =
-    highScores.find((s) => s.size === prefs.gridSize && s.colors === prefs.colorCount)
-      ?.moves ?? null;
+    highScores.find(
+      (s) =>
+        s.shape === (soloState?.shape ?? 'classic') &&
+        s.size === (soloState?.boardSize ?? prefs.gridSize) &&
+        s.colors === (soloState?.boardColors ?? prefs.colorCount),
+    )?.moves ?? null;
 
   // --- Derived view props: one place resolves every former JSX ternary ------
   const showHintButton = prefs.opponent === 'online' ? false : prefs.showHints;
@@ -887,13 +883,17 @@ export function useGameSession(): GameSession {
       // Limited hints: 3 per solo game. Never free.
       if (soloHintsLeft <= 0) return;
       setSoloHintsLeft((n) => Math.max(0, n - 1));
-      // P7: the hint engine follows the board topology.
-      setHint(
-        s.shape === 'wheel'
-          ? bestWheelMove(s.grid, prefs.colorCount)
-          : getBestSoloMove(s.grid, prefs.colorCount),
-      );
-      setHintGain(undefined);
+      // P7: the hint engine follows the board topology; P7.3 also reports the
+      // wheel's immediate gain and reads the palette off the board (a shared
+      // or daily board may not match the current prefs).
+      if (s.shape === 'wheel') {
+        const wheelHint = bestWheelMoveWithGain(s.grid, s.boardColors);
+        setHint(wheelHint?.color ?? null);
+        setHintGain(wheelHint?.gain);
+      } else {
+        setHint(getBestSoloMove(s.grid, s.boardColors));
+        setHintGain(undefined);
+      }
       return;
     }
     if (prefs.opponent === 'online') {

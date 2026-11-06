@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { loadJson, saveJson } from './storage';
-import type { GridSize, ColorCount } from '../types';
+import type { BoardShape } from '../types';
 import { type SoloStars, rateSoloStars } from './soloBalance';
+import { rateWheelStars } from './circleEngine';
 
 /**
  * P6.2: per-device solo statistics, persisted alongside the other versioned
@@ -13,6 +14,8 @@ import { type SoloStars, rateSoloStars } from './soloBalance';
  */
 
 export interface SoloConfigStats {
+  /** P7.3: topology the row belongs to — wheel records rate on wheel par. */
+  shape: BoardShape;
   size: number;
   colors: number;
   games: number;
@@ -37,6 +40,8 @@ export const EMPTY_SOLO_STATS: SoloStats = {
 };
 
 const ConfigStatsSchema = z.object({
+  // P7.3: rows recorded before shapes existed are classic squares.
+  shape: z.enum(['classic', 'wheel']).optional(),
   size: z.number().int().min(4).max(32),
   colors: z.number().int().min(2).max(12),
   games: z.number().int().min(0).max(9_999),
@@ -54,7 +59,8 @@ const SoloStatsSchema = z.object({
     current: z.number().int().min(0).max(9_999),
     best: z.number().int().min(0).max(9_999),
   }),
-  byConfig: z.array(ConfigStatsSchema).max(40),
+  // 25 configs × 2 topologies, plus headroom.
+  byConfig: z.array(ConfigStatsSchema).max(60),
 });
 
 export const loadSoloStats = (): SoloStats => {
@@ -66,6 +72,7 @@ export const loadSoloStats = (): SoloStats => {
     total: { games: loaded.total.games, wins: loaded.total.wins },
     winStreak: { current: loaded.winStreak.current, best: loaded.winStreak.best },
     byConfig: loaded.byConfig.map((c) => ({
+      shape: c.shape === 'wheel' ? 'wheel' : 'classic',
       size: c.size,
       colors: c.colors,
       games: c.games,
@@ -81,18 +88,24 @@ export const saveSoloStats = (stats: SoloStats): void => {
 };
 
 export interface SoloGameEnd {
-  size: GridSize;
-  colors: ColorCount;
+  /** P7.3: topology; omitted ⇒ classic (legacy callers/tests). */
+  shape?: BoardShape;
+  size: number;
+  colors: number;
   moves: number;
   won: boolean;
 }
 
 /** Pure reducer for one finished game (the config entry is merged lazily). */
 export const updateSoloStats = (stats: SoloStats, game: SoloGameEnd): SoloStats => {
+  const shape: BoardShape = game.shape ?? 'classic';
   const byConfig = stats.byConfig.map((c) => ({ ...c }));
-  let entry = byConfig.find((c) => c.size === game.size && c.colors === game.colors);
+  let entry = byConfig.find(
+    (c) => c.shape === shape && c.size === game.size && c.colors === game.colors,
+  );
   if (!entry) {
     entry = {
+      shape,
       size: game.size,
       colors: game.colors,
       games: 0,
@@ -109,7 +122,10 @@ export const updateSoloStats = (stats: SoloStats, game: SoloGameEnd): SoloStats 
     entry.bestMoves =
       entry.bestMoves === null ? game.moves : Math.min(entry.bestMoves, game.moves);
   }
-  byConfig.sort((a, b) => a.size - b.size || a.colors - b.colors);
+  byConfig.sort(
+    (a, b) =>
+      a.shape.localeCompare(b.shape) || a.size - b.size || a.colors - b.colors,
+  );
 
   const total = {
     games: stats.total.games + 1,
@@ -125,10 +141,12 @@ export const updateSoloStats = (stats: SoloStats, game: SoloGameEnd): SoloStats 
 };
 
 /** Stars earned for a config's record win (null until any win exists). */
-export const statsStarsFor = (entry: SoloConfigStats): SoloStars | null =>
-  entry.bestMoves === null
-    ? null
+export const statsStarsFor = (entry: SoloConfigStats): SoloStars | null => {
+  if (entry.bestMoves === null) return null;
+  return entry.shape === 'wheel'
+    ? rateWheelStars(entry.bestMoves, entry.size, entry.colors)
     : rateSoloStars(entry.bestMoves, entry.size, entry.colors);
+};
 
 /** Win rate as a whole percent (0–100), guarded against divide-by-zero. */
 export const winRatePercent = (wins: number, games: number): number =>

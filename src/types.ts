@@ -62,6 +62,9 @@ export interface SoloGameState {
   seed: number;
   /** P6.3: palette width chosen at generation (share links; size = grid.length). */
   boardColors: number;
+  /** P7.3: ladder size (10–18) that generated the board — wheel grids are
+   * rings × sectors, so grid.length is NOT the difficulty size. */
+  boardSize: GridSize;
 }
 
 export interface TwoPlayerGameState {
@@ -127,6 +130,8 @@ export interface ActiveEmote {
 }
 
 export interface HighScore {
+  /** P7.3: topology the record belongs to (wheels rate on their own par). */
+  shape: BoardShape;
   size: number;
   colors: number;
   moves: number;

@@ -174,22 +174,29 @@ export const countConnectedWheel = (grid: number[][]): number => {
  * toward the smaller palette index. Returns null when the board is already
  * won (any further "hint" would be pointless).
  */
-export const bestWheelMove = (grid: number[][], colorCount: number): number | null => {
+export const bestWheelMove = (grid: number[][], colorCount: number): number | null =>
+  bestWheelMoveWithGain(grid, colorCount)?.color ?? null;
+
+/**
+ * P7.3: hint + its immediate cell gain (the palette chip's `(+n)` badge the
+ * square hint has always shown). Kept separate from the square helper because
+ * wheels count their claim through `countConnectedWheel`.
+ */
+export const bestWheelMoveWithGain = (
+  grid: number[][],
+  colorCount: number,
+): { color: number; gain: number } | null => {
   if (checkWheelWin(grid)) return null;
   const seedColor = grid[0][0];
   const before = countConnectedWheel(grid);
-  let bestColor: number | null = null;
-  let bestGain = 0;
+  let best: { color: number; gain: number } | null = null;
   for (let c = 0; c < colorCount; c++) {
     if (c === seedColor) continue;
-    const sized = floodWheel(grid, c);
-    const gain = countConnectedWheel(sized) - before;
-    if (gain > bestGain) {
-      bestGain = gain;
-      bestColor = c;
-    }
+    const gain = countConnectedWheel(floodWheel(grid, c)) - before;
+    // Ties keep the earlier (smaller) palette index — same as bestWheelMove.
+    if (gain > 0 && (best === null || gain > best.gain)) best = { color: c, gain };
   }
-  return bestColor;
+  return best;
 };
 
 /** Convenience for seeded reconstruction (share links / replays). */

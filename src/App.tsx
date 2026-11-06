@@ -285,7 +285,7 @@ export default function App() {
                     onUndo={session.undoSolo}
                     canUndo={session.canUndoSolo}
                     shape={session.soloState.shape}
-                    boardSize={session.gridView.gridSize}
+                    boardSize={session.soloState.boardSize}
                   />
                   {/* P6.1: Daily Challenge strip (solo only) */}
                   <div className="w-full flex justify-center">
@@ -325,7 +325,7 @@ export default function App() {
                 {session.mode === 'solo' && session.soloState.shape === 'wheel' ? (
                   <WheelBoard
                     grid={session.soloState.grid}
-                    size={session.gridView.gridSize}
+                    size={session.soloState.boardSize}
                     theme={session.currentTheme}
                     movesCount={session.gridMovesCount}
                     showColorSymbols={session.showColorSymbols}
@@ -366,10 +366,7 @@ export default function App() {
                   dailyShareText={session.dailyShareText}
                   onWatchReplay={
                     session.mode === 'solo' && session.soloState.status !== 'playing'
-                      ? // P7: wheel replay reconstruction arrives with ?shape= links.
-                        session.soloState.shape === 'classic'
-                        ? () => setShowReplay(true)
-                        : undefined
+                      ? () => setShowReplay(true)
                       : undefined
                   }
                   shareBoardLink={session.soloShareUrl}
@@ -482,6 +479,8 @@ export default function App() {
             history={session.soloState.history}
             playedColors={session.soloState.playedColors}
             theme={session.currentTheme}
+            shape={session.soloState.shape}
+            size={session.soloState.boardSize}
           />
         )}
 

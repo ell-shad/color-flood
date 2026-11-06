@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { reconstructReplayStates } from '../utils/replay';
-import type { SoloMoveDiff, GameTheme } from '../types';
+import { WheelBoard } from './WheelBoard';
+import type { SoloMoveDiff, GameTheme, BoardShape } from '../types';
 
 interface ReplayModalProps {
   isOpen: boolean;
@@ -24,6 +25,10 @@ interface ReplayModalProps {
   /** Played palette indices (1-based) for the move label chip. */
   playedColors: number[];
   theme: GameTheme;
+  /** P7.3: board topology — wheels replay on the polar board. */
+  shape?: BoardShape;
+  /** P7.3: ladder size (10–18) the wheel geometry derives from. */
+  size?: number;
   /** Auto-advance cadence for the play button (ms). */
   stepMs?: number;
 }
@@ -40,6 +45,8 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
   history,
   playedColors,
   theme,
+  shape = 'classic',
+  size = 10,
   stepMs = 700,
 }) => {
   // P5.3: dialog semantics, focus trap, focus restore.
@@ -114,30 +121,40 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
             </button>
           </div>
 
-          {/* Board frame */}
+          {/* Board frame — P7.3: wheels replay on the polar board */}
           <div className="flex justify-center">
-            <div
-              className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none`}
-              style={{ width: 'min(60vw, min(34vh, 300px))', aspectRatio: '1/1' }}
-            >
+            {shape === 'wheel' ? (
+              <WheelBoard
+                grid={replayGrid}
+                size={size}
+                theme={theme}
+                movesCount={index}
+                frameWidth="min(100%, 300px)"
+              />
+            ) : (
               <div
-                className="grid gap-1 sm:gap-1.5 w-full h-full"
-                style={{
-                  gridTemplateColumns: `repeat(${replayGrid.length}, minmax(0, 1fr))`,
-                  gridTemplateRows: `repeat(${replayGrid.length}, minmax(0, 1fr))`,
-                }}
+                className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none`}
+                style={{ width: 'min(60vw, min(34vh, 300px))', aspectRatio: '1/1' }}
               >
-                {replayGrid.map((row, r) =>
-                  row.map((colorIdx, c) => (
-                    <div
-                      key={`${r},${c}`}
-                      className="rounded-[6px] sm:rounded-md shadow-inner transition-colors duration-300"
-                      style={{ backgroundColor: theme.colors[colorIdx] }}
-                    />
-                  )),
-                )}
+                <div
+                  className="grid gap-1 sm:gap-1.5 w-full h-full"
+                  style={{
+                    gridTemplateColumns: `repeat(${replayGrid.length}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${replayGrid.length}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {replayGrid.map((row, r) =>
+                    row.map((colorIdx, c) => (
+                      <div
+                        key={`${r},${c}`}
+                        className="rounded-[6px] sm:rounded-md shadow-inner transition-colors duration-300"
+                        style={{ backgroundColor: theme.colors[colorIdx] }}
+                      />
+                    )),
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Progress + played-color chip */}

@@ -28,6 +28,8 @@ interface WheelBoardProps {
   movesCount?: number;
   /** P5.4: overlay digit (palette index + 1) per cell — color-blind aid. */
   showColorSymbols?: boolean;
+  /** P7.3: frame width override (the replay modal renders it smaller). */
+  frameWidth?: string;
 }
 
 interface WheelCellProps {
@@ -123,6 +125,7 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
   theme = THEMES.arcade,
   movesCount = 0,
   showColorSymbols = false,
+  frameWidth = 'min(88vw, min(40vh, 380px))',
 }) => {
   const popAnim = movesCount % 2 === 0 ? 'cell-pop-even' : 'cell-pop-odd';
   const shape = useMemo(() => wheelGeometry(size), [size]);
@@ -175,7 +178,7 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
     <div
       className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none mx-auto shrink-0 transition-colors duration-300`}
       style={{
-        width: 'min(88vw, min(40vh, 380px))',
+        width: frameWidth,
         aspectRatio: '1/1',
       }}
     >

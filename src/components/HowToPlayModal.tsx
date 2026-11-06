@@ -94,6 +94,14 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
+                  <strong>Wheel boards:</strong> switch Board Shape to <em>Wheel</em> in
+                  Settings — same flood rule, but your territory pours out of the center
+                  core and spreads ring by ring.
+                </p>
+              </div>
+              <div className="flex gap-2.5 items-start">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p>
                   <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify
                   the color that claims the highest number of adjacent cells in one
                   stroke.

@@ -9,6 +9,8 @@ import {
   Star,
   Trash2,
   ShieldCheck,
+  Circle,
+  Square,
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import {
@@ -188,11 +190,31 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                       const stars = statsStarsFor(entry);
                       return (
                         <tr
-                          key={`${entry.size}-${entry.colors}`}
+                          key={`${entry.shape}-${entry.size}-${entry.colors}`}
                           className="border-t border-slate-800 text-slate-200"
                         >
                           <td className="py-1.5 px-2 text-left font-mono font-bold text-indigo-300">
-                            {entry.size}²·{entry.colors}
+                            {/* P7.3: rows are keyed by topology (classic ⊞ / wheel ◉) */}
+                            <span className="inline-flex items-center gap-1">
+                              {entry.shape === 'wheel' ? (
+                                <Circle
+                                  className="w-3 h-3 text-fuchsia-300 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <Square
+                                  className="w-3 h-3 text-indigo-300 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span>
+                                {entry.size}
+                                {entry.shape === 'wheel' ? '' : '²'}·{entry.colors}
+                              </span>
+                              <span className="sr-only">
+                                {entry.shape === 'wheel' ? 'wheel board' : 'classic board'}
+                              </span>
+                            </span>
                           </td>
                           <td className="py-1.5 px-1 text-right">
                             {entry.games}

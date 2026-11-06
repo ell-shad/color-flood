@@ -30,32 +30,46 @@ import { z } from 'zod';
 // --- High scores (persisted per config) --------------------------------------
 
 const HighScoreSchema = z.object({
+  // P7.3: rows written before shapes existed load as classic square records.
+  shape: z.enum(['classic', 'wheel']).optional(),
   size: z.number().int().min(5).max(30),
   colors: z.number().int().min(2).max(12),
   moves: z.number().int().min(1).max(9999),
 });
-const HighScoresSchema = z.array(HighScoreSchema).max(50);
+const HighScoresSchema = z.array(HighScoreSchema).max(100);
 
 export const loadHighScores = (): HighScore[] =>
-  loadJson('high-scores', HighScoresSchema, 'color-flood-high-scores') ?? [];
+  (loadJson('high-scores', HighScoresSchema, 'color-flood-high-scores') ?? []).map(
+    (s) => ({
+      shape: s.shape === 'wheel' ? 'wheel' : 'classic',
+      size: s.size,
+      colors: s.colors,
+      moves: s.moves,
+    }),
+  );
 
-const updateHighScores = (
+/**
+ * P7.3: upsert one record keyed by TOPOLOGY + config. Wheels are rated on
+ * their own par table, so a wheel best never overwrites a square best (or the
+ * reverse). Pure; equal/worse scores return the same array.
+ */
+export const upsertHighScore = (
   prev: HighScore[],
+  shape: BoardShape,
   size: GridSize,
   colors: ColorCount,
   moves: number,
 ): HighScore[] => {
-  const idx = prev.findIndex((s) => s.size === size && s.colors === colors);
-  let next: HighScore[];
+  const idx = prev.findIndex(
+    (s) => s.shape === shape && s.size === size && s.colors === colors,
+  );
   if (idx > -1) {
     if (moves >= prev[idx].moves) return prev;
-    next = [...prev];
-    next[idx] = { size, colors, moves };
-  } else {
-    next = [...prev, { size, colors, moves }];
+    const next = [...prev];
+    next[idx] = { shape, size, colors, moves };
+    return next;
   }
-  saveJson('high-scores', next);
-  return next;
+  return [...prev, { shape, size, colors, moves }];
 };
 
 // --- Reducer -----------------------------------------------------------------
@@ -125,6 +139,7 @@ const soloReducer = (
         playedColors: [],
         seed,
         boardColors: action.colors,
+        boardSize: action.size,
       };
     }
     case 'move': {
@@ -166,9 +181,10 @@ const soloReducer = (
 };
 
 export interface SoloGameOptions {
-  onWin?: (moves: number) => void;
-  /** P6.2: gets the final move count for the stats screen. */
-  onLose?: (moves: number) => void;
+  /** P7.3: the finished state carries shape/size/config for shape-aware records. */
+  onWin?: (final: SoloGameState) => void;
+  /** P6.2: same final state for the stats screen. */
+  onLose?: (final: SoloGameState) => void;
 }
 
 /**
@@ -208,9 +224,9 @@ export function useSoloGame(
     }
     onEndStatus.current = soloState.status;
     if (soloState.status === 'won') {
-      optsRef.current.onWin?.(soloState.moves);
+      optsRef.current.onWin?.(soloState);
     } else if (soloState.status === 'lost') {
-      optsRef.current.onLose?.(soloState.moves);
+      optsRef.current.onLose?.(soloState);
     }
   });
 
@@ -226,13 +242,22 @@ export function useSoloGame(
   const canUndo =
     !!soloState && soloState.status === 'playing' && soloState.history.length > 1;
 
-  const recordWin = useCallback((size: GridSize, colors: ColorCount, moves: number) => {
-    setHighScores((prev) => updateHighScores(prev, size, colors, moves));
-  }, []);
+  const recordWin = useCallback(
+    (shape: BoardShape, size: GridSize, colors: ColorCount, moves: number) => {
+      setHighScores((prev) => {
+        const next = upsertHighScore(prev, shape, size, colors, moves);
+        if (next !== prev) saveJson('high-scores', next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const currentBest = useCallback(
-    (size: GridSize, colors: ColorCount): number | null =>
-      highScores.find((s) => s.size === size && s.colors === colors)?.moves ?? null,
+    (shape: BoardShape, size: GridSize, colors: ColorCount): number | null =>
+      highScores.find(
+        (s) => s.shape === shape && s.size === size && s.colors === colors,
+      )?.moves ?? null,
     [highScores],
   );
 

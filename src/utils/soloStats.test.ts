@@ -6,6 +6,8 @@ import {
   winRatePercent,
   avgMovesFor,
 } from './soloStats';
+import { rateSoloStars } from './soloBalance';
+import { rateWheelStars } from './circleEngine';
 
 describe('updateSoloStats', () => {
   it('records a first win: totals, streak, config entry with best', () => {
@@ -19,6 +21,8 @@ describe('updateSoloStats', () => {
     expect(next.winStreak).toEqual({ current: 1, best: 1 });
     expect(next.byConfig).toHaveLength(1);
     expect(next.byConfig[0]).toEqual({
+      // P7.3: omitted shape defaults to the classic square.
+      shape: 'classic',
       size: 10,
       colors: 4,
       games: 1,
@@ -70,6 +74,33 @@ describe('updateSoloStats', () => {
       sumMoves: 26,
       bestMoves: 12,
     });
+  });
+
+  it('keeps wheel and classic records apart and rates wheels on their own par', () => {
+    let s = updateSoloStats(EMPTY_SOLO_STATS, {
+      shape: 'classic',
+      size: 10,
+      colors: 4,
+      moves: 12,
+      won: true,
+    });
+    s = updateSoloStats(s, {
+      shape: 'wheel',
+      size: 10,
+      colors: 4,
+      moves: 12,
+      won: true,
+    });
+    // Same size/colors, different topology ⇒ two rows (classic sorts first).
+    expect(s.byConfig).toHaveLength(2);
+    expect(s.byConfig.map((c) => c.shape)).toEqual(['classic', 'wheel']);
+    expect(s.byConfig[0].games).toBe(1);
+    expect(s.byConfig[1].games).toBe(1);
+    // Stars come from the matching par table.
+    expect(statsStarsFor(s.byConfig[0])).toBe(rateSoloStars(12, 10, 4));
+    expect(statsStarsFor(s.byConfig[1])).toBe(rateWheelStars(12, 10, 4));
+    // The wheel par is tighter, so the same 12 moves must not earn more stars.
+    expect(rateWheelStars(12, 10, 4)).toBeLessThanOrEqual(rateSoloStars(12, 10, 4));
   });
 
   it('star rating is derived from the best win', () => {

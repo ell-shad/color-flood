@@ -8,6 +8,7 @@ import {
   checkWheelWin,
   countConnectedWheel,
   bestWheelMove,
+  bestWheelMoveWithGain,
   getMaxWheelMoves,
   getWheelPar,
   rateWheelStars,
@@ -199,7 +200,7 @@ describe('P7.1 circle engine — win & count', () => {
 /**
  * Solver-solvability acceptance (P7.1 calibration): the greedy hint must win
  * ≥ 90% of sampled games WITHIN the budget — the DoD's competent-player bar.
- * The offline 500-seed sim at the 0.7× factor ranges 96.8–100% per config
+ * The offline 500-seed sim at the 0.9× factor ranges 96.8–100% per config
  * (the square ladder itself floors at ~98%). 20 deterministic seeds per
  * config keep the suite fast.
  */
@@ -245,6 +246,25 @@ describe('P7.1 circle engine — hint', () => {
     // A fully flooded wheel yields no hint.
     const won = Array.from({ length: 3 }, () => Array.from({ length: 4 }, () => 2));
     expect(bestWheelMove(won, 5)).toBeNull();
+  });
+
+  it('reports the hint gain for the palette badge (P7.3)', () => {
+    // ring0 A A A / ring1 B C B: color 1 absorbs two sectors, color 2 one.
+    const grid = [
+      [0, 0, 0],
+      [1, 2, 1],
+    ];
+    expect(bestWheelMoveWithGain(grid, 3)).toEqual({ color: 1, gain: 2 });
+    // A won board offers no hint (and therefore no gain).
+    expect(
+      bestWheelMoveWithGain(
+        [
+          [2, 2, 2],
+          [2, 2, 2],
+        ],
+        3,
+      ),
+    ).toBeNull();
   });
 
   it('ties break toward the larger-claim color the greedy way', () => {
