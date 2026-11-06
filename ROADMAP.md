@@ -223,7 +223,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 ---
 
-## Phase 5 — UX & Accessibility ⬜
+## Phase 5 — UX & Accessibility ✅
 
 | ID | Task | Status |
 | -- | ---- | ------ |
@@ -234,7 +234,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P5.5 | Respect `prefers-reduced-motion` (animations, confetti) | ✅ 043ce6b (MotionConfig user + CSS media query + confetti gating) |
 | P5.6 | Solo undo: store diffs instead of full grids in history | ✅ 043ce6b ({r,c,prev} diffs; Undo button + U key; gated to active play) |
 | P5.7 | First-run interactive tutorial; clearer turn indicator; haptics on mobile; layout checks 320–1440 px portrait+landscape | ✅ ece4943 (3-step coach-mark w/ real-move auto-advance; turn/waiting chip; vibrate move/win/lose/turn; 5-viewport sweep no overflow) |
-| P5.8 | Lighthouse a11y ≥ 95 verified | ⬜ |
+| P5.8 | Lighthouse a11y ≥ 95 verified | ✅ 28ef97e (final score 100/100; axe-core 0 contrast violations in solo + 2P states; dev-server robots.txt noted out of scope) |
 
 ---
 
