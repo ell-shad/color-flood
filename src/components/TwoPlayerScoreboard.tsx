@@ -111,7 +111,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
           <span className="text-cyan-400 font-bold">
             {displayName1.slice(0, 6)}: {seriesScore.p1}
           </span>
-          <span className="text-slate-600">—</span>
+          <span className="text-slate-500">—</span>
           <span className="text-rose-400 font-bold">
             {displayName2.slice(0, 6)}: {seriesScore.p2}
           </span>

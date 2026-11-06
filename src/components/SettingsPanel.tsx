@@ -20,6 +20,7 @@ import {
   Trophy,
   Lightbulb,
   Volume2,
+  Shapes,
 } from 'lucide-react';
 
 interface SettingsPanelProps {
@@ -34,6 +35,9 @@ interface SettingsPanelProps {
   onChangeBotDifficulty: (diff: BotDifficulty) => void;
   showTerritoryOverlay: boolean;
   onToggleTerritoryOverlay: () => void;
+  /** P5.4: digit overlay on cells — color-blind aid (persisted, all modes). */
+  showColorSymbols?: boolean;
+  onToggleColorSymbols?: () => void;
   showHints: boolean;
   onToggleShowHints: () => void;
   onResetSeries: () => void;
@@ -63,6 +67,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeBotDifficulty,
   showTerritoryOverlay,
   onToggleTerritoryOverlay,
+  showColorSymbols = false,
+  onToggleColorSymbols,
   showHints,
   onToggleShowHints,
   onResetSeries,
@@ -131,7 +137,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 onClick={() => onChangeChallengeType('progressive')}
                 className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   challengeType === 'progressive'
-                    ? 'bg-amber-600 text-white shadow-md border border-amber-400/50'
+                    ? 'bg-amber-500 text-slate-950 shadow-md border border-amber-400/50'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
                 }`}
               >
@@ -176,7 +182,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   }
                   className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     turnTimerSec === sec
-                      ? 'bg-amber-600 text-white shadow-md border border-amber-400/50'
+                      ? 'bg-amber-500 text-slate-950 shadow-md border border-amber-400/50'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
                   }`}
                 >
@@ -251,6 +257,27 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         </div>
 
+        {/* P5.4: Color-blind aid — palette-digit overlay on every cell.
+            Keep it visible in every mode; it is a device-level aid. */}
+        {onToggleColorSymbols && (
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={onToggleColorSymbols}
+              title="Show the palette number on each cell so colors stay tellable without hue vision (pairs with the Color Safe theme)"
+              className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
+            >
+              <Shapes className="w-3.5 h-3.5 text-sky-400" />
+              <span>
+                Symbols:{' '}
+                <strong className="text-white">{showColorSymbols ? 'ON' : 'OFF'}</strong>
+              </span>
+            </button>
+            <span className="text-[10px] text-slate-400">
+              Color-blind aid (1–8 = palette keys)
+            </span>
+          </div>
+        )}
+
         {/* 2-Player Options */}
         {mode === 'multiplayer' && (
           <div className="space-y-2.5 pt-2 border-t border-slate-750">
@@ -272,7 +299,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       onClick={() => onChangeBotDifficulty(diff)}
                       className={`flex-1 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         botDifficulty === diff
-                          ? 'bg-cyan-600 text-white shadow border border-cyan-400/40'
+                          ? 'bg-cyan-700 text-white shadow border border-cyan-400/40'
                           : 'bg-slate-800 text-slate-400 hover:bg-slate-750 border border-slate-700/50'
                       }`}
                     >

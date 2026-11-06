@@ -86,7 +86,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
               <Star
                 key={n}
                 className={`w-3.5 h-3.5 ${
-                  n <= stars ? 'text-amber-400 fill-amber-400' : 'text-slate-600'
+                  n <= stars ? 'text-amber-400 fill-amber-400' : 'text-slate-500'
                 }`}
               />
             ))}
@@ -116,7 +116,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
           />
           <span
             className={`text-xs font-mono font-bold ${
-              hintsExhausted ? 'text-slate-600' : 'text-indigo-300'
+              hintsExhausted ? 'text-slate-500' : 'text-indigo-300'
             }`}
           >
             {hintsLeft}

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { GameMode, MultiplayerOpponent, GameTheme } from '../types';
 import { THEMES } from '../utils/themes';
+import { cellInkOn } from '../utils/contrast';
 
 /**
  * P4.6: board rendering used to run one framer-motion element per cell (up to
@@ -25,6 +26,8 @@ interface GameGridProps {
   theme?: GameTheme;
   /** Move counter: parity flips the pop keyframe so CSS can restart it. */
   movesCount?: number;
+  /** P5.4: overlay digit (palette index + 1) on every cell — color-blind aid. */
+  showColorSymbols?: boolean;
 }
 
 interface GridCellProps {
@@ -38,6 +41,10 @@ interface GridCellProps {
   ownedMarker: 'none' | 'p1' | 'p2';
   waveDelay: number;
   popAnim: string;
+  /** P5.4: digit glyph ('' = hidden) with AA ink colors for this cell. */
+  symbolGlyph: string;
+  inkColor: string;
+  inkShadow: string;
 }
 
 /**
@@ -55,6 +62,9 @@ const GridCell = React.memo(function GridCell({
   ownedMarker,
   waveDelay,
   popAnim,
+  symbolGlyph,
+  inkColor,
+  inkShadow,
 }: GridCellProps) {
   return (
     <div
@@ -66,6 +76,16 @@ const GridCell = React.memo(function GridCell({
         animation: `${popAnim} 0.32s ease-in-out ${waveDelay}s both`,
       }}
     >
+      {/* P5.4: palette-index digit (1–8) — tells a color-blind player exactly
+          which palette button to press; ink is contrast-checked per cell. */}
+      {symbolGlyph && (
+        <span
+          className="pointer-events-none select-none font-black leading-none text-[11px] sm:text-[13px]"
+          style={{ color: inkColor, textShadow: inkShadow }}
+        >
+          {symbolGlyph}
+        </span>
+      )}
       {/* Starting Root Corner Animated Halo — visuals unchanged */}
       {startMarker === 'p1' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -110,6 +130,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
   lastMovingPlayer = 1,
   theme = THEMES.arcade,
   movesCount = 0,
+  showColorSymbols = false,
 }) => {
   const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
   const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
@@ -160,10 +181,14 @@ export const GameGrid: React.FC<GameGridProps> = ({
             if (isP1Owned) ownedMarker = 'p1';
             else if (isP2Owned) ownedMarker = 'p2';
 
+            // P5.4: pick ink ≥ 4.5:1 on this cell's fill for the digit overlay.
+            const cellHex = activeColors[colorIdx] || '#FF595E';
+            const ink = showColorSymbols ? cellInkOn(cellHex) : null;
+
             return (
               <GridCell
                 key={key}
-                color={activeColors[colorIdx] || '#FF595E'}
+                color={cellHex}
                 radiusClass={radius}
                 glowClass={glowClass}
                 startMarker={isP1Start ? 'p1' : isP2Start ? 'p2' : 'none'}
@@ -172,6 +197,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 ownedMarker={ownedMarker}
                 waveDelay={waveDelay}
                 popAnim={popAnim}
+                symbolGlyph={ink ? String(colorIdx + 1) : ''}
+                inkColor={ink ? ink.color : ''}
+                inkShadow={ink ? ink.shadow : ''}
               />
             );
           }),

@@ -88,6 +88,9 @@ export interface GameSession {
   opponent: MultiplayerOpponent;
   showTerritoryOverlay: boolean;
   setShowTerritoryOverlay: React.Dispatch<React.SetStateAction<boolean>>;
+  /** P5.4: digit overlay on cells (color-blind aid), local-only pref. */
+  showColorSymbols: boolean;
+  setShowColorSymbols: React.Dispatch<React.SetStateAction<boolean>>;
   showHints: boolean;
   setShowHints: React.Dispatch<React.SetStateAction<boolean>>;
   soundMuted: boolean;
@@ -897,6 +900,8 @@ export function useGameSession(): GameSession {
     opponent: prefs.opponent,
     showTerritoryOverlay: prefs.showTerritoryOverlay,
     setShowTerritoryOverlay: prefs.setShowTerritoryOverlay,
+    showColorSymbols: prefs.showColorSymbols,
+    setShowColorSymbols: prefs.setShowColorSymbols,
     showHints: prefs.showHints,
     setShowHints: prefs.setShowHints,
     soundMuted: prefs.soundMuted,

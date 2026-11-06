@@ -140,6 +140,8 @@ export default function App() {
               onToggleTerritoryOverlay={() =>
                 session.setShowTerritoryOverlay((prev) => !prev)
               }
+              showColorSymbols={session.showColorSymbols}
+              onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
               showHints={session.showHints}
               onToggleShowHints={() => session.setShowHints((prev) => !prev)}
               onResetSeries={session.resetSeries}
@@ -216,6 +218,7 @@ export default function App() {
                   p1Cells={session.gridView.p1Cells}
                   p2Cells={session.gridView.p2Cells}
                   showTerritoryOverlay={session.showTerritoryOverlay}
+                  showColorSymbols={session.showColorSymbols}
                   lastMovingPlayer={session.lastMovingPlayer}
                   theme={session.currentTheme}
                   movesCount={session.gridMovesCount}

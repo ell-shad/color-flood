@@ -71,8 +71,8 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
               </span>
             );
           } else if (isUpcoming) {
-            statusBg = 'bg-slate-950/50 border-slate-850 text-slate-600 opacity-75';
-            badge = <Lock className="w-2.5 h-2.5 text-slate-600 shrink-0" />;
+            statusBg = 'bg-slate-950/50 border-slate-850 text-slate-500';
+            badge = <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />;
           }
 
           return (

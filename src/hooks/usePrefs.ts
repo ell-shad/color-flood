@@ -40,6 +40,9 @@ export interface Prefs {
   setChallengeType: (c: ChallengeType) => void;
   showTerritoryOverlay: boolean;
   setShowTerritoryOverlay: DispatchBool;
+  /** P5.4: overlay digits (1..8) on every cell — a color-blind aid. */
+  showColorSymbols: boolean;
+  setShowColorSymbols: DispatchBool;
   showHints: boolean;
   setShowHints: DispatchBool;
   soundMuted: boolean;
@@ -96,6 +99,10 @@ export function usePrefs(): Prefs {
     return loadString('overlay', 'color-flood-overlay') !== 'false';
   });
 
+  const [showColorSymbols, setShowColorSymbols] = useState<boolean>(() => {
+    return loadBool('color-symbols', false, 'color-flood-color-symbols');
+  });
+
   const [showHints, setShowHints] = useState<boolean>(() => {
     return loadBool('show-hints', false, 'color-flood-show-hints');
   });
@@ -113,6 +120,10 @@ export function usePrefs(): Prefs {
   useEffect(
     () => saveString('overlay', String(showTerritoryOverlay)),
     [showTerritoryOverlay],
+  );
+  useEffect(
+    () => saveString('color-symbols', String(showColorSymbols)),
+    [showColorSymbols],
   );
   useEffect(() => saveString('show-hints', String(showHints)), [showHints]);
 
@@ -140,6 +151,8 @@ export function usePrefs(): Prefs {
     setChallengeType,
     showTerritoryOverlay,
     setShowTerritoryOverlay,
+    showColorSymbols,
+    setShowColorSymbols,
     showHints,
     setShowHints,
     soundMuted,

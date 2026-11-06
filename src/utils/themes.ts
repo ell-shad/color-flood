@@ -208,6 +208,41 @@ export const THEMES: Record<ThemeId, GameTheme> = {
     glowP2:
       'ring-1 sm:ring-[1.5px] ring-purple-300 shadow-[0_0_8px_rgba(216,180,254,0.4)]',
   },
+  colorblind: {
+    id: 'colorblind',
+    name: 'Color Safe',
+    // P5.4: Okabe-Ito palette (color-vision-deficiency-safe). Slot order is a
+    // luminance walk (verified by test): every adjacent pair keeps ≥ 1.6:1
+    // contrast so cells stay tellable even with zero hue perception.
+    // 'Mist Grey' replaces Okabe-Ito black (invisible on a dark board) and
+    // bridges to the dark green tail.
+    colors: [
+      '#0072B2', // Deep Blue
+      '#CC79A7', // Blush Purple
+      '#F0E442', // Bright Yellow
+      '#E69F00', // Amber Orange
+      '#D55E00', // Vermillion
+      '#56B4E9', // Sky Blue
+      '#E8EAF0', // Mist Grey
+      '#009E73', // Teal Green
+    ],
+    colorNames: [
+      'Deep Blue',
+      'Blush Purple',
+      'Bright Yellow',
+      'Amber Orange',
+      'Vermillion',
+      'Sky Blue',
+      'Mist Grey',
+      'Teal Green',
+    ],
+    boardBg: 'bg-slate-950/95',
+    boardBorder: 'border-slate-500/40',
+    cellRadius: 'rounded-[3px] sm:rounded-sm',
+    glowP1: 'ring-1 sm:ring-[1.5px] ring-sky-300 shadow-[0_0_8px_rgba(86,180,239,0.45)]',
+    glowP2:
+      'ring-1 sm:ring-[1.5px] ring-yellow-300 shadow-[0_0_8px_rgba(240,228,66,0.45)]',
+  },
 };
 
 export const PROGRESSIVE_STAGES = [

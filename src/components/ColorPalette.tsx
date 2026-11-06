@@ -71,7 +71,8 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
             if (idx === p1Color) {
               isColorDisabled = true;
               badgeLabel = 'P1';
-              badgeClass = 'bg-cyan-600 text-white border border-cyan-400/40';
+              // cyan-700: white text at 5.4:1 (cyan-600 was 3.7:1, AA fail).
+              badgeClass = 'bg-cyan-700 text-white border border-cyan-400/40';
             } else if (idx === p2Color) {
               isColorDisabled = true;
               badgeLabel = opponent === 'bot' ? 'BOT' : 'P2';
