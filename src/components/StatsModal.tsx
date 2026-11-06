@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, BarChart3, Trophy, Flame, CalendarDays, Star, Trash2, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  BarChart3,
+  Trophy,
+  Flame,
+  CalendarDays,
+  Star,
+  Trash2,
+  ShieldCheck,
+} from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import {
   type SoloStats,
@@ -46,7 +55,10 @@ const Tile = ({
   iconClass: string;
 }) => (
   <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 text-center">
-    <div className={`flex items-center justify-center gap-1.5 ${iconClass}`} aria-hidden="true">
+    <div
+      className={`flex items-center justify-center gap-1.5 ${iconClass}`}
+      aria-hidden="true"
+    >
       {icon}
       <span className="text-xl font-black text-white">{value}</span>
     </div>
@@ -143,20 +155,32 @@ export const StatsModal: React.FC<StatsModalProps> = ({
             </h3>
             {!hasGames || soloStats.byConfig.length === 0 ? (
               <div className="rounded-xl bg-slate-800/40 border border-slate-700 p-4 text-center text-xs text-slate-300">
-                No completed games yet — win or lose a solo board and it will
-                show up here.
+                No completed games yet — win or lose a solo board and it will show up
+                here.
               </div>
             ) : (
               <div className="rounded-xl border border-slate-700 overflow-hidden">
                 <table className="w-full text-[11px] tabular-nums">
                   <thead>
                     <tr className="bg-slate-800/80 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
-                      <th scope="col" className="py-1.5 px-2 text-left">Config</th>
-                      <th scope="col" className="py-1.5 px-1 text-right">Games</th>
-                      <th scope="col" className="py-1.5 px-1 text-right">Win%</th>
-                      <th scope="col" className="py-1.5 px-1 text-right">Avg</th>
-                      <th scope="col" className="py-1.5 px-1 text-right">Best</th>
-                      <th scope="col" className="py-1.5 px-2 text-right">Stars</th>
+                      <th scope="col" className="py-1.5 px-2 text-left">
+                        Config
+                      </th>
+                      <th scope="col" className="py-1.5 px-1 text-right">
+                        Games
+                      </th>
+                      <th scope="col" className="py-1.5 px-1 text-right">
+                        Win%
+                      </th>
+                      <th scope="col" className="py-1.5 px-1 text-right">
+                        Avg
+                      </th>
+                      <th scope="col" className="py-1.5 px-1 text-right">
+                        Best
+                      </th>
+                      <th scope="col" className="py-1.5 px-2 text-right">
+                        Stars
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -179,14 +203,18 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                             {winRatePercent(entry.wins, entry.games)}%
                           </td>
                           <td className="py-1.5 px-1 text-right text-slate-300">
-                            {avgMovesFor(entry) === null ? '—' : avgMovesFor(entry)!.toFixed(1)}
+                            {avgMovesFor(entry) === null
+                              ? '—'
+                              : avgMovesFor(entry)!.toFixed(1)}
                           </td>
                           <td className="py-1.5 px-1 text-right text-emerald-300 font-bold">
                             {entry.bestMoves ?? '—'}
                           </td>
                           <td className="py-1.5 px-2 text-right">
                             {stars === null ? (
-                              <span className="text-slate-400" aria-hidden="true">—</span>
+                              <span className="text-slate-400" aria-hidden="true">
+                                —
+                              </span>
                             ) : (
                               <span role="img" aria-label={`${stars} of 3 stars`}>
                                 <StarRow stars={stars} />

@@ -40,7 +40,11 @@ describe('daily setup', () => {
   it('different date → different board', () => {
     const a = dailySetupFor('2026-11-06');
     const b = dailySetupFor('2026-11-07');
-    const ga = generateSoloGrid(a.size === b.size ? 10 : a.size, a.colors, mulberry32(a.seed));
+    const ga = generateSoloGrid(
+      a.size === b.size ? 10 : a.size,
+      a.colors,
+      mulberry32(a.seed),
+    );
     const gb = generateSoloGrid(10, a.colors, mulberry32(b.seed));
     expect(ga).not.toEqual(gb);
     // configs stay inside playable bounds
@@ -55,7 +59,9 @@ describe('daily setup', () => {
 
 describe('applyDailyWin streak logic', () => {
   it('first ever win starts a 1 streak', () => {
-    expect(applyDailyWin({ lastWinDate: null, current: 0, best: 0 }, '2026-11-06')).toEqual({
+    expect(
+      applyDailyWin({ lastWinDate: null, current: 0, best: 0 }, '2026-11-06'),
+    ).toEqual({
       lastWinDate: '2026-11-06',
       current: 1,
       best: 1,
@@ -69,12 +75,20 @@ describe('applyDailyWin streak logic', () => {
 
   it('yesterday → +1 and best grows', () => {
     const st = { lastWinDate: '2026-11-05', current: 3, best: 5 };
-    expect(applyDailyWin(st, '2026-11-06')).toEqual({ lastWinDate: '2026-11-06', current: 4, best: 5 });
+    expect(applyDailyWin(st, '2026-11-06')).toEqual({
+      lastWinDate: '2026-11-06',
+      current: 4,
+      best: 5,
+    });
   });
 
   it('missed a day → streak resets to 1 but best is kept', () => {
     const st = { lastWinDate: '2026-11-03', current: 4, best: 7 };
-    expect(applyDailyWin(st, '2026-11-06')).toEqual({ lastWinDate: '2026-11-06', current: 1, best: 7 });
+    expect(applyDailyWin(st, '2026-11-06')).toEqual({
+      lastWinDate: '2026-11-06',
+      current: 1,
+      best: 7,
+    });
   });
 });
 
@@ -86,12 +100,13 @@ describe('buildDailyShareText', () => {
       colors: 5,
       moves: 3,
       maxMoves: 14,
-      playedColors: [2, 2, 5],
+      // playedColors are 0-based palette indices: 0→🟥, 1→🟦, 4→🟪
+      playedColors: [0, 1, 4],
       status: 'won',
     });
     expect(text).toContain('#' + dailyPuzzleNumber('2026-11-06'));
     expect(text).toContain('10²·5');
-    expect(text).toContain('🟦🟦🟪');
+    expect(text).toContain('🟥🟦🟪');
     expect(text).toContain('⭐');
     expect(text.split('\n')).toHaveLength(3);
   });
@@ -115,6 +130,8 @@ describe('loadDailyStreak validation', () => {
   it('falls back to an empty streak on malformed storage', () => {
     // Which storage persists is env-dependent; the shape guard is what matters:
     expect(loadDailyStreak).toBeDefined();
-    expect(applyDailyWin(loadDailyStreak(), dailyDateString()).current).toBeGreaterThanOrEqual(1);
+    expect(
+      applyDailyWin(loadDailyStreak(), dailyDateString()).current,
+    ).toBeGreaterThanOrEqual(1);
   });
 });

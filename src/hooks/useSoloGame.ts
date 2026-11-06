@@ -74,18 +74,20 @@ type SoloAction =
   | { type: 'move'; color: number }
   | { type: 'undo' };
 
+/** Uniform random 32-bit seed share links can encode (URL-safe integer). */
+const randomSeed32 = (): number => (Math.random() * 2 ** 32) >>> 0;
+
 const soloReducer = (
   state: SoloGameState | null,
   action: SoloAction,
 ): SoloGameState | null => {
   switch (action.type) {
     case 'init': {
-      // P6.1: a seed makes the board deterministic (daily challenge);
-      // normal play keeps Math.random.
-      const grid =
-        action.seed !== undefined
-          ? generateSoloGrid(action.size, action.colors, mulberry32(action.seed))
-          : generateSoloGrid(action.size, action.colors);
+      // P6.3: EVERY board is seeded — explicit seeding is the daily
+      // challenge (P6.1) and shared links; plain play draws a fresh random
+      // seed so any finished game can produce its own share link.
+      const seed = action.seed ?? randomSeed32();
+      const grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
       return {
         grid,
         moves: 0,
@@ -93,6 +95,8 @@ const soloReducer = (
         status: 'playing',
         history: [[]],
         playedColors: [],
+        seed,
+        boardColors: action.colors,
       };
     }
     case 'move': {

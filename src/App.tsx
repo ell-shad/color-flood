@@ -21,6 +21,7 @@ import { HowToPlayModal } from './components/HowToPlayModal';
 import { FirstRunTutorial } from './components/FirstRunTutorial';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
 import { StatsModal } from './components/StatsModal';
+import { ReplayModal } from './components/ReplayModal';
 
 /**
  * P4.1: App is now a thin render shell.
@@ -55,6 +56,8 @@ export default function App() {
   const [showDaily, setShowDaily] = useState(false);
   // P6.2: per-device solo statistics modal (header icon).
   const [showStats, setShowStats] = useState(false);
+  // P6.3: replay viewer (opened from the solo game-over card).
+  const [showReplay, setShowReplay] = useState(false);
 
   // P5.7: prominent turn chip — who moves / who you wait for (multiplayer
   // play only). Names come from the facade (online rooms use room names).
@@ -89,6 +92,10 @@ export default function App() {
     }
     if (showStats) {
       setShowStats(false);
+      return;
+    }
+    if (showReplay) {
+      setShowReplay(false);
       return;
     }
     if (showThemeModal) {
@@ -313,6 +320,12 @@ export default function App() {
                   onDeclineRematch={session.declineOnlineRematch}
                   onResetSeries={session.resetSeries}
                   dailyShareText={session.dailyShareText}
+                  onWatchReplay={
+                    session.mode === 'solo' && session.soloState.status !== 'playing'
+                      ? () => setShowReplay(true)
+                      : undefined
+                  }
+                  shareBoardLink={session.soloShareUrl}
                   p1Name={session.onlineOnly.p1Name}
                   p2Name={session.onlineOnly.p2Name}
                   myRole={session.myRole}
@@ -407,6 +420,18 @@ export default function App() {
           dailyStreak={session.dailyStreak}
           onReset={session.resetSoloStats}
         />
+
+        {/* P6.3: replay viewer (over the game-over card) */}
+        {session.mode === 'solo' && session.soloState && (
+          <ReplayModal
+            isOpen={showReplay}
+            onClose={() => setShowReplay(false)}
+            grid={session.soloState.grid}
+            history={session.soloState.history}
+            playedColors={session.soloState.playedColors}
+            theme={session.currentTheme}
+          />
+        )}
 
         {/* Rules Modal */}
         <HowToPlayModal

@@ -45,6 +45,7 @@ import {
   updateSoloStats,
   type SoloStats,
 } from '../utils/soloStats';
+import { buildSoloShareLink, soloShareParamsFromLocation } from '../utils/shareLink';
 import { hapticLose, hapticMove, hapticTurn, hapticWin } from '../utils/haptics';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
@@ -203,6 +204,16 @@ export interface GameSession {
   soloStats: SoloStats;
   /** Clears all recorded solo stats (per device). */
   resetSoloStats: () => void;
+
+  // --- Share links & replay (P6.3) ---
+  /** Boots the solo board baked into ?seed=&size=&colors= (mount-only). */
+  startSharedBoard: (params: {
+    seed: number;
+    size: GridSize;
+    colors: ColorCount;
+  }) => void;
+  /** Absolute share-link URL for the finished board; null while playing. */
+  soloShareUrl: string | null;
 
   // --- Emote system ---
   activeEmotes: ActiveEmote[];
@@ -388,7 +399,9 @@ export function useGameSession(): GameSession {
     seed: number;
   }
   const [dailyRound, setDailyRound] = useState<DailyRound | null>(null);
-  const [dailyStreakState, setDailyStreakState] = useState<DailyStreak>(() => loadDailyStreak());
+  const [dailyStreakState, setDailyStreakState] = useState<DailyStreak>(() =>
+    loadDailyStreak(),
+  );
 
   /** Today's date + config + seed (stable transform helpers). */
   const dailySetup = useCallback(() => {
@@ -403,7 +416,12 @@ export function useGameSession(): GameSession {
     setSoloHintsLeft(3);
     setHint(null);
     setHintGain(undefined);
-    setDailyRound({ date: setup.date, size: setup.size, colors: setup.colors, seed: setup.seed });
+    setDailyRound({
+      date: setup.date,
+      size: setup.size,
+      colors: setup.colors,
+      seed: setup.seed,
+    });
   }, [dailySetup, initSoloBoard, setSoloHintsLeft, setHint, setHintGain, setDailyRound]);
 
   /** Scores a daily win once per date (streak + storage, safe re-entry). */
@@ -460,6 +478,48 @@ export function useGameSession(): GameSession {
     saveSoloStats(EMPTY_SOLO_STATS);
     setSoloStatsState(EMPTY_SOLO_STATS);
   }, []);
+
+  // --- P6.3: shared-board links & replay --------------------------------------
+  /**
+   * Opens a solo board rebuilt from a share link (?seed=&size=&colors=).
+   * Mirrors the settings-change handlers: prefs + explicit board init, all
+   * other board state reset. Room links keep priority (mount effect).
+   */
+  const startSharedBoard = useCallback(
+    (params: { seed: number; size: GridSize; colors: ColorCount }) => {
+      prefs.setMode('solo');
+      prefs.setGridSize(params.size);
+      prefs.setColorCount(params.colors);
+      initSoloBoard(params.size, params.colors, params.seed);
+      setSoloHintsLeft(3);
+      setHint(null);
+      setHintGain(undefined);
+      setDailyRound(null); // a shared board is a normal (non-daily) solo game
+    },
+    [prefs, initSoloBoard, setSoloHintsLeft, setHint, setHintGain, setDailyRound],
+  );
+
+  // Mount-only: honor ?seed= links on load (after the lazy first board, which
+  // the shared card immediately replaces). Room links are skipped upstream.
+  // The microtask hop matches the P3.5 room join: setState happens outside
+  // the synchronous effect body.
+  useEffect(() => {
+    const share = soloShareParamsFromLocation();
+    if (!share) return;
+    void Promise.resolve().then(() => startSharedBoard(share));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only (mirrors the P3.5 room join)
+  }, []);
+
+  /** Absolute link that regenerates the finished board (null while playing). */
+  const soloShareUrl = (() => {
+    if (prefs.mode !== 'solo' || !soloState || soloState.status === 'playing')
+      return null;
+    return buildSoloShareLink({
+      seed: soloState.seed,
+      size: soloState.grid.length,
+      colors: soloState.boardColors,
+    });
+  })();
 
   // --- Emote Interaction Handler (verbatim from the pre-refactor App) ---
   const triggerEmote = useCallback(
@@ -729,7 +789,14 @@ export function useGameSession(): GameSession {
     setSoloHintsLeft(3);
     clearHint();
     setDailyRound(null); // P6.1: leaving the daily board ends its round flag
-  }, [initSoloBoard, prefs.gridSize, prefs.colorCount, clearHint, setSoloHintsLeft, setDailyRound]);
+  }, [
+    initSoloBoard,
+    prefs.gridSize,
+    prefs.colorCount,
+    clearHint,
+    setSoloHintsLeft,
+    setDailyRound,
+  ]);
 
   const pickColor = useCallback(
     (color: number) => {
@@ -1122,6 +1189,9 @@ export function useGameSession(): GameSession {
     // Solo statistics (P6.2)
     soloStats: soloStatsState,
     resetSoloStats,
+    // Share links & replay (P6.3)
+    startSharedBoard,
+    soloShareUrl,
     // Emotes
     activeEmotes,
     triggerEmote,

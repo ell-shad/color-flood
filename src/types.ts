@@ -53,6 +53,11 @@ export interface SoloGameState {
   history: SoloMoveDiff[][];
   /** P6.1: winning-move replay material — the played palette indices in order. */
   playedColors: number[];
+  /** P6.3: seed that generated this board (every board is now seeded —
+   * random play draws a seed from Math.random so games stay shareable). */
+  seed: number;
+  /** P6.3: palette width chosen at generation (share links; size = grid.length). */
+  boardColors: number;
 }
 
 export interface TwoPlayerGameState {

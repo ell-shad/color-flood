@@ -1,0 +1,28 @@
+import type { SoloMoveDiff } from '../types';
+
+/**
+ * P6.3: reconstructs the board state after every move of a finished game,
+ * using the per-move repaint DIFF history recorded by the solo machine
+ * (P5.6). Pure — the live game state is never touched by a replay.
+ *
+ * The walk is BACKWARD from the final grid, which is the only complete board
+ * the running app holds: state i is the board after move i (so index 0 is
+ * the initial board).
+ */
+export const reconstructReplayStates = (
+  finalGrid: number[][],
+  history: SoloMoveDiff[][],
+): number[][][] => {
+  const size = finalGrid.length;
+  const states: number[][][] = new Array(history.length).fill(null);
+  let current = finalGrid.map((row) => [...row]);
+  for (let i = history.length - 1; i >= 0; i--) {
+    states[i] = current;
+    current = current.map((row) => [...row]);
+    const diff = history[i];
+    for (const { r, c, prev } of diff) {
+      if (r >= 0 && r < size && c >= 0 && c < size) current[r][c] = prev;
+    }
+  }
+  return states;
+};

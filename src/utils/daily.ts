@@ -54,7 +54,10 @@ const DAILY_CONFIG_CYCLE: DailyConfig[] = [
 ];
 
 export const dailyConfigForIndex = (index: number): DailyConfig =>
-  DAILY_CONFIG_CYCLE[((index % DAILY_CONFIG_CYCLE.length) + DAILY_CONFIG_CYCLE.length) % DAILY_CONFIG_CYCLE.length];
+  DAILY_CONFIG_CYCLE[
+    ((index % DAILY_CONFIG_CYCLE.length) + DAILY_CONFIG_CYCLE.length) %
+      DAILY_CONFIG_CYCLE.length
+  ];
 
 /** Board seed for a date index — stable and adequately spread. */
 export const dailySeedForIndex = (index: number): number => {
@@ -113,7 +116,8 @@ export const loadDailyStreak = (): DailyStreak => {
 export const applyDailyWin = (streak: DailyStreak, dateString: string): DailyStreak => {
   if (streak.lastWinDate === dateString) return streak; // already counted today
   // Continue the streak only when the previous win was exactly one day ago.
-  const gap = streak.lastWinDate === null ? 999 : oneDayApart(streak.lastWinDate, dateString);
+  const gap =
+    streak.lastWinDate === null ? 999 : oneDayApart(streak.lastWinDate, dateString);
   const next = gap === 1 ? streak.current + 1 : 1;
   const best = Math.max(streak.best, next);
   return { lastWinDate: dateString, current: next, best };
@@ -149,12 +153,13 @@ export interface DailyShareInput {
 /**
  * Wordle-style spoiler-safe share sheet: date + config + result stars +
  * one square per move in the order played. No board layout leaks.
+ * `playedColors` holds 0-BASED palette indices (as the solo machine records).
  */
 export const buildDailyShareText = (input: DailyShareInput): string => {
   const stars: SoloStars | null =
     input.status === 'won' ? rateSoloStars(input.moves, input.size, input.colors) : null;
   const squares = input.playedColors
-    .map((c) => SQUARE_EMOJI[(c - 1) % SQUARE_EMOJI.length])
+    .map((c) => SQUARE_EMOJI[c % SQUARE_EMOJI.length])
     .join('');
   const starRow = stars ? ' ' + '⭐'.repeat(stars) : '';
   const title = `Color Flood Daily #${dailyPuzzleNumber(input.dateString)} · ${input.size}²·${input.colors}`;

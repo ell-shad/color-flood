@@ -46,8 +46,14 @@ const ConfigStatsSchema = z.object({
 });
 
 const SoloStatsSchema = z.object({
-  total: z.object({ games: z.number().int().min(0).max(99_999), wins: z.number().int().min(0).max(99_999) }),
-  winStreak: z.object({ current: z.number().int().min(0).max(9_999), best: z.number().int().min(0).max(9_999) }),
+  total: z.object({
+    games: z.number().int().min(0).max(99_999),
+    wins: z.number().int().min(0).max(99_999),
+  }),
+  winStreak: z.object({
+    current: z.number().int().min(0).max(9_999),
+    best: z.number().int().min(0).max(9_999),
+  }),
   byConfig: z.array(ConfigStatsSchema).max(40),
 });
 
@@ -86,14 +92,22 @@ export const updateSoloStats = (stats: SoloStats, game: SoloGameEnd): SoloStats 
   const byConfig = stats.byConfig.map((c) => ({ ...c }));
   let entry = byConfig.find((c) => c.size === game.size && c.colors === game.colors);
   if (!entry) {
-    entry = { size: game.size, colors: game.colors, games: 0, wins: 0, sumMoves: 0, bestMoves: null };
+    entry = {
+      size: game.size,
+      colors: game.colors,
+      games: 0,
+      wins: 0,
+      sumMoves: 0,
+      bestMoves: null,
+    };
     byConfig.push(entry);
   }
   entry.games += 1;
   entry.sumMoves += game.moves;
   if (game.won) {
     entry.wins += 1;
-    entry.bestMoves = entry.bestMoves === null ? game.moves : Math.min(entry.bestMoves, game.moves);
+    entry.bestMoves =
+      entry.bestMoves === null ? game.moves : Math.min(entry.bestMoves, game.moves);
   }
   byConfig.sort((a, b) => a.size - b.size || a.colors - b.colors);
 
@@ -103,14 +117,18 @@ export const updateSoloStats = (stats: SoloStats, game: SoloGameEnd): SoloStats 
   };
   const winStreak = {
     current: game.won ? stats.winStreak.current + 1 : 0,
-    best: game.won ? Math.max(stats.winStreak.best, stats.winStreak.current + 1) : stats.winStreak.best,
+    best: game.won
+      ? Math.max(stats.winStreak.best, stats.winStreak.current + 1)
+      : stats.winStreak.best,
   };
   return { total, winStreak, byConfig };
 };
 
 /** Stars earned for a config's record win (null until any win exists). */
 export const statsStarsFor = (entry: SoloConfigStats): SoloStars | null =>
-  entry.bestMoves === null ? null : rateSoloStars(entry.bestMoves, entry.size, entry.colors);
+  entry.bestMoves === null
+    ? null
+    : rateSoloStars(entry.bestMoves, entry.size, entry.colors);
 
 /** Win rate as a whole percent (0–100), guarded against divide-by-zero. */
 export const winRatePercent = (wins: number, games: number): number =>

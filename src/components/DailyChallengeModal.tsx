@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CalendarDays, Flame, Copy, Check, Play, Expand, Trophy } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { copyText } from '../utils/clipboard';
 import {
   dailyDateString,
   dailyPuzzleNumber,
@@ -47,28 +48,11 @@ export const DailyChallengeModal: React.FC<DailyChallengeModalProps> = ({
   const handleCopy = async () => {
     if (!dailyShareText) return;
     setCopyFailed(false);
-    try {
-      await navigator.clipboard.writeText(dailyShareText);
-    } catch {
-      // Clipboard API needs a focused document; fall back to execCommand.
-      const ta = document.createElement('textarea');
-      ta.value = dailyShareText;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      let fallbackOk = false;
-      try {
-        fallbackOk = document.execCommand('copy');
-      } catch {
-        fallbackOk = false;
-      }
-      ta.remove();
-      if (!fallbackOk) {
-        setCopyFailed(true);
-        setTimeout(() => setCopyFailed(false), 2000);
-        return;
-      }
+    const ok = await copyText(dailyShareText);
+    if (!ok) {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
+      return;
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -92,7 +76,9 @@ export const DailyChallengeModal: React.FC<DailyChallengeModalProps> = ({
         >
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white tracking-tight">Daily Challenge</h2>
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Daily Challenge
+            </h2>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -106,9 +92,7 @@ export const DailyChallengeModal: React.FC<DailyChallengeModalProps> = ({
           <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <CalendarDays className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-              <span>
-                Puzzle #{dailyPuzzleNumber(today)}
-              </span>
+              <span>Puzzle #{dailyPuzzleNumber(today)}</span>
               <span className="text-slate-400 font-medium">· {today}</span>
             </div>
             <p className="text-xs text-slate-300">
@@ -123,14 +107,24 @@ export const DailyChallengeModal: React.FC<DailyChallengeModalProps> = ({
           {/* Streak flames */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1.5 text-amber-400" aria-hidden="true">
+              <div
+                className="flex items-center justify-center gap-1.5 text-amber-400"
+                aria-hidden="true"
+              >
                 <Flame className="w-4 h-4" />
-                <span className="text-xl font-black text-white">{dailyStreak.current}</span>
+                <span className="text-xl font-black text-white">
+                  {dailyStreak.current}
+                </span>
               </div>
-              <p className="text-[11px] font-bold text-slate-300 mt-0.5">Current streak</p>
+              <p className="text-[11px] font-bold text-slate-300 mt-0.5">
+                Current streak
+              </p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1.5 text-slate-300" aria-hidden="true">
+              <div
+                className="flex items-center justify-center gap-1.5 text-slate-300"
+                aria-hidden="true"
+              >
                 <Trophy className="w-4 h-4" />
                 <span className="text-xl font-black text-white">{dailyStreak.best}</span>
               </div>
@@ -202,7 +196,9 @@ export const DailyChallengeModal: React.FC<DailyChallengeModalProps> = ({
             >
               <Play className="w-4 h-4" aria-hidden="true" />
               <span>
-                {dailyDate === null || dailyDate < today ? "Play today's puzzle" : "Restart today's round"}
+                {dailyDate === null || dailyDate < today
+                  ? "Play today's puzzle"
+                  : "Restart today's round"}
               </span>
             </button>
           )}
