@@ -131,7 +131,8 @@ const soloReducer = (
 
 export interface SoloGameOptions {
   onWin?: (moves: number) => void;
-  onLose?: () => void;
+  /** P6.2: gets the final move count for the stats screen. */
+  onLose?: (moves: number) => void;
 }
 
 /**
@@ -168,7 +169,7 @@ export function useSoloGame(
     if (soloState.status === 'won') {
       optsRef.current.onWin?.(soloState.moves);
     } else if (soloState.status === 'lost') {
-      optsRef.current.onLose?.();
+      optsRef.current.onLose?.(soloState.moves);
     }
   });
 

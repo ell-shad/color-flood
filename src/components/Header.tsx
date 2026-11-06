@@ -9,6 +9,7 @@ import {
   Swords,
   Globe,
   Palette,
+  BarChart3,
 } from 'lucide-react';
 import { GameMode, MultiplayerOpponent } from '../types';
 
@@ -21,6 +22,7 @@ interface HeaderProps {
   onToggleSettings: () => void;
   onToggleInfo: () => void;
   onToggleThemes: () => void;
+  onToggleStats: () => void;
   onResetGame: () => void;
 }
 
@@ -33,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSettings,
   onToggleInfo,
   onToggleThemes,
+  onToggleStats,
   onResetGame,
 }) => {
   return (
@@ -82,6 +85,14 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action icons */}
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onToggleStats}
+            className="p-1.5 rounded-lg bg-slate-850/80 border border-slate-750 text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
+            title="Your Stats"
+            aria-label="Your Stats"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={onToggleThemes}
             className="p-1.5 rounded-lg bg-slate-850/80 border border-slate-750 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"

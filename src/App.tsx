@@ -20,6 +20,7 @@ import { ThemeSelectorModal } from './components/ThemeSelectorModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
 import { FirstRunTutorial } from './components/FirstRunTutorial';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
+import { StatsModal } from './components/StatsModal';
 
 /**
  * P4.1: App is now a thin render shell.
@@ -52,6 +53,8 @@ export default function App() {
   const [showThemeModal, setShowThemeModal] = useState(false);
   // P6.1: Daily Challenge hub modal (solo strip button).
   const [showDaily, setShowDaily] = useState(false);
+  // P6.2: per-device solo statistics modal (header icon).
+  const [showStats, setShowStats] = useState(false);
 
   // P5.7: prominent turn chip — who moves / who you wait for (multiplayer
   // play only). Names come from the facade (online rooms use room names).
@@ -82,6 +85,10 @@ export default function App() {
     }
     if (showDaily) {
       setShowDaily(false);
+      return;
+    }
+    if (showStats) {
+      setShowStats(false);
       return;
     }
     if (showThemeModal) {
@@ -155,6 +162,7 @@ export default function App() {
             onToggleSettings={() => setShowSettings((prev) => !prev)}
             onToggleInfo={() => setShowInfoModal(true)}
             onToggleThemes={() => setShowThemeModal(true)}
+            onToggleStats={() => setShowStats(true)}
             onResetGame={session.initiateReset}
           />
 
@@ -389,6 +397,15 @@ export default function App() {
             session.startDailyChallenge();
             setShowDaily(false);
           }}
+        />
+
+        {/* P6.2: solo statistics */}
+        <StatsModal
+          isOpen={showStats}
+          onClose={() => setShowStats(false)}
+          soloStats={session.soloStats}
+          dailyStreak={session.dailyStreak}
+          onReset={session.resetSoloStats}
         />
 
         {/* Rules Modal */}

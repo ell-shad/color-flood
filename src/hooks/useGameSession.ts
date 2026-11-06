@@ -38,6 +38,13 @@ import {
   saveDailyStreak,
   type DailyStreak,
 } from '../utils/daily';
+import {
+  EMPTY_SOLO_STATS,
+  loadSoloStats,
+  saveSoloStats,
+  updateSoloStats,
+  type SoloStats,
+} from '../utils/soloStats';
 import { hapticLose, hapticMove, hapticTurn, hapticWin } from '../utils/haptics';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
@@ -191,6 +198,12 @@ export interface GameSession {
   /** Spoiler-safe share sheet; null when no daily result exists. */
   dailyShareText: string | null;
 
+  // --- Solo statistics (P6.2) ---
+  /** Completed solo games (wins + losses), per config + totals + win streak. */
+  soloStats: SoloStats;
+  /** Clears all recorded solo stats (per device). */
+  resetSoloStats: () => void;
+
   // --- Emote system ---
   activeEmotes: ActiveEmote[];
   triggerEmote: (sender: PlayerId, emoji: string, broadcastOnline?: boolean) => void;
@@ -335,13 +348,17 @@ export function useGameSession(): GameSession {
         // boards are excluded from the per-config high-score tables (the
         // round config can differ from prefs, and replays shouldn't farm stars).
         recordDailyWin();
+        // P6.2: every completed solo game feeds the stats screen (config
+        // follows the daily round when one is active).
+        recordSoloGameEnd(true, moves);
         if (!dailyRoundRef.current) {
           recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
         }
       },
-      onLose: () => {
+      onLose: (moves) => {
         hapticLose(prefs.soundMuted); // P5.7
         playLoseSound();
+        recordSoloGameEnd(false, moves); // P6.2
       },
     },
     // P4.4: the first board is built lazily during this initial render.
@@ -418,6 +435,31 @@ export function useGameSession(): GameSession {
       status: soloState.status,
     });
   })();
+
+  // --- P6.2: solo statistics ---------------------------------------------------
+  // Recorded on every COMPLETED solo game (won + lost). The config follows the
+  // round when a daily is active (its size/colors override prefs mid-round).
+  // The ref is the source of truth so the callback stays reentrancy-safe.
+  const soloStatsRef = useRef<SoloStats>(loadSoloStats());
+  const [soloStatsState, setSoloStatsState] = useState<SoloStats>(() => loadSoloStats());
+  const recordSoloGameEnd = useCallback(
+    (won: boolean, moves: number) => {
+      const round = dailyRoundRef.current;
+      const config = round
+        ? { size: round.size, colors: round.colors }
+        : { size: prefs.gridSize, colors: prefs.colorCount };
+      const next = updateSoloStats(soloStatsRef.current, { ...config, moves, won });
+      soloStatsRef.current = next;
+      saveSoloStats(next);
+      setSoloStatsState(next);
+    },
+    [prefs.gridSize, prefs.colorCount],
+  );
+  const resetSoloStats = useCallback(() => {
+    soloStatsRef.current = EMPTY_SOLO_STATS;
+    saveSoloStats(EMPTY_SOLO_STATS);
+    setSoloStatsState(EMPTY_SOLO_STATS);
+  }, []);
 
   // --- Emote Interaction Handler (verbatim from the pre-refactor App) ---
   const triggerEmote = useCallback(
@@ -1077,6 +1119,9 @@ export function useGameSession(): GameSession {
     dailyStreak: dailyStreakState,
     startDailyChallenge,
     dailyShareText,
+    // Solo statistics (P6.2)
+    soloStats: soloStatsState,
+    resetSoloStats,
     // Emotes
     activeEmotes,
     triggerEmote,
