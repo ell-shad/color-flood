@@ -233,7 +233,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P5.4 | Color-blind support: optional shape/pattern overlay + color-blind-safe theme; WCAG AA contrast for text/badges | ✅ 09ed5f7 (Color Safe Okabe-Ito theme w/ verified luminance walk; digit overlay toggle; AA chip/label fixes) |
 | P5.5 | Respect `prefers-reduced-motion` (animations, confetti) | ✅ 043ce6b (MotionConfig user + CSS media query + confetti gating) |
 | P5.6 | Solo undo: store diffs instead of full grids in history | ✅ 043ce6b ({r,c,prev} diffs; Undo button + U key; gated to active play) |
-| P5.7 | First-run interactive tutorial; clearer turn indicator; haptics on mobile; layout checks 320–1440 px portrait+landscape | ⬜ |
+| P5.7 | First-run interactive tutorial; clearer turn indicator; haptics on mobile; layout checks 320–1440 px portrait+landscape | ✅ ece4943 (3-step coach-mark w/ real-move auto-advance; turn/waiting chip; vibrate move/win/lose/turn; 5-viewport sweep no overflow) |
 | P5.8 | Lighthouse a11y ≥ 95 verified | ⬜ |
 
 ---
