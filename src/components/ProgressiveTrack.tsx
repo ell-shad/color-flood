@@ -65,14 +65,16 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
             statusBg =
               'bg-indigo-950/70 border-indigo-500 text-indigo-200 ring-1 ring-indigo-400/40 shadow-sm shadow-indigo-500/20';
             badge = (
-              <span className="text-[9px] font-black text-amber-300 flex items-center gap-0.5 animate-pulse">
-                <Swords className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              <span className="text-[9px] font-black text-amber-200 flex items-center gap-0.5">
+                <Swords className="w-2.5 h-2.5 text-amber-400 shrink-0 animate-pulse" />
                 <span>Live</span>
               </span>
             );
           } else if (isUpcoming) {
-            statusBg = 'bg-slate-950/50 border-slate-850 text-slate-500';
-            badge = <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />;
+            // P5.8: slate-500 is only 4.02:1 on the darker slate-950/50 card —
+            // slate-400 clears AA for the 9–10px labels and lock icon.
+            statusBg = 'bg-slate-950/50 border-slate-850 text-slate-400';
+            badge = <Lock className="w-2.5 h-2.5 text-slate-400 shrink-0" />;
           }
 
           return (

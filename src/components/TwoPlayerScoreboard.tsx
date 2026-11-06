@@ -134,7 +134,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
             </button>
           )}
 
-          <span className="text-[10px] text-slate-500 font-mono hidden xs:inline">
+          <span className="text-[10px] text-slate-400 font-mono hidden xs:inline">
             Win: <strong className="text-slate-300">{targetToWin}</strong>
           </span>
 
@@ -232,12 +232,15 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
           <div className="flex flex-col items-center justify-center px-1">
             {gameState.status === 'playing' ? (
               <div
+                // P5.8: no opacity pulse here — mid-blink the pill drops
+                // below AA; the turn chip above the palette carries the
+                // animated cue instead. Dark ink on both pills stays ≥ 6:1.
                 className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow flex items-center gap-1 whitespace-nowrap ${
                   isP1Turn
-                    ? 'bg-cyan-500 text-slate-950 animate-pulse'
+                    ? 'bg-cyan-500 text-slate-950'
                     : isBotThinking
                       ? 'bg-rose-400 text-slate-950 animate-bounce'
-                      : 'bg-rose-500 text-white animate-pulse'
+                      : 'bg-rose-500 text-slate-950'
                 }`}
               >
                 <Sparkles className="w-2.5 h-2.5" />

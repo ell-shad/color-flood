@@ -123,7 +123,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
 
         {/* Big Room Code Box */}
         <div className="bg-slate-950 p-3.5 sm:p-4 rounded-xl border border-slate-800 space-y-2.5">
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
             Room Code
           </p>
           <div className="flex items-center justify-center gap-3">
@@ -404,7 +404,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
       {/* Divider */}
       <div className="relative flex py-0.5 items-center">
         <div className="flex-grow border-t border-slate-800"></div>
-        <span className="flex-shrink mx-2 text-[9px] text-slate-500 uppercase tracking-widest font-bold">
+        <span className="flex-shrink mx-2 text-[9px] text-slate-400 uppercase tracking-widest font-bold">
           Or Join Code
         </span>
         <div className="flex-grow border-t border-slate-800"></div>

@@ -371,7 +371,7 @@ export default function App() {
 
         {/* Sleek Minimal Footer */}
         <footer className="w-full max-w-lg mx-auto py-1 px-3 text-center shrink-0">
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+          <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
             <span>
               Created by{' '}
               <span className="text-slate-400 font-semibold">Elshad Guliyev</span>
