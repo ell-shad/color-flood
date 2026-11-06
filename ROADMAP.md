@@ -242,7 +242,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P6.1 | Daily challenge: date-seeded board, streak counter, shareable emoji-grid result | ⬜ |
+| P6.1 | Daily challenge: date-seeded board, streak counter, shareable emoji-grid result (`a273487`) | ✅ |
 | P6.2 | Stats screen: games, win rate, avg moves per config, streaks, per-config star records | ⬜ |
 | P6.3 | Share-by-seed links + replay viewer for finished games | ⬜ |
 | P6.4 | PWA: manifest, service worker, offline solo/local/bot, install prompt | ⬜ |
