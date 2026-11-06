@@ -4,6 +4,7 @@ import { Github, Linkedin, Info } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { loadBool, saveString } from './utils/storage';
 
 import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
@@ -17,6 +18,7 @@ import { MultiplayerEmotes } from './components/MultiplayerEmotes';
 import { ResetApprovalModal } from './components/ResetApprovalModal';
 import { ThemeSelectorModal } from './components/ThemeSelectorModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
+import { FirstRunTutorial } from './components/FirstRunTutorial';
 
 /**
  * P4.1: App is now a thin render shell.
@@ -28,15 +30,53 @@ import { HowToPlayModal } from './components/HowToPlayModal';
 export default function App() {
   const session = useGameSession();
 
+  // P5.7: first-run interactive tutorial (shown once per device).
+  const [showTutorial, setShowTutorial] = useState(
+    () =>
+      // Hidden behind online lobby joins — those players have a share-link context.
+      !loadBool('tutorial-done', false, 'color-flood-tutorial-done'),
+  );
+  const finishTutorial = () => {
+    setShowTutorial(false);
+    saveString('tutorial-done', 'true');
+  };
+  const hasMadeFirstMove =
+    session.mode === 'solo'
+      ? (session.soloState?.moves ?? 0) > 0
+      : (session.activeMatch?.movesCount ?? 0) > 0;
+
   // presentation-only state
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
+  // P5.7: prominent turn chip — who moves / who you wait for (multiplayer
+  // play only). Names come from the facade (online rooms use room names).
+  const turnStatus =
+    session.mode === 'multiplayer' &&
+    session.activeMatch &&
+    session.activeMatch.status === 'playing'
+      ? session.opponent === 'online' && !session.isMyTurn
+        ? {
+            turn: null,
+            label: `Waiting for ${
+              session.activeTurn === 1 ? session.playerNames.p2 : session.playerNames.p1
+            }…`,
+          }
+        : {
+            turn: session.activeTurn,
+            label: `${session.activeTurn === 1 ? session.playerNames.p1 : session.playerNames.p2} to move`,
+          }
+      : null;
+
   // P5.2: keyboard shortcuts. Esc closes the app-level modals/drawer —
   // game-flow modals (game over / reset approval) stay, they gate the board.
   const closeTopModal = () => {
     // Late declarations are intentional: each branch guards before touching.
+    if (showTutorial) {
+      finishTutorial();
+      return;
+    }
     if (showThemeModal) {
       setShowThemeModal(false);
       return;
@@ -276,9 +316,9 @@ export default function App() {
                 soloCurrentColor={session.soloState.grid[0][0]}
                 p1Color={session.activeMatch?.p1Color ?? 0}
                 p2Color={session.activeMatch?.p2Color ?? 0}
-                activeTurn={session.activeTurn}
                 opponent={session.opponent}
                 theme={session.currentTheme}
+                turnStatus={turnStatus}
               />
             </div>
           )}
@@ -320,6 +360,14 @@ export default function App() {
           onClose={() => setShowInfoModal(false)}
           initialMode={session.mode}
         />
+
+        {/* P5.7: first-run interactive tutorial (once per device) */}
+        {showTutorial && !session.isOnlineLobbyActive && (
+          <FirstRunTutorial
+            hasMadeFirstMove={hasMadeFirstMove}
+            onFinish={finishTutorial}
+          />
+        )}
 
         {/* Sleek Minimal Footer */}
         <footer className="w-full max-w-lg mx-auto py-1 px-3 text-center shrink-0">

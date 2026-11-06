@@ -29,6 +29,7 @@ import {
 import { loadStoredSession, useOnlineMultiplayer } from '../utils/useOnlineMultiplayer';
 import { loadStringOr } from '../utils/storage';
 import { prefersReducedMotionSnapshot } from '../utils/motionPreferences';
+import { hapticLose, hapticMove, hapticTurn, hapticWin } from '../utils/haptics';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
 import { useLocalMatch } from './useLocalMatch';
@@ -248,11 +249,20 @@ export function useGameSession(): GameSession {
       botDifficulty: prefs.botDifficulty,
       onMoveStart: (turn, color) => {
         setLastMovingPlayer(turn);
-        if (color !== undefined) playMoveSound(color);
+        if (color !== undefined) {
+          playMoveSound(color);
+          hapticMove(prefs.soundMuted); // P5.7
+        }
         clearHint();
+        // P5.7: your turn arrived in an online match (opponent just moved).
+        if (prefs.opponent === 'online' && turn !== myRole) {
+          hapticTurn(prefs.soundMuted);
+        }
       },
       onRoundEnd: (outcome, colors) => {
         if (outcome !== 'draw') {
+          // P5.7: haptic on the round result.
+          hapticWin(prefs.soundMuted);
           // P5.5: the OS reduce-motion setting skips the burst; sound stays.
           if (!prefersReducedMotionSnapshot()) {
             confetti({
@@ -288,6 +298,7 @@ export function useGameSession(): GameSession {
     {
       onWin: (moves) => {
         // P5.5: the OS reduce-motion setting skips the burst; sound stays.
+        hapticWin(prefs.soundMuted); // P5.7
         if (!prefersReducedMotionSnapshot()) {
           confetti({
             particleCount: 160,
@@ -299,7 +310,10 @@ export function useGameSession(): GameSession {
         playWinSound();
         recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
       },
-      onLose: () => playLoseSound(),
+      onLose: () => {
+        hapticLose(prefs.soundMuted); // P5.7
+        playLoseSound();
+      },
     },
     // P4.4: the first board is built lazily during this initial render.
     { size: prefs.gridSize, colors: prefs.colorCount },
@@ -447,13 +461,15 @@ export function useGameSession(): GameSession {
           (roomState.status === 'p1_won' && myRole === 1) ||
           (roomState.status === 'p2_won' && myRole === 2);
         if (iWon) {
+          hapticWin(prefs.soundMuted); // P5.7
           playWinSound();
         } else if (myRole) {
+          hapticLose(prefs.soundMuted); // P5.7
           playLoseSound();
         }
       }
     }
-  }, [prefs.opponent, roomState, currentTheme, myRole]);
+  }, [prefs.opponent, prefs.soundMuted, roomState, currentTheme, myRole]);
   // Online last-mover used to be a setState-in-effect mirror of room.turn:
   // deriving it is the same value with zero cascading renders.
   const onlineLastMover = roomState ? (roomState.turn === 1 ? 2 : 1) : null;

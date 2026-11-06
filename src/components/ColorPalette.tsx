@@ -13,9 +13,10 @@ interface ColorPaletteProps {
   soloCurrentColor?: number;
   p1Color?: number;
   p2Color?: number;
-  activeTurn?: PlayerId;
   opponent?: MultiplayerOpponent;
   theme?: GameTheme;
+  /** P5.7: prominent turn chip — who moves (or who you wait for). */
+  turnStatus?: { label: string; turn: PlayerId | null } | null;
 }
 
 export const ColorPalette: React.FC<ColorPaletteProps> = ({
@@ -28,28 +29,47 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
   soloCurrentColor,
   p1Color,
   p2Color,
-  activeTurn,
   opponent,
   theme = THEMES.arcade,
+  turnStatus = null,
 }) => {
   const activeColors = theme.colors.slice(0, colorCount);
   const activeNames = theme.colorNames;
 
   return (
     <div className="w-full max-w-lg mx-auto mt-2 sm:mt-3 px-1 select-none">
-      {/* Helper text for 2-player mode */}
-      {mode === 'multiplayer' && !disabled && (
-        <div className="text-center mb-1.5 sm:mb-2">
-          <p className="text-[11px] text-slate-400">
-            {activeTurn === 1 ? (
-              <span className="text-cyan-400 font-bold">Player 1</span>
-            ) : (
-              <span className="text-rose-400 font-bold">
-                {opponent === 'bot' ? 'AI Bot' : 'Player 2'}
+      {/* P5.7: turn chip — a loud, always-on turn indicator during play.
+          Waiting (online): whose move you are waiting for; your turn: a
+          player-colored pill carrying the old helper copy as its subtitle. */}
+      {mode === 'multiplayer' && turnStatus && (
+        <div className="flex justify-center mb-1.5 sm:mb-2">
+          <div
+            className={`inline-flex items-center gap-2 max-w-full px-3 py-1.5 rounded-xl border shadow-md ${
+              turnStatus.turn === 1
+                ? 'bg-cyan-950/40 border-cyan-500/50'
+                : turnStatus.turn === 2
+                  ? 'bg-rose-950/40 border-rose-500/50'
+                  : 'bg-slate-800/70 border-slate-700/60'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                turnStatus.turn === 1
+                  ? 'bg-cyan-400 animate-pulse'
+                  : turnStatus.turn === 2
+                    ? 'bg-rose-400 animate-pulse'
+                    : 'bg-slate-500 animate-pulse'
+              }`}
+            />
+            <span className="text-xs sm:text-sm font-bold text-slate-100 truncate">
+              {turnStatus.label}
+            </span>
+            {turnStatus.turn !== null && (
+              <span className="hidden sm:inline text-[10px] text-slate-400 whitespace-nowrap">
+                — pick neutral to expand territory
               </span>
             )}
-            : Pick neutral color to expand territory
-          </p>
+          </div>
         </div>
       )}
 
