@@ -1,7 +1,8 @@
 import React from 'react';
 import { Trophy, Lightbulb, Star, Undo2 } from 'lucide-react';
-import { SoloGameState } from '../types';
+import { SoloGameState, BoardShape } from '../types';
 import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
+import { rateWheelStars } from '../utils/circleEngine';
 
 interface SoloScoreboardProps {
   gameState: SoloGameState;
@@ -13,6 +14,10 @@ interface SoloScoreboardProps {
   /** P5.2/P5.6: one-step undo (U key too). Absent = hidden (no online). */
   onUndo?: () => void;
   canUndo?: boolean;
+  /** P7: board topology routes the star rating to the matching par table. */
+  shape?: BoardShape;
+  /** Ladder size (10–18) for the rating lookup — the wheel's grid is rings. */
+  boardSize?: number;
 }
 
 export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
@@ -24,15 +29,21 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
   colorCount,
   onUndo,
   canUndo = false,
+  shape = 'classic',
+  boardSize,
 }) => {
   const isLossRisk =
     gameState.moves >= gameState.maxMoves - 3 && gameState.status === 'playing';
   const hintsExhausted = hintsLeft <= 0;
 
-  // Stars are only meaningful once the board is solved.
+  // Stars are only meaningful once the board is solved; the rating size is
+  // the ladder size (10–18), never the wheel's ring count.
+  const ratingSize = boardSize ?? gameState.grid.length;
   const stars: SoloStars | null =
     gameState.status === 'won'
-      ? rateSoloStars(gameState.moves, gameState.grid.length, colorCount)
+      ? shape === 'wheel'
+        ? rateWheelStars(gameState.moves, ratingSize, colorCount)
+        : rateSoloStars(gameState.moves, ratingSize, colorCount)
       : null;
 
   return (

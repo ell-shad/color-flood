@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import type {
   ActiveEmote,
   BotDifficulty,
+  BoardShape,
   ChallengeType,
   ColorCount,
   GameMode,
@@ -20,6 +21,7 @@ import type {
 } from '../types';
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { getBestMultiplayerMove, getBestSoloMove } from '../utils/floodLogic';
+import { bestWheelMove } from '../utils/circleEngine';
 import {
   playEmotePopSound,
   playLoseSound,
@@ -101,6 +103,8 @@ export interface GameSession {
   mode: GameMode;
   gridSize: GridSize;
   colorCount: ColorCount;
+  /** P7: solo board topology pref (classic square / mandala wheel). */
+  boardShape: BoardShape;
   botDifficulty: BotDifficulty;
   challengeType: ChallengeType;
   opponent: MultiplayerOpponent;
@@ -245,6 +249,8 @@ export interface GameSession {
   handleSetToEasiest: () => void;
   handleChangeGridSize: (size: GridSize) => void;
   handleChangeColorCount: (count: ColorCount) => void;
+  /** P7: switch the solo board topology and regenerate (classic ↔ wheel). */
+  handleChangeBoardShape: (shape: BoardShape) => void;
   handleChangeChallengeType: (type: ChallengeType) => void;
   handleSetBotDifficulty: (d: BotDifficulty) => void;
   handleSelectMode: (m: GameMode) => void;
@@ -374,20 +380,31 @@ export function useGameSession(): GameSession {
         // round config can differ from prefs, and replays shouldn't farm stars).
         recordDailyWin();
         // P6.2: every completed solo game feeds the stats screen (config
-        // follows the daily round when one is active).
-        recordSoloGameEnd(true, moves);
-        if (!dailyRoundRef.current) {
+        // follows the daily round when one is active). P7: wheel rounds
+        // skip the square-keyed records until P7.3 re-keys them by shape.
+        if (soloShapeRef.current === 'classic') {
+          recordSoloGameEnd(true, moves);
+        }
+        if (!dailyRoundRef.current && soloShapeRef.current === 'classic') {
           recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
         }
       },
       onLose: (moves) => {
         hapticLose(prefs.soundMuted); // P5.7
         playLoseSound();
-        recordSoloGameEnd(false, moves); // P6.2
+        // P7: wheel losses join P7.3's shape-aware stats; no square-keyed rows.
+        if (soloShapeRef.current === 'classic') {
+          recordSoloGameEnd(false, moves); // P6.2
+        }
       },
     },
     // P4.4: the first board is built lazily during this initial render.
-    { size: prefs.gridSize, colors: prefs.colorCount },
+    // P7: the persisted board shape decides the topology of that first board.
+    {
+      size: prefs.gridSize,
+      colors: prefs.colorCount,
+      shape: prefs.boardShape,
+    },
   );
 
   // --- Presentation state owned by the facade ---
@@ -426,7 +443,8 @@ export function useGameSession(): GameSession {
   /** Starts (or restarts, via undo/seed) today's date-seeded board. */
   const startDailyChallenge = useCallback(() => {
     const setup = dailySetup();
-    initSoloBoard(setup.size, setup.colors, setup.seed);
+    // P6.1 convention kept: the daily round is always a classic square board.
+    initSoloBoard(setup.size, setup.colors, setup.seed, 'classic');
     setSoloHintsLeft(3);
     setHint(null);
     setHintGain(undefined);
@@ -504,7 +522,8 @@ export function useGameSession(): GameSession {
       prefs.setMode('solo');
       prefs.setGridSize(params.size);
       prefs.setColorCount(params.colors);
-      initSoloBoard(params.size, params.colors, params.seed);
+      // P6.3 links are square boards; P7.3 adds ?shape= for wheel games.
+      initSoloBoard(params.size, params.colors, params.seed, 'classic');
       setSoloHintsLeft(3);
       setHint(null);
       setHintGain(undefined);
@@ -528,6 +547,9 @@ export function useGameSession(): GameSession {
   const soloShareUrl = (() => {
     if (prefs.mode !== 'solo' || !soloState || soloState.status === 'playing')
       return null;
+    // P7: wheel boards wait for P7.3 (?shape= + wheel reconstruction) so we
+    // never emit a square link that would rebuild the wrong topology.
+    if (soloState.shape !== 'classic') return null;
     return buildSoloShareLink({
       seed: soloState.seed,
       size: soloState.grid.length,
@@ -607,6 +629,16 @@ export function useGameSession(): GameSession {
   );
   useEffect(() => {
     recordSoloWinRef.current = recordSoloWin;
+  });
+
+  // P7: the win/loss callbacks below run through a ref because the solo
+  // machine's options object is built before its state exists. The shape ref
+  // lets them route records to the right topology (P7.2: wheel rounds skip
+  // the square-keyed high-score/stats tables until P7.3 makes them
+  // shape-aware).
+  const soloShapeRef = useRef<BoardShape>('classic');
+  useEffect(() => {
+    soloShapeRef.current = soloState?.shape ?? 'classic';
   });
 
   useEffect(() => {
@@ -799,7 +831,7 @@ export function useGameSession(): GameSession {
   // Actions
   // ---------------------------------------------------------------
   const newSoloGame = useCallback(() => {
-    initSoloBoard(prefs.gridSize, prefs.colorCount);
+    initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, prefs.boardShape);
     setSoloHintsLeft(3);
     clearHint();
     setDailyRound(null); // P6.1: leaving the daily board ends its round flag
@@ -807,6 +839,7 @@ export function useGameSession(): GameSession {
     initSoloBoard,
     prefs.gridSize,
     prefs.colorCount,
+    prefs.boardShape,
     clearHint,
     setSoloHintsLeft,
     setDailyRound,
@@ -854,7 +887,12 @@ export function useGameSession(): GameSession {
       // Limited hints: 3 per solo game. Never free.
       if (soloHintsLeft <= 0) return;
       setSoloHintsLeft((n) => Math.max(0, n - 1));
-      setHint(getBestSoloMove(s.grid, prefs.colorCount));
+      // P7: the hint engine follows the board topology.
+      setHint(
+        s.shape === 'wheel'
+          ? bestWheelMove(s.grid, prefs.colorCount)
+          : getBestSoloMove(s.grid, prefs.colorCount),
+      );
       setHintGain(undefined);
       return;
     }
@@ -982,7 +1020,9 @@ export function useGameSession(): GameSession {
     prefs.setGridSize(10);
     prefs.setColorCount(4);
     prefs.setBotDifficulty('easy');
-    initSoloBoard(10, 4);
+    // The shape pref is the player's board FORMAT, not a difficulty —
+    // "easiest" keeps the current topology.
+    initSoloBoard(10, 4, undefined, prefs.boardShape);
     setSoloHintsLeft(3);
     clearHint();
     // Same shape as pre-refactor: a plain 10x4 round with fresh meta.
@@ -1000,7 +1040,7 @@ export function useGameSession(): GameSession {
   const handleChangeGridSize = useCallback(
     (size: GridSize) => {
       prefs.setGridSize(size);
-      initSoloBoard(size, prefs.colorCount);
+      initSoloBoard(size, prefs.colorCount, undefined, prefs.boardShape);
       setSoloHintsLeft(3);
       clearHint();
       const m = localState;
@@ -1034,7 +1074,7 @@ export function useGameSession(): GameSession {
   const handleChangeColorCount = useCallback(
     (count: ColorCount) => {
       prefs.setColorCount(count);
-      initSoloBoard(prefs.gridSize, count);
+      initSoloBoard(prefs.gridSize, count, undefined, prefs.boardShape);
       setSoloHintsLeft(3);
       clearHint();
       const m = localState;
@@ -1063,6 +1103,17 @@ export function useGameSession(): GameSession {
       initSoloBoard,
       setSoloHintsLeft,
     ],
+  );
+
+  /** P7: swap the solo board topology and regenerate, like the size switch. */
+  const handleChangeBoardShape = useCallback(
+    (shape: BoardShape) => {
+      prefs.setBoardShape(shape);
+      initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, shape);
+      setSoloHintsLeft(3);
+      clearHint();
+    },
+    [prefs, initSoloBoard, clearHint, setSoloHintsLeft],
   );
 
   const handleChangeChallengeType = useCallback(
@@ -1147,6 +1198,7 @@ export function useGameSession(): GameSession {
     mode: prefs.mode,
     gridSize: prefs.gridSize,
     colorCount: prefs.colorCount,
+    boardShape: prefs.boardShape,
     botDifficulty: prefs.botDifficulty,
     challengeType: prefs.challengeType,
     opponent: prefs.opponent,
@@ -1245,6 +1297,7 @@ export function useGameSession(): GameSession {
     handleSetToEasiest,
     handleChangeGridSize,
     handleChangeColorCount,
+    handleChangeBoardShape,
     handleChangeChallengeType,
     handleSetBotDifficulty: prefs.setBotDifficulty,
     handleSelectMode,

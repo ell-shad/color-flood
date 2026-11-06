@@ -5,6 +5,7 @@ import type {
   GameMode,
   GridSize,
   ColorCount,
+  BoardShape,
   MultiplayerOpponent,
   BotDifficulty,
   ChallengeType,
@@ -32,6 +33,9 @@ export interface Prefs {
   setGridSize: (s: GridSize) => void;
   colorCount: ColorCount;
   setColorCount: (c: ColorCount) => void;
+  /** P7: solo board topology; persisted so relaunched app keeps the wheel. */
+  boardShape: BoardShape;
+  setBoardShape: (s: BoardShape) => void;
   opponent: MultiplayerOpponent;
   setOpponent: (o: MultiplayerOpponent) => void;
   botDifficulty: BotDifficulty;
@@ -77,6 +81,13 @@ export function usePrefs(): Prefs {
     return saved ? (Number(saved) as ColorCount) : 4;
   });
 
+  const [boardShape, setBoardShape] = useState<BoardShape>(() => {
+    // Unknown saved values fall back to the classic square (forward-compat).
+    return loadString('board-shape', 'color-flood-board-shape') === 'wheel'
+      ? 'wheel'
+      : 'classic';
+  });
+
   const [opponent, setOpponent] = useState<MultiplayerOpponent>(() => {
     if (urlMode) return 'online';
     return (
@@ -114,6 +125,7 @@ export function usePrefs(): Prefs {
   useEffect(() => saveString('mode', mode), [mode]);
   useEffect(() => saveString('grid-size', String(gridSize)), [gridSize]);
   useEffect(() => saveString('color-count', String(colorCount)), [colorCount]);
+  useEffect(() => saveString('board-shape', boardShape), [boardShape]);
   useEffect(() => saveString('opponent', opponent), [opponent]);
   useEffect(() => saveString('bot-diff', botDifficulty), [botDifficulty]);
   useEffect(() => saveString('challenge-type', challengeType), [challengeType]);
@@ -143,6 +155,8 @@ export function usePrefs(): Prefs {
     setGridSize,
     colorCount,
     setColorCount,
+    boardShape,
+    setBoardShape,
     opponent,
     setOpponent,
     botDifficulty,

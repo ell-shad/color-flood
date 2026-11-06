@@ -5,8 +5,15 @@ import type {
   HighScore,
   GridSize,
   ColorCount,
+  BoardShape,
 } from '../types';
 import { generateSoloGrid, floodSolo, checkSoloWin } from '../utils/floodLogic';
+import {
+  generateWheelBoard,
+  floodWheel,
+  checkWheelWin,
+  getMaxWheelMoves,
+} from '../utils/circleEngine';
 import { mulberry32 } from '../utils/engine';
 import { maxSoloMovesLimit } from '../utils/soloBalance';
 import { loadJson, saveJson } from '../utils/storage';
@@ -61,8 +68,11 @@ const updateHighScores = (
  */
 const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] => {
   const diff: SoloMoveDiff[] = [];
+  // Row/column indices come from the BOARD ITSELF: wheels (P7) are
+  // rings×sectors where sectors ≠ row count, so the column bound must be
+  // each row's own length, not `before.length`.
   for (let r = 0; r < before.length; r++) {
-    for (let c = 0; c < before.length; c++) {
+    for (let c = 0; c < before[r].length; c++) {
       if (before[r][c] !== after[r][c]) diff.push({ r, c, prev: before[r][c] });
     }
   }
@@ -70,7 +80,13 @@ const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] =>
 };
 
 type SoloAction =
-  | { type: 'init'; size: GridSize; colors: ColorCount; seed?: number }
+  | {
+      type: 'init';
+      size: GridSize;
+      colors: ColorCount;
+      shape?: BoardShape;
+      seed?: number;
+    }
   | { type: 'move'; color: number }
   | { type: 'undo' };
 
@@ -87,12 +103,24 @@ const soloReducer = (
       // challenge (P6.1) and shared links; plain play draws a fresh random
       // seed so any finished game can produce its own share link.
       const seed = action.seed ?? randomSeed32();
-      const grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
+      const shape: BoardShape = action.shape ?? 'classic';
+      // P7: wheels are grids[rings][sectors] (uniform inner ring seed); the
+      // move budget is the calibrated 0.9× solo limit, so parity with the
+      // beam-calibrated square difficulty carries over.
+      const grid =
+        shape === 'wheel'
+          ? generateWheelBoard(action.size, action.colors, mulberry32(seed))
+          : generateSoloGrid(action.size, action.colors, mulberry32(seed));
+      const maxMoves =
+        shape === 'wheel'
+          ? getMaxWheelMoves(action.size, action.colors)
+          : maxSoloMovesLimit(action.size, action.colors);
       return {
         grid,
         moves: 0,
-        maxMoves: maxSoloMovesLimit(action.size, action.colors),
+        maxMoves,
         status: 'playing',
+        shape,
         history: [[]],
         playedColors: [],
         seed,
@@ -102,9 +130,13 @@ const soloReducer = (
     case 'move': {
       if (!state || state.status !== 'playing') return state;
       if (action.color === state.grid[0][0]) return state; // same as current flood color
-      const newGrid = floodSolo(state.grid, action.color);
+      const newGrid =
+        state.shape === 'wheel'
+          ? floodWheel(state.grid, action.color)
+          : floodSolo(state.grid, action.color);
       const newMoves = state.moves + 1;
-      const isWin = checkSoloWin(newGrid);
+      const isWin =
+        state.shape === 'wheel' ? checkWheelWin(newGrid) : checkSoloWin(newGrid);
       const isLoss = !isWin && newMoves >= state.maxMoves;
       return {
         ...state,
@@ -147,10 +179,15 @@ export interface SoloGameOptions {
  */
 export function useSoloGame(
   opts: SoloGameOptions = {},
-  initial: { size: GridSize; colors: ColorCount },
+  initial: { size: GridSize; colors: ColorCount; shape: BoardShape },
 ) {
   const [soloState, dispatch] = useReducer(soloReducer, null, () =>
-    soloReducer(null, { type: 'init', size: initial.size, colors: initial.colors }),
+    soloReducer(null, {
+      type: 'init',
+      size: initial.size,
+      colors: initial.colors,
+      shape: initial.shape,
+    }),
   );
   const [highScores, setHighScores] = useState<HighScore[]>(() => loadHighScores());
 
@@ -178,8 +215,8 @@ export function useSoloGame(
   });
 
   const init = useCallback(
-    (size: GridSize, colors: ColorCount, seed?: number) =>
-      dispatch({ type: 'init', size, colors, seed }),
+    (size: GridSize, colors: ColorCount, seed?: number, shape?: BoardShape) =>
+      dispatch({ type: 'init', size, colors, seed, shape }),
     [],
   );
   const move = useCallback((color: number) => dispatch({ type: 'move', color }), []);

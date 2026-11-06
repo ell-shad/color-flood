@@ -9,9 +9,11 @@ import {
   countConnectedWheel,
   bestWheelMove,
   getMaxWheelMoves,
+  getWheelPar,
+  rateWheelStars,
 } from './circleEngine';
 import { mulberry32 } from './engine';
-import { getMaxSoloMoves } from './floodLogic';
+import { maxSoloMovesLimit } from './soloBalance';
 import { GRID_SIZES, COLOR_COUNTS } from './floodLogic';
 
 /**
@@ -32,12 +34,13 @@ describe('P7.1 circle engine — geometry', () => {
     }
   });
 
-  it('budget is calibrated to the square ladder and strictly grows', () => {
+  it('budget is calibrated to the real solo limits and strictly grows', () => {
     for (const size of GRID_SIZES) {
       for (const colors of COLOR_COUNTS) {
-        // Calibrated factor (P7.1 sim): 0.7× the same-size square budget.
+        // Calibrated factor (P7.2 sim): 0.9× the solver-calibrated solo limit;
+        // 500-seed greedy runs win within the budget in 100% per config.
         expect(getMaxWheelMoves(size, colors)).toBe(
-          Math.round(getMaxSoloMoves(size, colors) * 0.7),
+          Math.round(maxSoloMovesLimit(size, colors) * 0.9),
         );
       }
     }
@@ -56,6 +59,14 @@ describe('P7.1 circle engine — geometry', () => {
         );
       }
     }
+  });
+
+  it('rates stars above the scaled wheel par', () => {
+    // 3 stars at ≤ par, 1 star at the limit — same rule, wheel thresholds.
+    const par = getWheelPar(10, 4);
+    expect(rateWheelStars(par, 10, 4)).toBe(3);
+    expect(rateWheelStars(par + 1, 10, 4)).toBeLessThan(3);
+    expect(rateWheelStars(getMaxWheelMoves(10, 4), 10, 4)).toBe(1);
   });
 });
 

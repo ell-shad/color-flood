@@ -6,6 +6,7 @@ import {
   GameMode,
   GridSize,
   ColorCount,
+  BoardShape,
   MultiplayerOpponent,
   ThemeId,
   ChallengeType,
@@ -21,6 +22,8 @@ import {
   Lightbulb,
   Volume2,
   Shapes,
+  Square,
+  Circle,
 } from 'lucide-react';
 
 interface SettingsPanelProps {
@@ -28,6 +31,9 @@ interface SettingsPanelProps {
   onChangeGridSize: (size: GridSize) => void;
   colorCount: ColorCount;
   onChangeColorCount: (count: ColorCount) => void;
+  /** P7: solo board topology (Classic square / Wheel) — solo only. */
+  boardShape?: BoardShape;
+  onChangeBoardShape?: (shape: BoardShape) => void;
   mode: GameMode;
   opponent: MultiplayerOpponent;
   onChangeOpponent: (opp: MultiplayerOpponent) => void;
@@ -61,6 +67,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeGridSize,
   colorCount,
   onChangeColorCount,
+  boardShape = 'classic',
+  onChangeBoardShape,
   mode,
   opponent,
   botDifficulty,
@@ -189,6 +197,46 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <span>{sec === 0 ? 'Off' : `${sec}s`}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* P7: Board Shape (solo only) — classic square or mandala wheel. */}
+        {mode === 'solo' && onChangeBoardShape && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                Board Shape
+              </label>
+              <span className="text-[10px] text-indigo-400 font-mono">
+                wheel floods from the center out
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => onChangeBoardShape('classic')}
+                title="Classic square flood from the top-left corner"
+                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  boardShape === 'classic'
+                    ? 'bg-indigo-600 text-white shadow border border-indigo-400/50'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
+                }`}
+              >
+                <Square className="w-3 h-3" />
+                <span>Classic</span>
+              </button>
+              <button
+                onClick={() => onChangeBoardShape('wheel')}
+                title="Polar wheel: hollow center, flood grows ring by ring"
+                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  boardShape === 'wheel'
+                    ? 'bg-fuchsia-600 text-white shadow border border-fuchsia-400/50'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
+                }`}
+              >
+                <Circle className="w-3 h-3" />
+                <span>Wheel</span>
+              </button>
             </div>
           </div>
         )}

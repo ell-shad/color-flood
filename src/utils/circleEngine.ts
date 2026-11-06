@@ -1,6 +1,11 @@
 import type { GridSize } from '../types';
 import { mulberry32, type Rng } from './engine';
-import { getMaxSoloMoves } from './floodLogic';
+import {
+  maxSoloMovesLimit,
+  rateSoloStarsWith,
+  soloPar,
+  type SoloStars,
+} from './soloBalance';
 
 /**
  * P7.1 — Circle (wheel) boards for solo play.
@@ -47,16 +52,28 @@ export const wheelCellCount = (size: number): number => {
 };
 
 /**
- * Move budget. Calibrated against the square ladder (P7.1 sim): the wheel's
- * uniform seed ring is structurally much stronger than the square's corner
- * seed (a competent hint-quality solver needs ~half the moves), so the
- * budget is 0.7× the same-size square budget. Greedy simulations (500 seeds
- * per config) win within the budget in 96.8–100% per config — worst at the
- * hardest 18×8 — with avg-need/budget ratios (~0.42–0.88) tracking the
- * square ladder's own 0.42–0.87 solver feel.
+ * Move budget. Calibrated against the REAL solo limit table (P7.1 sim, 500
+ * seeds per config): the wheel's uniform seed ring is structurally much
+ * stronger than the square's corner seed — the greedy needs ~60% of the
+ * square's solver-calibrated SOLO_LIMITS — so a competent hint player gets
+ * budgets at 0.9× the same-size solo limit (96.8–100% win per config,
+ * avg-need/budget ~0.58–0.76, in family with the square ladder's feel).
+ * Stars follow the square's rates: par thresholds at 0.85× (the wheel hint
+ * has no beam lookahead, so its median stays below the scaled par).
  */
+export const WHEEL_LIMIT_FACTOR = 0.9;
+export const WHEEL_PAR_FACTOR = 0.85;
+
 export const getMaxWheelMoves = (size: number, colorCount: number): number =>
-  Math.round(getMaxSoloMoves(size, colorCount) * 0.7);
+  Math.round(maxSoloMovesLimit(size, colorCount) * WHEEL_LIMIT_FACTOR);
+
+/** 3-star move threshold for wheel boards (mirrors `soloPar`). */
+export const getWheelPar = (size: number, colorCount: number): number =>
+  Math.round(soloPar(size, colorCount) * WHEEL_PAR_FACTOR);
+
+/** Shape-correct star rating for wheel boards (mirrors `rateSoloStars`). */
+export const rateWheelStars = (moves: number, size: number, colors: number): SoloStars =>
+  rateSoloStarsWith(moves, getWheelPar(size, colors), getMaxWheelMoves(size, colors));
 
 /**
  * Seeded wheel generation (P6.3 convention: every board carries its seed).

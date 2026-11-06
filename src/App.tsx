@@ -11,6 +11,7 @@ import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
 import { TwoPlayerScoreboard } from './components/TwoPlayerScoreboard';
 import { GameGrid } from './components/GameGrid';
+import { WheelBoard } from './components/WheelBoard';
 import { ColorPalette } from './components/ColorPalette';
 import { GameOverModal } from './components/GameOverModal';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -218,6 +219,8 @@ export default function App() {
               onChangeGridSize={session.handleChangeGridSize}
               colorCount={session.colorCount}
               onChangeColorCount={session.handleChangeColorCount}
+              boardShape={session.boardShape}
+              onChangeBoardShape={session.handleChangeBoardShape}
               mode={session.mode}
               opponent={session.opponent}
               onChangeOpponent={session.setOpponent}
@@ -281,6 +284,8 @@ export default function App() {
                     colorCount={session.colorCount}
                     onUndo={session.undoSolo}
                     canUndo={session.canUndoSolo}
+                    shape={session.soloState.shape}
+                    boardSize={session.gridView.gridSize}
                   />
                   {/* P6.1: Daily Challenge strip (solo only) */}
                   <div className="w-full flex justify-center">
@@ -314,21 +319,32 @@ export default function App() {
                 />
               )}
 
-              {/* Game Grid with Fluid Wave Animations & Theme Styling */}
+              {/* Game Board with Fluid Wave Animations & Theme Styling —
+                  P7: solo wheel games render as a mandala SVG board instead. */}
               <div className="relative my-0.5 shrink-0 flex items-center justify-center">
-                <GameGrid
-                  grid={session.gridView.grid}
-                  gridSize={session.gridView.gridSize}
-                  mode={session.mode}
-                  opponent={session.opponent}
-                  p1Cells={session.gridView.p1Cells}
-                  p2Cells={session.gridView.p2Cells}
-                  showTerritoryOverlay={session.showTerritoryOverlay}
-                  showColorSymbols={session.showColorSymbols}
-                  lastMovingPlayer={session.lastMovingPlayer}
-                  theme={session.currentTheme}
-                  movesCount={session.gridMovesCount}
-                />
+                {session.mode === 'solo' && session.soloState.shape === 'wheel' ? (
+                  <WheelBoard
+                    grid={session.soloState.grid}
+                    size={session.gridView.gridSize}
+                    theme={session.currentTheme}
+                    movesCount={session.gridMovesCount}
+                    showColorSymbols={session.showColorSymbols}
+                  />
+                ) : (
+                  <GameGrid
+                    grid={session.gridView.grid}
+                    gridSize={session.gridView.gridSize}
+                    mode={session.mode}
+                    opponent={session.opponent}
+                    p1Cells={session.gridView.p1Cells}
+                    p2Cells={session.gridView.p2Cells}
+                    showTerritoryOverlay={session.showTerritoryOverlay}
+                    showColorSymbols={session.showColorSymbols}
+                    lastMovingPlayer={session.lastMovingPlayer}
+                    theme={session.currentTheme}
+                    movesCount={session.gridMovesCount}
+                  />
+                )}
 
                 {/* Game Over Modal Overlay */}
                 <GameOverModal
@@ -350,7 +366,10 @@ export default function App() {
                   dailyShareText={session.dailyShareText}
                   onWatchReplay={
                     session.mode === 'solo' && session.soloState.status !== 'playing'
-                      ? () => setShowReplay(true)
+                      ? // P7: wheel replay reconstruction arrives with ?shape= links.
+                        session.soloState.shape === 'classic'
+                        ? () => setShowReplay(true)
+                        : undefined
                       : undefined
                   }
                   shareBoardLink={session.soloShareUrl}

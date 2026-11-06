@@ -1,5 +1,7 @@
 export type GridSize = 10 | 12 | 14 | 16 | 18;
 export type ColorCount = 4 | 5 | 6 | 7 | 8;
+/** P7: solo board topology — the classic square or the concentric wheel. */
+export type BoardShape = 'classic' | 'wheel';
 export type GameMode = 'solo' | 'multiplayer';
 export type MultiplayerOpponent = 'local' | 'bot' | 'online';
 export type BotDifficulty = 'easy' | 'medium' | 'master';
@@ -49,6 +51,8 @@ export interface SoloGameState {
   moves: number;
   maxMoves: number;
   status: 'playing' | 'won' | 'lost';
+  /** P7: board topology — `classic` square or `wheel` (rings × sectors). */
+  shape: BoardShape;
   /** Per-move repaint diffs; index 0 is the initial board (empty diff). */
   history: SoloMoveDiff[][];
   /** P6.1: winning-move replay material — the played palette indices in order. */

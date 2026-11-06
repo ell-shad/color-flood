@@ -1,0 +1,213 @@
+import React, { useMemo } from 'react';
+import { GameTheme } from '../types';
+import { THEMES } from '../utils/themes';
+import { cellInkOn } from '../utils/contrast';
+import { wheelGeometry } from '../utils/circleEngine';
+
+/**
+ * P7.2: polar wheel board — rings × radial sectors drawn as SVG annular
+ * sectors, hollow center, flooding from the innermost ring outward.
+ *
+ * Mirrors GameGrid's rendering pipeline (P4.6) with SVG plumbing:
+ *  - cell fills transition `fill` over the same 0.26 s ease-out with a ring
+ *    stagger (the polar analogue of the square's `dist-from-root` wave), and
+ *  - the scale pop replays by swapping the same two keyframe names
+ *    (`cell-pop-even` / `cell-pop-odd`) on every move, zero JS animation
+ *    loops — SVG paths get `transform-box: fill-box` so the pop scales each
+ *    sector around its own bbox center (.wheel-cell rule in index.css).
+ *
+ * `grid[r]` = ring r (0 = innermost), `grid[r][c]` = clockwise sector c.
+ */
+
+interface WheelBoardProps {
+  grid: number[][];
+  /** Ladder size (10..18) — maps to the wheel geometry table. */
+  size: number;
+  theme?: GameTheme;
+  /** Move counter: parity flips the pop keyframe so CSS can restart it. */
+  movesCount?: number;
+  /** P5.4: overlay digit (palette index + 1) per cell — color-blind aid. */
+  showColorSymbols?: boolean;
+}
+
+interface WheelCellProps {
+  d: string;
+  /** Centroid (SVG user units) for the optional digit overlay. */
+  cx: number;
+  cy: number;
+  /** Ring thickness scales the digit with the board's own geometry. */
+  fontSize: number;
+  color: string;
+  waveDelay: number;
+  popAnim: string;
+  glyph: string;
+  inkColor: string;
+  inkShadow: string;
+}
+
+const WheelCell = React.memo(function WheelCell({
+  d,
+  cx,
+  cy,
+  fontSize,
+  color,
+  waveDelay,
+  popAnim,
+  glyph,
+  inkColor,
+  inkShadow,
+}: WheelCellProps) {
+  return (
+    <>
+      <path
+        className="wheel-cell"
+        d={d}
+        fill={color}
+        style={{
+          transition: 'fill 0.26s ease-out',
+          transitionDelay: `${waveDelay}s`,
+          animation: `${popAnim} 0.32s ease-in-out ${waveDelay}s both`,
+        }}
+      />
+      {glyph && (
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="pointer-events-none select-none"
+          style={{
+            fill: inkColor,
+            fontSize,
+            fontWeight: 900,
+            textShadow: inkShadow,
+          }}
+        >
+          {glyph}
+        </text>
+      )}
+    </>
+  );
+});
+
+/** One annular sector (rings/hosted angles in radians, sweep = clockwise). */
+const sectorPath = (
+  cx: number,
+  cy: number,
+  r0: number,
+  r1: number,
+  a0: number,
+  a1: number,
+): string => {
+  const x0i = cx + r0 * Math.cos(a0);
+  const y0i = cy + r0 * Math.sin(a0);
+  const x0o = cx + r1 * Math.cos(a0);
+  const y0o = cy + r1 * Math.sin(a0);
+  const x1o = cx + r1 * Math.cos(a1);
+  const y1o = cy + r1 * Math.sin(a1);
+  const x1i = cx + r0 * Math.cos(a1);
+  const y1i = cy + r0 * Math.sin(a1);
+  return [
+    `M ${x0i} ${y0i}`,
+    `L ${x0o} ${y0o}`,
+    `A ${r1} ${r1} 0 0 1 ${x1o} ${y1o}`,
+    `L ${x1i} ${y1i}`,
+    `A ${r0} ${r0} 0 0 0 ${x0i} ${y0i}`,
+    'Z',
+  ].join(' ');
+};
+
+export const WheelBoard: React.FC<WheelBoardProps> = ({
+  grid,
+  size,
+  theme = THEMES.arcade,
+  movesCount = 0,
+  showColorSymbols = false,
+}) => {
+  const popAnim = movesCount % 2 === 0 ? 'cell-pop-even' : 'cell-pop-odd';
+  const shape = useMemo(() => wheelGeometry(size), [size]);
+  const cells = useMemo(() => {
+    const { rings, sectors } = shape;
+    const CX = 50;
+    const CY = 50;
+    const OUTER = 49;
+    /** Hollow core: a generous center hole like the mandala reference. */
+    const INNER = 21;
+    const step = (OUTER - INNER) / rings;
+    const out: Array<{
+      d: string;
+      cx: number;
+      cy: number;
+      fontSize: number;
+    }> = [];
+    for (let r = 0; r < rings; r++) {
+      // Micro-gaps: shrink each sector slightly so the board background
+      // (the frame itself) shows through as the cell divider.
+      const r0 = INNER + r * step + (r === 0 ? 0 : 0.35);
+      const r1 = INNER + (r + 1) * step - (r === rings - 1 ? 0 : 0.35);
+      for (let c = 0; c < sectors; c++) {
+        const gap = 0.2 / Math.max(r0, r1);
+        const a0 = (c / sectors) * 2 * Math.PI - Math.PI / 2 + gap;
+        const a1 = ((c + 1) / sectors) * 2 * Math.PI - Math.PI / 2 - gap;
+        const am = (a0 + a1) / 2;
+        const rm = (r0 + r1) / 2;
+        out.push({
+          d: sectorPath(CX, CY, r0, r1, a0, a1),
+          cx: CX + rm * Math.cos(am),
+          cy: CY + rm * Math.sin(am),
+          fontSize: Math.max(2.1, step * 0.58),
+        });
+      }
+    }
+    return out;
+  }, [shape]);
+
+  return (
+    <div
+      className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none mx-auto shrink-0 transition-colors duration-300`}
+      style={{
+        width: 'min(88vw, min(40vh, 380px))',
+        aspectRatio: '1/1',
+      }}
+    >
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-full"
+        role="img"
+        aria-label={`${shape.rings} rings by ${shape.sectors} sectors color wheel board`}
+      >
+        {/* Hollow core: soft white disc + thin rim, the mandala eye. */}
+        <circle
+          cx={50}
+          cy={50}
+          r={17}
+          fill="rgba(255,255,255,0.10)"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth={0.6}
+        />
+        {cells.map(({ d, cx, cy, fontSize }, i) => {
+          const rr = Math.floor(i / shape.sectors);
+          const cell = grid[rr]?.[i % shape.sectors] ?? 0;
+          const waveDelay = Math.min(0.24, rr * 0.014);
+          const hex = theme.colors[cell] || '#FF595E';
+          const ink = showColorSymbols ? cellInkOn(hex) : null;
+          return (
+            <WheelCell
+              key={`${rr}-${i % shape.sectors}`}
+              d={d}
+              cx={cx}
+              cy={cy}
+              fontSize={fontSize}
+              color={hex}
+              waveDelay={waveDelay}
+              popAnim={popAnim}
+              glyph={ink ? String(cell + 1) : ''}
+              inkColor={ink ? ink.color : ''}
+              inkShadow={ink ? ink.shadow : ''}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+};

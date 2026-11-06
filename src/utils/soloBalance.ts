@@ -78,11 +78,17 @@ export const soloPar = (size: number, colors: number): number =>
 
 export type SoloStars = 1 | 2 | 3;
 
-export const rateSoloStars = (moves: number, size: number, colors: number): SoloStars => {
-  const par = soloPar(size, colors);
-  const limit = maxSoloMovesLimit(size, colors);
+/** Rating core with explicit thresholds so non-square boards (P7 wheel) reuse it. */
+export const rateSoloStarsWith = (
+  moves: number,
+  par: number,
+  limit: number,
+): SoloStars => {
   if (moves <= par) return 3;
   const midpoint = Math.min(limit, par + Math.ceil((limit - par) / 2));
   if (moves <= midpoint) return 2;
   return 1;
 };
+
+export const rateSoloStars = (moves: number, size: number, colors: number): SoloStars =>
+  rateSoloStarsWith(moves, soloPar(size, colors), maxSoloMovesLimit(size, colors));
