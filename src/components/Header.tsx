@@ -10,6 +10,7 @@ import {
   Globe,
   Palette,
   BarChart3,
+  Download,
 } from 'lucide-react';
 import { GameMode, MultiplayerOpponent } from '../types';
 
@@ -24,6 +25,9 @@ interface HeaderProps {
   onToggleThemes: () => void;
   onToggleStats: () => void;
   onResetGame: () => void;
+  /** P6.4: install affordance (only shown when the browser allows install). */
+  canInstall: boolean;
+  onInstall: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleThemes,
   onToggleStats,
   onResetGame,
+  canInstall,
+  onInstall,
 }) => {
   return (
     <header className="w-full max-w-lg mx-auto pt-2 px-2.5 sm:px-3 space-y-1.5 shrink-0 select-none">
@@ -121,6 +127,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Settings2 className="w-3.5 h-3.5" />
           </button>
+          {canInstall && (
+            <button
+              onClick={onInstall}
+              className="p-1.5 rounded-lg bg-slate-850/80 border border-slate-750 text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer"
+              title="Install app"
+              aria-label="Install app"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={onResetGame}
             className="p-1.5 rounded-lg bg-slate-850/80 border border-slate-750 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"

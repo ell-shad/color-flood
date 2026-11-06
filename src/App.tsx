@@ -4,6 +4,7 @@ import { Github, Linkedin, Info, Flame } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { loadBool, saveString } from './utils/storage';
 
 import { Header } from './components/Header';
@@ -58,6 +59,8 @@ export default function App() {
   const [showStats, setShowStats] = useState(false);
   // P6.3: replay viewer (opened from the solo game-over card).
   const [showReplay, setShowReplay] = useState(false);
+  // P6.4: browser install affordance (header button when allowed).
+  const { canInstall, install: installPwa } = useInstallPrompt();
 
   // P5.7: prominent turn chip — who moves / who you wait for (multiplayer
   // play only). Names come from the facade (online rooms use room names).
@@ -171,6 +174,8 @@ export default function App() {
             onToggleThemes={() => setShowThemeModal(true)}
             onToggleStats={() => setShowStats(true)}
             onResetGame={session.initiateReset}
+            canInstall={canInstall}
+            onInstall={installPwa}
           />
 
           {/* Online System Banner */}
