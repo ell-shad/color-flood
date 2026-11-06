@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MotionConfig } from 'motion/react';
-import { Github, Linkedin, Info } from 'lucide-react';
+import { Github, Linkedin, Info, Flame } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -19,6 +19,7 @@ import { ResetApprovalModal } from './components/ResetApprovalModal';
 import { ThemeSelectorModal } from './components/ThemeSelectorModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
 import { FirstRunTutorial } from './components/FirstRunTutorial';
+import { DailyChallengeModal } from './components/DailyChallengeModal';
 
 /**
  * P4.1: App is now a thin render shell.
@@ -49,6 +50,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  // P6.1: Daily Challenge hub modal (solo strip button).
+  const [showDaily, setShowDaily] = useState(false);
 
   // P5.7: prominent turn chip — who moves / who you wait for (multiplayer
   // play only). Names come from the facade (online rooms use room names).
@@ -75,6 +78,10 @@ export default function App() {
     // Late declarations are intentional: each branch guards before touching.
     if (showTutorial) {
       finishTutorial();
+      return;
+    }
+    if (showDaily) {
+      setShowDaily(false);
       return;
     }
     if (showThemeModal) {
@@ -221,16 +228,32 @@ export default function App() {
             <div className="w-full flex flex-col items-center justify-between flex-1 max-h-[84vh]">
               {/* Active Mode Scoreboard */}
               {session.mode === 'solo' ? (
-                <SoloScoreboard
-                  gameState={session.soloState}
-                  currentHighScore={session.currentHighScore}
-                  onGetHint={session.getHint}
-                  hint={session.hint}
-                  hintsLeft={session.soloHintsLeft}
-                  colorCount={session.colorCount}
-                  onUndo={session.undoSolo}
-                  canUndo={session.canUndoSolo}
-                />
+                <>
+                  <SoloScoreboard
+                    gameState={session.soloState}
+                    currentHighScore={session.currentHighScore}
+                    onGetHint={session.getHint}
+                    hint={session.hint}
+                    hintsLeft={session.soloHintsLeft}
+                    colorCount={session.colorCount}
+                    onUndo={session.undoSolo}
+                    canUndo={session.canUndoSolo}
+                  />
+                  {/* P6.1: Daily Challenge strip (solo only) */}
+                  <div className="w-full flex justify-center">
+                    <button
+                      onClick={() => setShowDaily(true)}
+                      className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-slate-800/70 border border-slate-700 text-[11px] font-bold text-slate-300 hover:text-white hover:border-indigo-500/60 hover:bg-slate-800 transition-all cursor-pointer"
+                      aria-label="Open the Daily Challenge hub"
+                    >
+                      <Flame className="w-3 h-3 text-amber-400" aria-hidden="true" />
+                      <span>Daily Challenge</span>
+                      <span className="text-amber-400 font-bold tabular-nums">
+                        {session.dailyStreak.current}
+                      </span>
+                    </button>
+                  </div>
+                </>
               ) : (
                 <TwoPlayerScoreboard
                   gameState={session.activeMatch ?? session.localState}
@@ -281,6 +304,7 @@ export default function App() {
                   onAcceptRematch={session.acceptOnlineRematch}
                   onDeclineRematch={session.declineOnlineRematch}
                   onResetSeries={session.resetSeries}
+                  dailyShareText={session.dailyShareText}
                   p1Name={session.onlineOnly.p1Name}
                   p2Name={session.onlineOnly.p2Name}
                   myRole={session.myRole}
@@ -352,6 +376,19 @@ export default function App() {
           activeThemeId={session.themeId}
           onSelectTheme={session.handleSelectTheme}
           onClose={() => setShowThemeModal(false)}
+        />
+
+        {/* P6.1: Daily Challenge hub */}
+        <DailyChallengeModal
+          isOpen={showDaily}
+          onClose={() => setShowDaily(false)}
+          dailyDate={session.dailyDate}
+          dailyShareText={session.dailyShareText}
+          dailyStreak={session.dailyStreak}
+          onStartDaily={() => {
+            session.startDailyChallenge();
+            setShowDaily(false);
+          }}
         />
 
         {/* Rules Modal */}

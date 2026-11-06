@@ -7,6 +7,7 @@ import type {
   ColorCount,
 } from '../types';
 import { generateSoloGrid, floodSolo, checkSoloWin } from '../utils/floodLogic';
+import { mulberry32 } from '../utils/engine';
 import { maxSoloMovesLimit } from '../utils/soloBalance';
 import { loadJson, saveJson } from '../utils/storage';
 import { z } from 'zod';
@@ -69,7 +70,7 @@ const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] =>
 };
 
 type SoloAction =
-  | { type: 'init'; size: GridSize; colors: ColorCount }
+  | { type: 'init'; size: GridSize; colors: ColorCount; seed?: number }
   | { type: 'move'; color: number }
   | { type: 'undo' };
 
@@ -79,13 +80,19 @@ const soloReducer = (
 ): SoloGameState | null => {
   switch (action.type) {
     case 'init': {
-      const grid = generateSoloGrid(action.size, action.colors);
+      // P6.1: a seed makes the board deterministic (daily challenge);
+      // normal play keeps Math.random.
+      const grid =
+        action.seed !== undefined
+          ? generateSoloGrid(action.size, action.colors, mulberry32(action.seed))
+          : generateSoloGrid(action.size, action.colors);
       return {
         grid,
         moves: 0,
         maxMoves: maxSoloMovesLimit(action.size, action.colors),
         status: 'playing',
         history: [[]],
+        playedColors: [],
       };
     }
     case 'move': {
@@ -101,6 +108,7 @@ const soloReducer = (
         moves: newMoves,
         status: isWin ? 'won' : isLoss ? 'lost' : 'playing',
         history: [...state.history, buildMoveDiff(state.grid, newGrid)],
+        playedColors: [...state.playedColors, action.color],
       };
     }
     case 'undo': {
@@ -115,6 +123,7 @@ const soloReducer = (
         grid,
         moves: state.moves - 1,
         history: state.history.slice(0, -1),
+        playedColors: state.playedColors.slice(0, -1),
       };
     }
   }
@@ -164,7 +173,8 @@ export function useSoloGame(
   });
 
   const init = useCallback(
-    (size: GridSize, colors: ColorCount) => dispatch({ type: 'init', size, colors }),
+    (size: GridSize, colors: ColorCount, seed?: number) =>
+      dispatch({ type: 'init', size, colors, seed }),
     [],
   );
   const move = useCallback((color: number) => dispatch({ type: 'move', color }), []);

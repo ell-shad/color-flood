@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy,
@@ -38,6 +38,8 @@ interface GameOverModalProps {
   myRole?: 1 | 2 | null;
   rematchRequestedBy?: number | null;
   onLeaveRoom?: () => void;
+  /** P6.1: Wordle-style share sheet; non-null only for finished daily rounds. */
+  dailyShareText?: string | null;
 }
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
@@ -61,10 +63,43 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   myRole,
   rematchRequestedBy,
   onLeaveRoom,
+  dailyShareText = null,
 }) => {
   const isSoloActive = mode === 'solo' && soloStatus !== 'playing';
   const isMultiplayerActive = mode === 'multiplayer' && multiplayerStatus !== 'playing';
   const isOpen = isSoloActive || isMultiplayerActive;
+  // P6.1: transient share feedback (copied → back to "Share result").
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareFailed, setShareFailed] = useState(false);
+  const handleCopyShare = async () => {
+    if (!dailyShareText) return;
+    setShareFailed(false);
+    try {
+      await navigator.clipboard.writeText(dailyShareText);
+    } catch {
+      // Clipboard API needs a focused document; fall back to execCommand.
+      const ta = document.createElement('textarea');
+      ta.value = dailyShareText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let fallbackOk = false;
+      try {
+        fallbackOk = document.execCommand('copy');
+      } catch {
+        fallbackOk = false;
+      }
+      ta.remove();
+      if (!fallbackOk) {
+        setShareFailed(true);
+        setTimeout(() => setShareFailed(false), 2000);
+        return;
+      }
+    }
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
   // P5.3: dialog semantics, focus trap, focus restore (both variants).
   const panelRef = useModalA11y(isOpen);
 
@@ -121,6 +156,34 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
               <span>Play Again</span>
               <ChevronRight className="w-4 h-4" />
             </button>
+
+            {dailyShareText !== null && (
+              <button
+                onClick={handleCopyShare}
+                className={`w-full py-2 px-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs ${
+                  shareCopied
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+              >
+                {shareCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Copied to clipboard!</span>
+                  </>
+                ) : shareFailed ? (
+                  <>
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Copy failed — try again</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Share daily result</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>

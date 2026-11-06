@@ -48,7 +48,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
           }`}
         >
           {gameState.moves}
-          <span className="text-slate-500 text-sm sm:text-lg font-normal">
+          <span className="text-slate-400 text-sm sm:text-lg font-normal">
             /{gameState.maxMoves}
           </span>
         </p>
@@ -79,6 +79,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
         </div>
         {stars !== null && (
           <div
+            role="img"
             className="flex items-center justify-center gap-0.5 mt-1"
             aria-label={`${stars} of 3 stars`}
           >

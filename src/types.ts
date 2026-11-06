@@ -51,6 +51,8 @@ export interface SoloGameState {
   status: 'playing' | 'won' | 'lost';
   /** Per-move repaint diffs; index 0 is the initial board (empty diff). */
   history: SoloMoveDiff[][];
+  /** P6.1: winning-move replay material — the played palette indices in order. */
+  playedColors: number[];
 }
 
 export interface TwoPlayerGameState {

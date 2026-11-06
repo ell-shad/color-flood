@@ -29,6 +29,15 @@ import {
 import { loadStoredSession, useOnlineMultiplayer } from '../utils/useOnlineMultiplayer';
 import { loadStringOr } from '../utils/storage';
 import { prefersReducedMotionSnapshot } from '../utils/motionPreferences';
+import {
+  applyDailyWin,
+  buildDailyShareText,
+  dailyDateString,
+  dailySetupFor,
+  loadDailyStreak,
+  saveDailyStreak,
+  type DailyStreak,
+} from '../utils/daily';
 import { hapticLose, hapticMove, hapticTurn, hapticWin } from '../utils/haptics';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
@@ -171,6 +180,17 @@ export interface GameSession {
   /** Rendered into an aria-live="polite" region by App. */
   announce: string;
 
+  // --- Daily Challenge (P6.1) ---
+  dailyActive: boolean;
+  /** Date string of the active round (null = normal solo). */
+  dailyDate: string | null;
+  /** Per-device streak / best (read from versioned storage). */
+  dailyStreak: DailyStreak;
+  /** Starts today's date-seeded solo board (size/colors from the date). */
+  startDailyChallenge: () => void;
+  /** Spoiler-safe share sheet; null when no daily result exists. */
+  dailyShareText: string | null;
+
   // --- Emote system ---
   activeEmotes: ActiveEmote[];
   triggerEmote: (sender: PlayerId, emoji: string, broadcastOnline?: boolean) => void;
@@ -304,11 +324,20 @@ export function useGameSession(): GameSession {
             particleCount: 160,
             spread: 80,
             origin: { y: 0.6 },
-            colors: currentTheme.colors.slice(0, prefs.colorCount),
+            colors: currentTheme.colors.slice(
+              0,
+              dailyRoundRef.current?.colors ?? prefs.colorCount,
+            ),
           });
         }
-        playWinSound();
-        recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
+        playWinSound(); // fires for every solo win; daily rounds additionally score a streak below
+        // P6.1: daily rounds update the streak once per date; their seeded
+        // boards are excluded from the per-config high-score tables (the
+        // round config can differ from prefs, and replays shouldn't farm stars).
+        recordDailyWin();
+        if (!dailyRoundRef.current) {
+          recordSoloWinRef.current?.(prefs.gridSize, prefs.colorCount, moves);
+        }
       },
       onLose: () => {
         hapticLose(prefs.soundMuted); // P5.7
@@ -331,6 +360,64 @@ export function useGameSession(): GameSession {
     setHint(null);
     setHintGain(undefined);
   }, [setHint, setHintGain]);
+
+  // --- P6.1: Daily Challenge round -------------------------------------------
+  // A daily round is a solo game flagged with its date + date-derived config;
+  // the board itself is seeded in the solo machine via mulberry32.
+  interface DailyRound {
+    date: string;
+    size: GridSize;
+    colors: ColorCount;
+    seed: number;
+  }
+  const [dailyRound, setDailyRound] = useState<DailyRound | null>(null);
+  const [dailyStreakState, setDailyStreakState] = useState<DailyStreak>(() => loadDailyStreak());
+
+  /** Today's date + config + seed (stable transform helpers). */
+  const dailySetup = useCallback(() => {
+    const date = dailyDateString();
+    return { date, ...dailySetupFor(date) };
+  }, []);
+
+  /** Starts (or restarts, via undo/seed) today's date-seeded board. */
+  const startDailyChallenge = useCallback(() => {
+    const setup = dailySetup();
+    initSoloBoard(setup.size, setup.colors, setup.seed);
+    setSoloHintsLeft(3);
+    setHint(null);
+    setHintGain(undefined);
+    setDailyRound({ date: setup.date, size: setup.size, colors: setup.colors, seed: setup.seed });
+  }, [dailySetup, initSoloBoard, setSoloHintsLeft, setHint, setHintGain, setDailyRound]);
+
+  /** Scores a daily win once per date (streak + storage, safe re-entry). */
+  // The round (and its date) is read through a ref so the win scoring has no
+  // render-phase side effects; onWin fires once per recorded outcome, and
+  // applyDailyWin stays idempotent per date as a second guard.
+  const dailyRoundRef = useRef<DailyRound | null>(null);
+  useEffect(() => {
+    dailyRoundRef.current = dailyRound;
+  });
+  const recordDailyWin = useCallback(() => {
+    const round = dailyRoundRef.current;
+    if (!round || round.date !== dailyDateString()) return;
+    const updated = applyDailyWin(loadDailyStreak(), round.date);
+    saveDailyStreak(updated);
+    setDailyStreakState(updated);
+  }, []);
+
+  /** Wordle-style share sheet for the current/last daily round result. */
+  const dailyShareText = (() => {
+    if (!dailyRound || !soloState || soloState.status === 'playing') return null;
+    return buildDailyShareText({
+      dateString: dailyRound.date,
+      size: dailyRound.size,
+      colors: dailyRound.colors,
+      moves: soloState.moves,
+      maxMoves: soloState.maxMoves,
+      playedColors: soloState.playedColors,
+      status: soloState.status,
+    });
+  })();
 
   // --- Emote Interaction Handler (verbatim from the pre-refactor App) ---
   const triggerEmote = useCallback(
@@ -539,14 +626,20 @@ export function useGameSession(): GameSession {
 
   // --- Derived view props: one place resolves every former JSX ternary ------
   const showHintButton = prefs.opponent === 'online' ? false : prefs.showHints;
-  const paletteColorCount = prefs.mode === 'solo' ? prefs.colorCount : matchColorCount;
+  // P6.1: active daily round — non-null solo configs are overridden by the
+  // date-seeded round (board size, palette count, share material).
+  const dailyPalette =
+    prefs.mode === 'solo' && dailyRound ? dailyRound.colors : prefs.colorCount;
+  const paletteColorCount = prefs.mode === 'solo' ? dailyPalette : matchColorCount;
+  const dailyGridSize =
+    prefs.mode === 'solo' && dailyRound ? dailyRound.size : prefs.gridSize;
   const activeTurn = activeMatch?.turn ?? 1;
   const matchStatus = activeMatch?.status ?? 'playing';
   const rematchRequestedBy = roomState?.rematchRequestedBy ?? null;
   const totalCells = (prefs.mode === 'solo' ? prefs.gridSize : matchGridSize) ** 2;
   const gridView = {
     grid: prefs.mode === 'solo' && soloState ? soloState.grid : (activeMatch?.grid ?? []),
-    gridSize: prefs.mode === 'solo' ? prefs.gridSize : matchGridSize,
+    gridSize: prefs.mode === 'solo' ? dailyGridSize : matchGridSize,
     p1Cells: activeMatch?.p1Cells ?? localState?.p1Cells ?? [],
     p2Cells: activeMatch?.p2Cells ?? localState?.p2Cells ?? [],
   };
@@ -593,7 +686,8 @@ export function useGameSession(): GameSession {
     initSoloBoard(prefs.gridSize, prefs.colorCount);
     setSoloHintsLeft(3);
     clearHint();
-  }, [initSoloBoard, prefs.gridSize, prefs.colorCount, clearHint, setSoloHintsLeft]);
+    setDailyRound(null); // P6.1: leaving the daily board ends its round flag
+  }, [initSoloBoard, prefs.gridSize, prefs.colorCount, clearHint, setSoloHintsLeft, setDailyRound]);
 
   const pickColor = useCallback(
     (color: number) => {
@@ -977,6 +1071,12 @@ export function useGameSession(): GameSession {
     canUndoSolo,
     // Screen-reader announcements (P5.3)
     announce,
+    // Daily Challenge (P6.1)
+    dailyActive: !!dailyRound,
+    dailyDate: dailyRound?.date ?? null,
+    dailyStreak: dailyStreakState,
+    startDailyChallenge,
+    dailyShareText,
     // Emotes
     activeEmotes,
     triggerEmote,
