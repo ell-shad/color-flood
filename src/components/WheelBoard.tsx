@@ -131,8 +131,8 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
     const CX = 50;
     const CY = 50;
     const OUTER = 49;
-    /** Hollow core: a generous center hole like the mandala reference. */
-    const INNER = 21;
+    /** Small core disc inside ring 0 — cells wrap tightly around it. */
+    const INNER = 12;
     const step = (OUTER - INNER) / rings;
     const out: Array<{
       d: string;
@@ -162,6 +162,9 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
     return out;
   }, [shape]);
 
+  // The core disc always mirrors ring 0's uniform color — the flood source.
+  const seedHex = theme.colors[grid[0]?.[0] ?? 0] || '#FF595E';
+
   return (
     <div
       className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none mx-auto shrink-0 transition-colors duration-300`}
@@ -176,14 +179,17 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
         role="img"
         aria-label={`${shape.rings} rings by ${shape.sectors} sectors color wheel board`}
       >
-        {/* Hollow core: soft white disc + thin rim, the mandala eye. */}
+        {/* Core disc (P7.2b): small and filled with the starter color — it
+            always shows the current flood color (ring 0's uniform color),
+            so the source of the radial flood is visible at a glance. */}
         <circle
           cx={50}
           cy={50}
-          r={17}
-          fill="rgba(255,255,255,0.10)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth={0.6}
+          r={10.6}
+          fill={seedHex}
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth={0.8}
+          style={{ transition: 'fill 0.26s ease-out' }}
         />
         {cells.map(({ d, cx, cy, fontSize }, i) => {
           const rr = Math.floor(i / shape.sectors);
