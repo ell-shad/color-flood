@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MousePointerClick, Keyboard, Swords } from 'lucide-react';
+import type { BoardShape } from '../types';
 
 /**
  * P5.7: first-run interactive tutorial.
@@ -15,11 +16,14 @@ import { X, MousePointerClick, Keyboard, Swords } from 'lucide-react';
 interface FirstRunTutorialProps {
   hasMadeFirstMove: boolean;
   onFinish: () => void;
+  /** P7: solo board topology — the flood grows from the corner or the core. */
+  boardShape?: BoardShape;
 }
 
 export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
   hasMadeFirstMove,
   onFinish,
+  boardShape = 'classic',
 }) => {
   const [manualStep, setManualStep] = useState(0);
   // Step 0 auto-clears the moment the player actually floods one color —
@@ -56,8 +60,11 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
               <kbd className="px-1 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">
                 1–8
               </kbd>
-              ) — every touching cell of that color joins your flood from the top-left
-              corner. <strong className="text-indigo-300">Try a move now!</strong>
+              ) — every touching cell of that color{' '}
+              {boardShape === 'wheel'
+                ? 'joins the flood pouring out of the center core'
+                : 'joins your flood from the top-left corner'}
+              . <strong className="text-indigo-300">Try a move now!</strong>
             </p>
           </div>
         )}

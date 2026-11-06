@@ -497,6 +497,7 @@ export default function App() {
           <FirstRunTutorial
             hasMadeFirstMove={hasMadeFirstMove}
             onFinish={finishTutorial}
+            boardShape={session.mode === 'solo' ? session.boardShape : 'classic'}
           />
         )}
 

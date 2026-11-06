@@ -131,20 +131,26 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
     const CX = 50;
     const CY = 50;
     const OUTER = 49;
-    /** Small core disc inside ring 0 — cells wrap tightly around it. */
-    const INNER = 12;
-    const step = (OUTER - INNER) / rings;
+    /**
+     * Ring 0 is the flood source — rendered as the small core disc (P7.2b),
+     * so the CELLS span rings 1..rings-1 and are all scrambled at start.
+     */
+    const INNER = 9;
+    // Ring 0 is the flood source, rendered as the small core disc — the
+    // drawable cells are board rings 1..rings-1, all scrambled at start.
+    const cellRings = rings - 1;
+    const step = (OUTER - INNER) / cellRings;
     const out: Array<{
       d: string;
       cx: number;
       cy: number;
       fontSize: number;
     }> = [];
-    for (let r = 0; r < rings; r++) {
+    for (let r = 0; r < cellRings; r++) {
       // Micro-gaps: shrink each sector slightly so the board background
       // (the frame itself) shows through as the cell divider.
       const r0 = INNER + r * step + (r === 0 ? 0 : 0.35);
-      const r1 = INNER + (r + 1) * step - (r === rings - 1 ? 0 : 0.35);
+      const r1 = INNER + (r + 1) * step - (r === cellRings - 1 ? 0 : 0.35);
       for (let c = 0; c < sectors; c++) {
         const gap = 0.2 / Math.max(r0, r1);
         const a0 = (c / sectors) * 2 * Math.PI - Math.PI / 2 + gap;
@@ -177,22 +183,23 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
         viewBox="0 0 100 100"
         className="w-full h-full"
         role="img"
-        aria-label={`${shape.rings} rings by ${shape.sectors} sectors color wheel board`}
+        aria-label={`${shape.rings - 1} rings by ${shape.sectors} sectors color wheel board`}
       >
-        {/* Core disc (P7.2b): small and filled with the starter color — it
-            always shows the current flood color (ring 0's uniform color),
-            so the source of the radial flood is visible at a glance. */}
+        {/* Core disc (ring 0 as a small nub, P7.2b): the starter color — it
+            always shows the current flood color, so the source of the radial
+            flood is visible at a glance. The sector rings around it are all
+            scrambled at start. */}
         <circle
           cx={50}
           cy={50}
-          r={10.6}
+          r={7}
           fill={seedHex}
           stroke="rgba(255,255,255,0.25)"
           strokeWidth={0.8}
           style={{ transition: 'fill 0.26s ease-out' }}
         />
         {cells.map(({ d, cx, cy, fontSize }, i) => {
-          const rr = Math.floor(i / shape.sectors);
+          const rr = Math.floor(i / shape.sectors) + 1; // board ring index
           const cell = grid[rr]?.[i % shape.sectors] ?? 0;
           const waveDelay = Math.min(0.24, rr * 0.014);
           const hex = theme.colors[cell] || '#FF595E';
