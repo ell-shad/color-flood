@@ -56,9 +56,9 @@ The plan is therefore designed around **small, independently committed units of 
 | 1 — Engine | ✅ | 10ad383 | Flat engine shipped behind adapter; parity suite (legacy oracle) green; A/B bench ~1.5–2.7x on solo ops, master bot at par (real gain lands with P2.6 minimax) |
 | 2 — Balance & AI | ✅ | 3418f6b (P2.1–P2.5) + P2.6–P2.8 in next commit | Solver-calibrated limits+stars; competent ≥90% verified at all 25 configs; hints limited (3 solo / none online / opt-in local+bot); minimax master (beats legacy heur. 80%, slowest move 56ms) in Web Worker; bot ladder tests master 85% vs medium, medium 96% vs easy |
 | 3 — Online rewrite | ✅ | 808a133, 0ee6299, 20acb96, P3.6 commit | Single server-authoritative ws protocol (zod, token→role, versioned snapshots, optimistic UI), PeerJS/REST-polling/legacy REST removed, reconnection (heartbeat, 60 s grace + forfeit, resume-by-token w/ 2 h TTL), turn timer off/30/60, hardening (helmet, APP_URL CORS, rate limits); 95 tests incl. 13 live two-client protocol tests. MANUAL CHECK PENDING: two real browsers + refresh mid-game (see DoD) |
-| 4 — Front-end architecture | ⬜ | — | — |
-| 5 — UX & accessibility | ⬜ | — | — |
-| 6 — Features | ⬜ | — | — |
+| 4 — Front-end architecture | ✅ | 0670e62 (P4.6) | DONE. Hooks + reducers + unified useGameSession view model (0c755d6), board rendering perf — memoized cells + CSS animations (0670e62) |
+| 5 — UX & accessibility | ✅ | 28ef97e (P5.8) | DONE. Keyboard shortcuts + reduced motion (043ce6b), dialog semantics + focus trap + live announcements (5734230), color-blind support (09ed5f7), first-run tutorial/turn chip/haptics (ece4943), Lighthouse a11y 100/100 (28ef97e) |
+| 6 — Features | ✅ | 7169686 (P6.6) | DONE. P6.1 daily (`a273487`), P6.2 stats (`71da7dc`), P6.3 share+replay (`ff045b6`), P6.4 PWA (`a14b6b6`), P6.5 i18n **SKIPPED by user decision** (single language), P6.6 online: spectator seats + host-instant rematch + remembered name verified (`7169686`); E2E: 3-seat browser flow (host/P2/watcher), turn-timer forfeit → rematch broadcast, spectator authority audited |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -238,7 +238,7 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 ---
 
-## Phase 6 — Features (in order) ⬜
+## Phase 6 — Features (in order) ✅
 
 | ID | Task | Status |
 | -- | ---- | ------ |
@@ -246,8 +246,8 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 | P6.2 | Stats screen: games, win rate, avg moves per config, streaks, per-config star records (`71da7dc`) | ✅ |
 | P6.3 | Share-by-seed links + replay viewer for finished games (`ff045b6`) | ✅ |
 | P6.4 | PWA: manifest, service worker, offline solo/local/bot, install prompt (`a14b6b6`) | ✅ |
-| P6.5 | i18n scaffold, no hard-coded UI strings, English + one more locale | ⬜ |
-| P6.6 | Online: spectator mode, quick rematch, remembered player name | ⬜ |
+| P6.5 | i18n scaffold, no hard-coded UI strings, English + one more locale | ⊘ |
+| P6.6 | Online: spectator mode, quick rematch, remembered player name (`7169686`) | ✅ |
 
 ---
 
