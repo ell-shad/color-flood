@@ -59,7 +59,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 4 — Front-end architecture | ✅ | 0670e62 (P4.6) | DONE. Hooks + reducers + unified useGameSession view model (0c755d6), board rendering perf — memoized cells + CSS animations (0670e62) |
 | 5 — UX & accessibility | ✅ | 28ef97e (P5.8) | DONE. Keyboard shortcuts + reduced motion (043ce6b), dialog semantics + focus trap + live announcements (5734230), color-blind support (09ed5f7), first-run tutorial/turn chip/haptics (ece4943), Lighthouse a11y 100/100 (28ef97e) |
 | 6 — Features | ✅ | 7169686 (P6.6) | DONE. P6.1 daily (`a273487`), P6.2 stats (`71da7dc`), P6.3 share+replay (`ff045b6`), P6.4 PWA (`a14b6b6`), P6.5 i18n **SKIPPED by user decision** (single language), P6.6 online: spectator seats + host-instant rematch + remembered name verified (`7169686`); E2E: 3-seat browser flow (host/P2/watcher), turn-timer forfeit → rematch broadcast, spectator authority audited |
-| 7 — Circle mode | 🟡 | — | P7.1 engine in progress |
+| 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -252,16 +252,23 @@ no rate limit, `joinRoom` hard-codes role 2 so a host reloading via `?room=` bel
 
 ---
 
-## Phase 7 — Circle (Wheel) Mode 🟡
+## Phase 7 — Circle (Wheel) Mode ✅
 
 Polar wheel boards: concentric rings × radial sectors, hollow center, color-flood from the
 inner ring outward. Solo only; difficulty derived from the existing size ladder.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P7.1 | `circleEngine`: wheel geometry (rings×sectors from size), seeded generation (uniform inner ring), wrap-aware flood, win/count, greedy hint, move budget + greedy-solver sim validation | 🟡 |
-| P7.2 | Wheel UI: SVG annular-sector board, board-shape pref + settings switch, solo wiring (new game/move/undo/win-loss), seeded-daily stays classic | ⬜ |
-| P7.3 | Shape-aware hints/stats/high scores, share links + replay for wheel games, gates + browser E2E | ⬜ |
+| P7.1 | `circleEngine`: wheel geometry (rings×sectors from size), seeded generation (uniform inner ring), wrap-aware flood, win/count, greedy hint, move budget + greedy-solver sim validation | ✅ `41a7179` (geometry 7×16 → 11×24 monotonic; 0.9× solo-limit budget, greedy 96.8–100%/config) |
+| P7.2 | Wheel UI: SVG annular-sector board, board-shape pref + settings switch, solo wiring (new game/move/undo/win-loss), seeded-daily stays classic | ✅ `b1e572a` + `ec14da3` + `095a10b` (ring-staggered fills + CSS pop, persisted pref, core disc = seed ring; daily stays classic) |
+| P7.3 | Shape-aware hints/stats/high scores, share links + replay for wheel games, gates + browser E2E | ✅ `e4f9932` (records keyed by topology + ladder size with legacy rows migrating to classic, wheel par-rated stars, hint gain badge, `?shape=wheel` links, polar replay viewer; 166 tests) |
+
+**Phase 7 checks:** typecheck, 166 tests, lint and build green; browser E2E on the dev server:
+wheel board renders 96 sectors at 10·4 with a 13-move budget, a greedy UI playthrough wins in 7
+moves, the replay viewer steps through the wheel (2 of 7) on the polar board, the stats row shows
+`10·4` as a wheel entry (3★), `?seed=&size=14&colors=6&shape=wheel` rebuilds an 8×20 wheel with a
+24-move budget, and the same link without `shape` stays a 14×14 square (27-move budget). Console
+clean (no errors).
 
 ---
 
