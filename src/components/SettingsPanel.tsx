@@ -24,7 +24,10 @@ import {
   Shapes,
   Square,
   Circle,
+  X,
+  Info,
 } from 'lucide-react';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface SettingsPanelProps {
   gridSize: GridSize;
@@ -60,6 +63,10 @@ interface SettingsPanelProps {
   /** Online only (P3.5): optional per-turn move timer, host configurable. */
   turnTimerSec?: 0 | 30 | 60;
   onChangeTurnTimerSec?: (sec: 0 | 30 | 60) => void;
+  /** Settings is now an overlay sheet anchored to the header button. */
+  onClose: () => void;
+  /** How-to-Play moved off the header row into the sheet. */
+  onOpenInfo?: () => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -90,17 +97,64 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeTurnTimerSec,
   soundMuted = false,
   onToggleSound,
+  onClose,
+  onOpenInfo,
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
+  const panelRef = useModalA11y(true);
 
   return (
-    <motion.div
-      initial={{ height: 0, opacity: 0 }}
-      animate={{ height: 'auto', opacity: 1 }}
-      exit={{ height: 0, opacity: 0 }}
-      className="w-full max-w-lg mx-auto overflow-hidden mb-2 select-none"
-    >
-      <div className="bg-slate-850/95 border border-slate-700/60 rounded-2xl p-3 sm:p-4 space-y-3 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
+      {/* Backdrop — click to dismiss, never a tab stop (the sheet traps focus) */}
+      <button
+        aria-label="Close settings"
+        tabIndex={-1}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm cursor-default"
+      />
+
+      <motion.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Game Settings"
+        tabIndex={-1}
+        initial={{ y: 32, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 32, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 340, damping: 34 }}
+        className="relative w-full sm:w-[420px] max-h-[88dvh] sm:max-h-none sm:h-full bg-slate-900 border-t sm:border-t-0 sm:border-l border-slate-700/60 rounded-t-2xl sm:rounded-none shadow-2xl flex flex-col select-none outline-none"
+      >
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-b border-slate-800 shrink-0">
+          <div>
+            <h2 className="text-sm font-black text-white leading-none">Settings</h2>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Board, palette, difficulty &amp; aids
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {onOpenInfo && (
+              <button
+                onClick={onOpenInfo}
+                title="How to Play"
+                aria-label="How to Play"
+                className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              title="Close settings"
+              aria-label="Close settings"
+              className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3">
         {/* Quick Easiest Preset & Theme Bar */}
         <div className="flex items-center justify-between pb-2.5 border-b border-slate-750 gap-2 flex-wrap">
           <div>
@@ -424,7 +478,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </button>
           </div>
         )}
-      </div>
-    </motion.div>
+        </div>
+      </motion.div>
+    </div>
   );
 };

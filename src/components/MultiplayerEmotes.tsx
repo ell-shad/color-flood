@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smile, Sparkles } from 'lucide-react';
+import { Smile, Sparkles, X } from 'lucide-react';
 import { MultiplayerOpponent, ActiveEmote } from '../types';
 
 export const EMOJI_OPTIONS = ['🔥', '😎', '😮', '😂', '👏', '🤔', '💀', '💥', '😡', '😭'];
@@ -24,6 +24,9 @@ export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
   disabled = false,
 }) => {
   const [localSender, setLocalSender] = useState<1 | 2>(1);
+  // Collapsed by default: a one-chip affordance instead of a permanent row
+  // squeezed between the board and the palette.
+  const [open, setOpen] = useState(false);
 
   // Determine which player is actively pressing
   const currentSender: 1 | 2 =
@@ -40,9 +43,26 @@ export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
       ? 'AI Bot'
       : p2Name || (opponent === 'online' ? 'Player 2' : 'Player 2');
 
+  if (!open) {
+    return (
+      <div className="w-full flex justify-center">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Open reaction bar"
+          aria-expanded={false}
+          className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-0.5 text-[10px] font-bold text-slate-300 hover:text-white hover:border-slate-700 transition-colors cursor-pointer"
+        >
+          <Smile className="w-3 h-3 text-amber-400" aria-hidden="true" />
+          <span>React</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-xl mx-auto my-1.5 px-1">
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-2.5 py-1.5 shadow-md flex items-center justify-between gap-1.5 backdrop-blur-sm">
+    <div className="w-full px-1">
+      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-2.5 py-1 shadow-md flex items-center justify-between gap-1.5 backdrop-blur-sm">
         {/* Left Label or Local Switcher */}
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
@@ -109,6 +129,15 @@ export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Hide reaction bar"
+          className="shrink-0 p-1 rounded-md text-slate-500 hover:text-white transition-colors cursor-pointer"
+        >
+          <X className="w-3 h-3" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );

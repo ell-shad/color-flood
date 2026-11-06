@@ -37,14 +37,14 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
   const activeNames = theme.colorNames;
 
   return (
-    <div className="w-full max-w-lg mx-auto mt-2 sm:mt-3 px-1 select-none">
+    <div className="w-full max-w-xl mx-auto mt-0 px-1 select-none">
       {/* P5.7: turn chip — a loud, always-on turn indicator during play.
           Waiting (online): whose move you are waiting for; your turn: a
           player-colored pill carrying the old helper copy as its subtitle. */}
       {mode === 'multiplayer' && turnStatus && (
-        <div className="flex justify-center mb-1.5 sm:mb-2">
+        <div className="flex justify-center mb-1">
           <div
-            className={`inline-flex items-center gap-2 max-w-full px-3 py-1.5 rounded-xl border shadow-md ${
+            className={`inline-flex items-center gap-1.5 max-w-full px-2 py-0.5 rounded-lg border shadow-md ${
               turnStatus.turn === 1
                 ? 'bg-cyan-950/40 border-cyan-500/50'
                 : turnStatus.turn === 2
@@ -61,7 +61,7 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
                     : 'bg-slate-500 animate-pulse'
               }`}
             />
-            <span className="text-xs sm:text-sm font-bold text-slate-100 truncate">
+            <span className="text-[11px] sm:text-sm font-bold text-slate-100 truncate">
               {turnStatus.label}
             </span>
             {turnStatus.turn !== null && (

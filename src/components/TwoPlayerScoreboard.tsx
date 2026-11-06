@@ -91,7 +91,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
   const firstTurn = gameState.firstTurnPlayer || 1;
 
   return (
-    <div className="w-full max-w-lg mx-auto space-y-1.5 mb-2 select-none">
+    <div className="w-full max-w-xl mx-auto space-y-1 select-none">
       {/* If Progressive Challenge, show ladder */}
       {gameState.challengeType === 'progressive' && (
         <ProgressiveTrack
@@ -103,7 +103,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
       )}
 
       {/* Top Bar: Round & Alternating Turn Badge, Series Score & Tools */}
-      <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400 px-0.5">
         <div className="flex items-center gap-1.5 font-mono">
           <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold">
             R{roundNum} • P{firstTurn} opened
@@ -163,7 +163,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
       </div>
 
       {/* Versus Battle HUD Card */}
-      <div className="bg-slate-900/90 border border-slate-750 rounded-xl p-2 sm:p-2.5 shadow-md">
+      <div className="bg-slate-900/90 border border-slate-750 rounded-xl px-2 py-1.5 shadow-md">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           {/* Player 1 Side */}
           <div
@@ -334,7 +334,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
         </div>
 
         {/* Domination Tug-of-War Bar */}
-        <div className="relative w-full h-1.5 sm:h-2 bg-slate-800 rounded-full overflow-hidden flex shadow-inner mt-2">
+        <div className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex shadow-inner mt-1.5">
           {/* 50% line */}
           <div
             className="absolute top-0 bottom-0 w-[2px] bg-white/80 z-10 shadow"

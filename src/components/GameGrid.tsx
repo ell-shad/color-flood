@@ -28,6 +28,8 @@ interface GameGridProps {
   movesCount?: number;
   /** P5.4: overlay digit (palette index + 1) on every cell — color-blind aid. */
   showColorSymbols?: boolean;
+  /** Measured square edge from useBoardFit — the board fills its box. */
+  boardPx?: number;
 }
 
 interface GridCellProps {
@@ -131,6 +133,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
   theme = THEMES.arcade,
   movesCount = 0,
   showColorSymbols = false,
+  boardPx,
 }) => {
   const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
   const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
@@ -146,7 +149,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
     <div
       className={`relative ${theme.boardBg} p-1.5 sm:p-2.5 rounded-2xl border ${theme.boardBorder} shadow-2xl overflow-hidden select-none mx-auto shrink-0 transition-colors duration-300`}
       style={{
-        width: 'min(88vw, min(40vh, 380px))',
+        width: boardPx ? `${boardPx}px` : 'min(88vw, min(40vh, 380px))',
+        height: boardPx ? `${boardPx}px` : undefined,
         aspectRatio: '1/1',
       }}
     >

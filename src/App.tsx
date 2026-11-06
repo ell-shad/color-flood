@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { MotionConfig } from 'motion/react';
-import { Github, Linkedin, Info, Flame, Eye } from 'lucide-react';
+import { Github, Linkedin, Info, Eye } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
+import { useBoardFit } from './hooks/useBoardFit';
 import { loadBool, saveString } from './utils/storage';
 
 import { Header } from './components/Header';
@@ -34,6 +35,11 @@ import { ReplayModal } from './components/ReplayModal';
  */
 export default function App() {
   const session = useGameSession();
+  // P8: the board fills the play column, capped by viewport height so the
+  // HUD, board and palette always fit together without dead bands.
+  const [boardRef, boardPx] = useBoardFit<HTMLDivElement>(
+    session.mode === 'multiplayer' ? 262 : 205,
+  );
 
   // P5.7: first-run interactive tutorial (shown once per device).
   const [showTutorial, setShowTutorial] = useState(
@@ -157,7 +163,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="h-[100dvh] w-full max-w-full bg-[#0F172A] text-slate-100 font-sans selection:bg-indigo-500/30 flex flex-col justify-between overflow-x-hidden overflow-y-auto">
+      <div className="h-[100dvh] w-full max-w-full bg-[#0F172A] text-slate-100 font-sans selection:bg-indigo-500/30 flex flex-col overflow-x-hidden overflow-y-auto">
         {/* P5.3: screen-reader announcer for moves/turns/results */}
         <div aria-live="polite" role="status" className="sr-only">
           {session.announce}
@@ -171,8 +177,6 @@ export default function App() {
             onChangeOpponent={session.handleChangeOpponent}
             showSettings={showSettings}
             onToggleSettings={() => setShowSettings((prev) => !prev)}
-            onToggleInfo={() => setShowInfoModal(true)}
-            onToggleThemes={() => setShowThemeModal(true)}
             onToggleStats={() => setShowStats(true)}
             onResetGame={session.initiateReset}
             canInstall={canInstall}
@@ -211,45 +215,7 @@ export default function App() {
         </div>
 
         {/* Main Playable Area */}
-        <main className="w-full max-w-lg mx-auto px-2 sm:px-3 py-1 flex-1 flex flex-col items-center justify-center">
-          {/* Settings Drawer */}
-          {showSettings && (
-            <SettingsPanel
-              gridSize={session.gridSize}
-              onChangeGridSize={session.handleChangeGridSize}
-              colorCount={session.colorCount}
-              onChangeColorCount={session.handleChangeColorCount}
-              boardShape={session.boardShape}
-              onChangeBoardShape={session.handleChangeBoardShape}
-              mode={session.mode}
-              opponent={session.opponent}
-              onChangeOpponent={session.setOpponent}
-              botDifficulty={session.botDifficulty}
-              onChangeBotDifficulty={session.handleSetBotDifficulty}
-              showTerritoryOverlay={session.showTerritoryOverlay}
-              onToggleTerritoryOverlay={() =>
-                session.setShowTerritoryOverlay((prev) => !prev)
-              }
-              showColorSymbols={session.showColorSymbols}
-              onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
-              showHints={session.showHints}
-              onToggleShowHints={() => session.setShowHints((prev) => !prev)}
-              onResetSeries={session.resetSeries}
-              onSetToEasiest={session.handleSetToEasiest}
-              activeThemeId={session.themeId}
-              onOpenThemeModal={() => setShowThemeModal(true)}
-              challengeType={session.challengeType}
-              onChangeChallengeType={session.handleChangeChallengeType}
-              turnTimerSec={session.roomState?.turnTimerSec ?? 0}
-              onChangeTurnTimerSec={
-                session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
-              }
-              soundMuted={session.soundMuted}
-              onToggleSound={session.toggleSound}
-              onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
-            />
-          )}
-
+        <main className="w-full max-w-xl mx-auto px-2 sm:px-3 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
           {/* Online Match: Show Lobby or Game */}
           {session.isOnlineLobbyActive ? (
             <OnlineLobby
@@ -271,7 +237,7 @@ export default function App() {
               spectatorCount={session.spectatorCount}
             />
           ) : (
-            <div className="w-full flex flex-col items-center justify-between flex-1 max-h-[84vh]">
+            <div className="w-full flex-1 min-h-0 flex flex-col justify-center gap-1.5 sm:gap-2">
               {/* Active Mode Scoreboard */}
               {session.mode === 'solo' ? (
                 <>
@@ -286,21 +252,9 @@ export default function App() {
                     canUndo={session.canUndoSolo}
                     shape={session.soloState.shape}
                     boardSize={session.soloState.boardSize}
+                    onOpenDaily={() => setShowDaily(true)}
+                    dailyStreak={session.dailyStreak.current}
                   />
-                  {/* P6.1: Daily Challenge strip (solo only) */}
-                  <div className="w-full flex justify-center">
-                    <button
-                      onClick={() => setShowDaily(true)}
-                      className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-slate-800/70 border border-slate-700 text-[11px] font-bold text-slate-300 hover:text-white hover:border-indigo-500/60 hover:bg-slate-800 transition-all cursor-pointer"
-                      aria-label="Open the Daily Challenge hub"
-                    >
-                      <Flame className="w-3 h-3 text-amber-400" aria-hidden="true" />
-                      <span>Daily Challenge</span>
-                      <span className="text-amber-400 font-bold tabular-nums">
-                        {session.dailyStreak.current}
-                      </span>
-                    </button>
-                  </div>
                 </>
               ) : (
                 <TwoPlayerScoreboard
@@ -321,7 +275,15 @@ export default function App() {
 
               {/* Game Board with Fluid Wave Animations & Theme Styling —
                   P7: solo wheel games render as a mandala SVG board instead. */}
-              <div className="relative my-0.5 shrink-0 flex items-center justify-center">
+              <div
+                ref={boardRef}
+                className="relative w-full flex items-center justify-center"
+              >
+                {boardPx > 0 && (
+                  <div
+                    className="relative"
+                    style={{ width: boardPx, height: boardPx }}
+                  >
                 {session.mode === 'solo' && session.soloState.shape === 'wheel' ? (
                   <WheelBoard
                     grid={session.soloState.grid}
@@ -329,6 +291,7 @@ export default function App() {
                     theme={session.currentTheme}
                     movesCount={session.gridMovesCount}
                     showColorSymbols={session.showColorSymbols}
+                    boardPx={boardPx}
                   />
                 ) : (
                   <GameGrid
@@ -343,6 +306,7 @@ export default function App() {
                     lastMovingPlayer={session.lastMovingPlayer}
                     theme={session.currentTheme}
                     movesCount={session.gridMovesCount}
+                    boardPx={boardPx}
                   />
                 )}
 
@@ -379,6 +343,8 @@ export default function App() {
                   isHost={session.myRole === 1}
                   onHostRematch={session.hostOnlineRematch}
                 />
+                  </div>
+                )}
               </div>
 
               {/* Interactive Multiplayer Emote Reaction Bar */}
@@ -417,6 +383,48 @@ export default function App() {
             </div>
           )}
         </main>
+
+        {/* Settings sheet — outside the play column, so opening it never
+            moves the board and it stays anchored to the header button. */}
+        {showSettings && (
+          <SettingsPanel
+            gridSize={session.gridSize}
+            onChangeGridSize={session.handleChangeGridSize}
+            colorCount={session.colorCount}
+            onChangeColorCount={session.handleChangeColorCount}
+            boardShape={session.boardShape}
+            onChangeBoardShape={session.handleChangeBoardShape}
+            mode={session.mode}
+            opponent={session.opponent}
+            onChangeOpponent={session.setOpponent}
+            botDifficulty={session.botDifficulty}
+            onChangeBotDifficulty={session.handleSetBotDifficulty}
+            showTerritoryOverlay={session.showTerritoryOverlay}
+            onToggleTerritoryOverlay={() => session.setShowTerritoryOverlay((prev) => !prev)}
+            showColorSymbols={session.showColorSymbols}
+            onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
+            showHints={session.showHints}
+            onToggleShowHints={() => session.setShowHints((prev) => !prev)}
+            onResetSeries={session.resetSeries}
+            onSetToEasiest={session.handleSetToEasiest}
+            activeThemeId={session.themeId}
+            onOpenThemeModal={() => setShowThemeModal(true)}
+            challengeType={session.challengeType}
+            onChangeChallengeType={session.handleChangeChallengeType}
+            turnTimerSec={session.roomState?.turnTimerSec ?? 0}
+            onChangeTurnTimerSec={
+              session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
+            }
+            soundMuted={session.soundMuted}
+            onToggleSound={session.toggleSound}
+            onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
+            onClose={() => setShowSettings(false)}
+            onOpenInfo={() => {
+              setShowSettings(false);
+              setShowInfoModal(true);
+            }}
+          />
+        )}
 
         {/* Opponent Reset Approval Modal */}
         <ResetApprovalModal
@@ -501,7 +509,7 @@ export default function App() {
         )}
 
         {/* Sleek Minimal Footer */}
-        <footer className="w-full max-w-lg mx-auto py-1 px-3 text-center shrink-0">
+        <footer className="w-full max-w-xl mx-auto pt-0.5 pb-1 px-3 text-center shrink-0">
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
             <span>
               Created by{' '}

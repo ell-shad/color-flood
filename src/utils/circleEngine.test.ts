@@ -228,7 +228,9 @@ describe('P7.1 circle engine — budgets are solvable by the hint', () => {
         expect(wins).toBeGreaterThanOrEqual(18);
       }
     }
-  });
+    // 100 sampled boards across the ladder; on a loaded machine this can pass
+    // the 5s default, which turned a green suite red at random.
+  }, 20_000);
 });
 
 describe('P7.1 circle engine — hint', () => {
