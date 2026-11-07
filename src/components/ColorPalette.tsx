@@ -109,7 +109,10 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
                 whileTap={!isColorDisabled ? { scale: 0.92 } : {}}
                 onClick={() => !isColorDisabled && onSelectColor(idx)}
                 disabled={isColorDisabled}
-                className={`w-10 h-10 sm:w-12 sm:h-12 min-w-[38px] min-h-[38px] rounded-xl sm:rounded-2xl shadow-md transition-all relative cursor-pointer disabled:cursor-not-allowed ${
+                // Only transform/shadow animate: the current-color dimming used
+                // to cross-fade opacity+grayscale on every move, which read as
+                // the palette flashing while playing.
+                className={`w-10 h-10 sm:w-12 sm:h-12 min-w-[38px] min-h-[38px] rounded-xl sm:rounded-2xl shadow-md transition-[transform,box-shadow] duration-150 relative cursor-pointer disabled:cursor-not-allowed ${
                   isColorDisabled
                     ? 'opacity-35 grayscale-[0.5] scale-95 shadow-none'
                     : 'hover:shadow-indigo-500/20 active:scale-95'

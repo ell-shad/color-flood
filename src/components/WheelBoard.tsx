@@ -11,10 +11,11 @@ import { wheelGeometry } from '../utils/circleEngine';
  * Mirrors GameGrid's rendering pipeline (P4.6) with SVG plumbing:
  *  - cell fills transition `fill` over the same 0.26 s ease-out with a ring
  *    stagger (the polar analogue of the square's `dist-from-root` wave), and
- *  - the scale pop replays by swapping the same two keyframe names
- *    (`cell-pop-even` / `cell-pop-odd`) on every move, zero JS animation
- *    loops — SVG paths get `transform-box: fill-box` so the pop scales each
- *    sector around its own bbox center (.wheel-cell rule in index.css).
+ *  - the scale pop is named per palette index (`cell-pop-0..7`), so it
+ *    restarts when (and only when) a sector changes color instead of replaying
+ *    across the whole wheel on every move — SVG paths get `transform-box:
+ *    fill-box` so the pop scales each sector around its own bbox center
+ *    (.wheel-cell rule in index.css).
  *
  * `grid[r]` = ring r (0 = innermost), `grid[r][c]` = clockwise sector c.
  */
@@ -24,8 +25,6 @@ interface WheelBoardProps {
   /** Ladder size (10..18) — maps to the wheel geometry table. */
   size: number;
   theme?: GameTheme;
-  /** Move counter: parity flips the pop keyframe so CSS can restart it. */
-  movesCount?: number;
   /** P5.4: overlay digit (palette index + 1) per cell — color-blind aid. */
   showColorSymbols?: boolean;
   /** P7.3: frame width override (the replay modal renders it smaller). */
@@ -43,7 +42,11 @@ interface WheelCellProps {
   fontSize: number;
   color: string;
   waveDelay: number;
-  popAnim: string;
+  /**
+   * Palette index — the pop keyframe is named per color, so the animation
+   * restarts when (and only when) this sector's color changes.
+   */
+  colorIndex: number;
   glyph: string;
   inkColor: string;
   inkShadow: string;
@@ -56,7 +59,7 @@ const WheelCell = React.memo(function WheelCell({
   fontSize,
   color,
   waveDelay,
-  popAnim,
+  colorIndex,
   glyph,
   inkColor,
   inkShadow,
@@ -70,7 +73,8 @@ const WheelCell = React.memo(function WheelCell({
         style={{
           transition: 'fill 0.26s ease-out',
           transitionDelay: `${waveDelay}s`,
-          animation: `${popAnim} 0.32s ease-in-out ${waveDelay}s both`,
+          // `backwards` not `both`: a settled wheel holds no live animations.
+          animation: `cell-pop-${colorIndex} 0.32s ease-in-out ${waveDelay}s backwards`,
         }}
       />
       {glyph && (
@@ -125,12 +129,11 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
   grid,
   size,
   theme = THEMES.arcade,
-  movesCount = 0,
   showColorSymbols = false,
   frameWidth,
   boardPx,
 }) => {
-  const popAnim = movesCount % 2 === 0 ? 'cell-pop-even' : 'cell-pop-odd';
+
   const shape = useMemo(() => wheelGeometry(size), [size]);
   const cells = useMemo(() => {
     const { rings, sectors } = shape;
@@ -207,20 +210,21 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
         />
         {cells.map(({ d, cx, cy, fontSize }, i) => {
           const rr = Math.floor(i / shape.sectors) + 1; // board ring index
-          const cell = grid[rr]?.[i % shape.sectors] ?? 0;
+          const c = i % shape.sectors;
+          const cell = grid[rr]?.[c] ?? 0;
           const waveDelay = Math.min(0.24, rr * 0.014);
           const hex = theme.colors[cell] || '#FF595E';
           const ink = showColorSymbols ? cellInkOn(hex) : null;
           return (
             <WheelCell
-              key={`${rr}-${i % shape.sectors}`}
+              key={`${rr}-${c}`}
               d={d}
               cx={cx}
               cy={cy}
               fontSize={fontSize}
               color={hex}
               waveDelay={waveDelay}
-              popAnim={popAnim}
+              colorIndex={cell}
               glyph={ink ? String(cell + 1) : ''}
               inkColor={ink ? ink.color : ''}
               inkShadow={ink ? ink.shadow : ''}

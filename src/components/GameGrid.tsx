@@ -8,9 +8,11 @@ import { cellInkOn } from '../utils/contrast';
  * 324 animation loops on 18x18). Cells are now plain `React.memo` divs:
  *  - color updates ride CSS `transition: background-color` with the same 0.26 s
  *    ease-out and the wave stagger from the pre-refactor version;
- *  - the scale pop replays via a keyframe whose NAME alternates with each move
- *    (`cell-pop-even` / `cell-pop-odd`), which restarts the animation for every
- *    cell with zero JS animation loops and zero remounts.
+ *  - the scale pop is named per palette index (`cell-pop-0..7`), so the
+ *    animation restarts exactly when a cell's color changes; untouched cells
+ *    keep their settled animation and are skipped by the memo (P8: the old
+ *    even/odd name swap replayed the pop on every cell of the board on every
+ *    move — up to 324 animations per tap).
  */
 
 interface GameGridProps {
@@ -24,8 +26,6 @@ interface GameGridProps {
   activeTurn?: 1 | 2;
   lastMovingPlayer?: 1 | 2;
   theme?: GameTheme;
-  /** Move counter: parity flips the pop keyframe so CSS can restart it. */
-  movesCount?: number;
   /** P5.4: overlay digit (palette index + 1) on every cell — color-blind aid. */
   showColorSymbols?: boolean;
   /** Measured square edge from useBoardFit — the board fills its box. */
@@ -42,7 +42,11 @@ interface GridCellProps {
   showOverlay: boolean;
   ownedMarker: 'none' | 'p1' | 'p2';
   waveDelay: number;
-  popAnim: string;
+  /**
+   * Palette index — the pop keyframe is named per color, so the animation
+   * restarts when (and only when) this cell's color changes.
+   */
+  colorIndex: number;
   /** P5.4: digit glyph ('' = hidden) with AA ink colors for this cell. */
   symbolGlyph: string;
   inkColor: string;
@@ -63,7 +67,7 @@ const GridCell = React.memo(function GridCell({
   showOverlay,
   ownedMarker,
   waveDelay,
-  popAnim,
+  colorIndex,
   symbolGlyph,
   inkColor,
   inkShadow,
@@ -75,7 +79,9 @@ const GridCell = React.memo(function GridCell({
         backgroundColor: color,
         transition: 'background-color 0.26s ease-out',
         transitionDelay: `${waveDelay}s`,
-        animation: `${popAnim} 0.32s ease-in-out ${waveDelay}s both`,
+        // `backwards` not `both`: the finished pop is dropped instead of kept
+        // alive on the element, so a settled board holds no animations at all.
+        animation: `cell-pop-${colorIndex} 0.32s ease-in-out ${waveDelay}s backwards`,
       }}
     >
       {/* P5.4: palette-index digit (1–8) — tells a color-blind player exactly
@@ -131,7 +137,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
   showTerritoryOverlay = true,
   lastMovingPlayer = 1,
   theme = THEMES.arcade,
-  movesCount = 0,
   showColorSymbols = false,
   boardPx,
 }) => {
@@ -142,7 +147,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
   const glowP1 = theme.glowP1;
   const glowP2 = theme.glowP2;
   const radius = theme.cellRadius;
-  const popAnim = movesCount % 2 === 0 ? 'cell-pop-even' : 'cell-pop-odd';
   const p2Label = opponent === 'bot' ? 'BOT' : 'P2';
 
   return (
@@ -200,7 +204,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 showOverlay={showTerritoryOverlay}
                 ownedMarker={ownedMarker}
                 waveDelay={waveDelay}
-                popAnim={popAnim}
+                colorIndex={colorIdx}
                 symbolGlyph={ink ? String(colorIdx + 1) : ''}
                 inkColor={ink ? ink.color : ''}
                 inkShadow={ink ? ink.shadow : ''}

@@ -18,9 +18,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* P4.6: cell scale pop, named twice so a keyframe NAME swap restarts the
-   animation without JS animation loops (framer-motion removed per cell). */
-@keyframes cell-pop-even {
+/* P4.6/P8: cell scale pop. P4.6 named it twice and flipped even/odd every
+   move, which restarted the animation on every cell of the board (up to 324
+   animations per tap) — on the larger P8 board that was visible as stutter and
+   a whole-board flash.
+
+   Instead there is one name per palette index: the animation-name only changes
+   when that cell's color actually changes, so the pop replays exactly on the
+   flooded cells and untouched cells keep a settled animation. The eight blocks
+   are identical on purpose — the index exists only to make the name change. */
+@keyframes cell-pop-0 {
   0% {
     transform: scale(1);
   }
@@ -35,7 +42,97 @@ body {
   }
 }
 
-@keyframes cell-pop-odd {
+@keyframes cell-pop-1 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-2 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-3 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-4 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-5 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-6 {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  72% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cell-pop-7 {
   0% {
     transform: scale(1);
   }

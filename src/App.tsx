@@ -35,11 +35,9 @@ import { ReplayModal } from './components/ReplayModal';
  */
 export default function App() {
   const session = useGameSession();
-  // P8: the board fills the play column, capped by viewport height so the
-  // HUD, board and palette always fit together without dead bands.
-  const [boardRef, boardPx] = useBoardFit<HTMLDivElement>(
-    session.mode === 'multiplayer' ? 262 : 205,
-  );
+  // P8: the board fills whatever the play column has left, so the HUD, board
+  // and palette stay one tight stack at any viewport size.
+  const [boardRef, boardPx] = useBoardFit<HTMLDivElement>();
 
   // P5.7: first-run interactive tutorial (shown once per device).
   const [showTutorial, setShowTutorial] = useState(
@@ -289,7 +287,6 @@ export default function App() {
                     grid={session.soloState.grid}
                     size={session.soloState.boardSize}
                     theme={session.currentTheme}
-                    movesCount={session.gridMovesCount}
                     showColorSymbols={session.showColorSymbols}
                     boardPx={boardPx}
                   />
@@ -305,7 +302,6 @@ export default function App() {
                     showColorSymbols={session.showColorSymbols}
                     lastMovingPlayer={session.lastMovingPlayer}
                     theme={session.currentTheme}
-                    movesCount={session.gridMovesCount}
                     boardPx={boardPx}
                   />
                 )}

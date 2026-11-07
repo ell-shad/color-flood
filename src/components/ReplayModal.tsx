@@ -128,7 +128,6 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
                 grid={replayGrid}
                 size={size}
                 theme={theme}
-                movesCount={index}
                 frameWidth="min(100%, 300px)"
               />
             ) : (
