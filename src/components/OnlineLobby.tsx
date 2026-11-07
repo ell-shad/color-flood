@@ -14,8 +14,10 @@ import {
   Users,
   Trophy,
   Eye,
+  Circle,
+  Square,
 } from 'lucide-react';
-import { OnlineRoomState, ChallengeType } from '../types';
+import { OnlineRoomState, ChallengeType, BoardShape } from '../types';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { loadStringOr, saveString } from '../utils/storage';
 
@@ -32,6 +34,7 @@ interface OnlineLobbyProps {
     gridSize: number,
     colorCount: number,
     challengeType: ChallengeType,
+    shape: BoardShape,
   ) => void;
   onJoinRoom: (roomId: string, playerName: string) => void;
   /** P6.6: watch a room at a receive-only seat (even when full). */
@@ -75,6 +78,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
     useState<ChallengeType>('progressive');
   const [customGridSize, setCustomGridSize] = useState<number>(10);
   const [customColorCount, setCustomColorCount] = useState<number>(4);
+  // P9: board topology for the hosted room (applies to both tracks).
+  const [selectedShape, setSelectedShape] = useState<BoardShape>('classic');
 
   const clearUrlParam = () => {
     const url = new URL(window.location.href);
@@ -91,6 +96,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
       selectedChallengeType === 'progressive' ? 10 : customGridSize,
       selectedChallengeType === 'progressive' ? 4 : customColorCount,
       selectedChallengeType,
+      selectedShape,
     );
   };
 
@@ -368,6 +374,44 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
               </span>
             </button>
           </div>
+        </div>
+
+        {/* P9: Board shape — polar wheel or classic square. */}
+        <div className="space-y-1.5 text-left">
+          <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold block">
+            Board Shape
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setSelectedShape('classic')}
+              aria-pressed={selectedShape === 'classic'}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                selectedShape === 'classic'
+                  ? 'bg-indigo-950/70 border-indigo-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Square className="w-3 h-3" />
+              Classic
+            </button>
+            <button
+              onClick={() => setSelectedShape('wheel')}
+              aria-pressed={selectedShape === 'wheel'}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                selectedShape === 'wheel'
+                  ? 'bg-fuchsia-950/70 border-fuchsia-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Circle className="w-3 h-3" />
+              Wheel
+            </button>
+          </div>
+          <p className="text-[9px] text-slate-500 leading-tight">
+            {selectedShape === 'wheel'
+              ? 'Both players start on the outer ring and flood inward.'
+              : 'Both players start in opposite corners.'}
+          </p>
         </div>
 
         {/* If Custom Match, allow choosing difficulty */}

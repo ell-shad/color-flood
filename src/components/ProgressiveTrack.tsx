@@ -1,12 +1,16 @@
 import React from 'react';
 import { Crown, Lock, Swords, Sparkles } from 'lucide-react';
 import { PROGRESSIVE_STAGES } from '../utils/themes';
+import { wheelGeometry } from '../utils/circleEngine';
+import type { BoardShape } from '../types';
 
 interface ProgressiveTrackProps {
   currentStage: number;
   stageWins: { 1: number[]; 2: number[] };
   p1Name?: string;
   p2Name?: string | null;
+  /** P9: wheels are rings × sectors, so a "10²" pill would be misleading. */
+  shape?: BoardShape;
 }
 
 /**
@@ -21,6 +25,7 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
   stageWins,
   p1Name = 'P1',
   p2Name = 'P2',
+  shape = 'classic',
 }) => {
   return (
     <div className="w-full bg-slate-900/90 border border-slate-750 rounded-xl px-2 py-1 shadow-md">
@@ -71,16 +76,22 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                   ? 'tied'
                   : 'locked';
 
+            const geo = shape === 'wheel' ? wheelGeometry(stage.gridSize) : null;
+            const sizeText = geo ? `${geo.rings}×${geo.sectors}` : `${stage.gridSize}²`;
+            const sizeWords = geo
+              ? `${geo.rings} rings by ${geo.sectors} sectors`
+              : `${stage.gridSize} by ${stage.gridSize}`;
+
             return (
               <div
                 key={stage.stageNumber}
-                title={`Stage ${stage.stageNumber}: ${stage.gridSize}×${stage.gridSize}, ${stage.colorCount} colors — ${status}`}
-                aria-label={`Stage ${stage.stageNumber} of 5, ${stage.gridSize} by ${stage.gridSize}, ${stage.colorCount} colors, ${status}`}
+                title={`Stage ${stage.stageNumber}: ${geo ? `${geo.rings}×${geo.sectors}` : `${stage.gridSize}×${stage.gridSize}`}, ${stage.colorCount} colors — ${status}`}
+                aria-label={`Stage ${stage.stageNumber} of 5, ${sizeWords}, ${stage.colorCount} colors, ${status}`}
                 className={`flex-1 min-w-0 rounded-md border px-0.5 py-0.5 flex items-center justify-center gap-0.5 transition-all ${statusBg}`}
               >
                 {icon}
                 <span className="text-[8px] font-mono font-bold truncate">
-                  {stage.gridSize}²·{stage.colorCount}c
+                  {sizeText}·{stage.colorCount}c
                 </span>
               </div>
             );

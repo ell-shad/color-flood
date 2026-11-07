@@ -20,7 +20,7 @@ import type {
   TwoPlayerGameState,
 } from '../types';
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
-import { getBestMultiplayerMove, getBestSoloMove } from '../utils/floodLogic';
+import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import {
   playEmotePopSound,
@@ -73,6 +73,8 @@ const coerceRoom = (room: OnlineRoomState): TwoPlayerGameState | null => {
   if (room.status === 'waiting') return null;
   return {
     ...room,
+    // P9: older snapshots predate the wheel, so default to the square.
+    shape: room.shape ?? 'classic',
     // The spread keeps the declared (un-narrowed) status union; re-assign the
     // narrowed property so 'waiting' cannot leak into a live match.
     status: room.status,
@@ -311,6 +313,7 @@ export function useGameSession(): GameSession {
       challengeType: prefs.challengeType,
       colorCount: prefs.colorCount,
       gridSize: prefs.gridSize,
+      boardShape: prefs.boardShape,
       botEnabled: prefs.opponent === 'bot',
       botDifficulty: prefs.botDifficulty,
       onMoveStart: (turn, color) => {
@@ -348,6 +351,7 @@ export function useGameSession(): GameSession {
       challengeType: prefs.challengeType,
       colorCount: prefs.colorCount,
       gridSize: prefs.gridSize,
+      shape: prefs.boardShape,
     },
   );
 
@@ -780,7 +784,19 @@ export function useGameSession(): GameSession {
   const activeTurn = activeMatch?.turn ?? 1;
   const matchStatus = activeMatch?.status ?? 'playing';
   const rematchRequestedBy = roomState?.rematchRequestedBy ?? null;
-  const totalCells = (prefs.mode === 'solo' ? prefs.gridSize : matchGridSize) ** 2;
+  // P9: topology of the board on screen. Online rooms carry their own shape;
+  // local matches store it on the state; solo keeps it on the board itself.
+  const boardShape: BoardShape =
+    prefs.mode === 'solo'
+      ? (soloState?.shape ?? prefs.boardShape)
+      : prefs.opponent === 'online'
+        ? (roomState?.shape ?? 'classic')
+        : (localState?.shape ?? prefs.boardShape);
+  // Cell count follows the board (square side² or wheel rings × sectors).
+  const totalCells = Math.max(
+    1,
+    cellCountOf(prefs.mode === 'solo' ? (soloState?.grid ?? []) : (activeMatch?.grid ?? [])),
+  );
   const gridView = {
     grid: prefs.mode === 'solo' && soloState ? soloState.grid : (activeMatch?.grid ?? []),
     gridSize: prefs.mode === 'solo' ? dailyGridSize : matchGridSize,
@@ -905,7 +921,8 @@ export function useGameSession(): GameSession {
     // the pre-refactor handleGetHint).
     if (!prefs.showHints) return;
     if (!localState || localState.status !== 'playing') return;
-    const { bestColor, maxGain } = getBestMultiplayerMove(
+    const { bestColor, maxGain } = getBestMoveForShape(
+      localState.shape,
       localState.grid,
       localState.turn,
       localState.p1Cells,
@@ -1105,15 +1122,47 @@ export function useGameSession(): GameSession {
     ],
   );
 
-  /** P7: swap the solo board topology and regenerate, like the size switch. */
+  /**
+   * P7/P9: swap the board topology (classic square ↔ polar wheel). Solo rebuilds
+   * its board; a local match re-inits like the grid-size switch; an online host
+   * pushes the setting and the room rebuilds between games.
+   */
   const handleChangeBoardShape = useCallback(
     (shape: BoardShape) => {
       prefs.setBoardShape(shape);
       initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, shape);
       setSoloHintsLeft(3);
       clearHint();
+      const m = localState;
+      if (m) {
+        const progressive = m.challengeType === 'progressive';
+        initRound({
+          // Progressive rounds read their size/colors from the stage config;
+          // the shape applies to that same stage immediately.
+          size: progressive ? undefined : prefs.gridSize,
+          colors: progressive ? undefined : prefs.colorCount,
+          startTurn: m.firstTurnPlayer,
+          round: m.roundNumber,
+          stage: m.currentStage,
+          stageWins: m.stageWins,
+          challengeTypeOverride: m.challengeType,
+          shape,
+        });
+      }
+      if (roomState) {
+        updateRoomSettings({ shape });
+      }
     },
-    [prefs, initSoloBoard, clearHint, setSoloHintsLeft],
+    [
+      prefs,
+      initSoloBoard,
+      clearHint,
+      setSoloHintsLeft,
+      localState,
+      initRound,
+      roomState,
+      updateRoomSettings,
+    ],
   );
 
   const handleChangeChallengeType = useCallback(
@@ -1198,7 +1247,7 @@ export function useGameSession(): GameSession {
     mode: prefs.mode,
     gridSize: prefs.gridSize,
     colorCount: prefs.colorCount,
-    boardShape: prefs.boardShape,
+    boardShape,
     botDifficulty: prefs.botDifficulty,
     challengeType: prefs.challengeType,
     opponent: prefs.opponent,

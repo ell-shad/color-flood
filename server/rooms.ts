@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import {
-  generateTwoPlayerGrid,
-  expandPlayerTerritory,
-  checkMultiplayerGameOver,
+  checkGameOverForShape,
+  expandTerritoryForShape,
+  generateBoardForShape,
 } from '../src/utils/floodLogic';
 import { THEMES } from '../src/utils/themes';
 import type {
@@ -10,6 +10,7 @@ import type {
   ChallengeType,
   ResetProposal,
   ThemeId,
+  BoardShape,
 } from '../src/types';
 import type { ServerMessage, RoomSnapshot, ServerErrorCode } from './protocol';
 
@@ -47,6 +48,8 @@ export interface RoomInternal {
   version: number;
   gridSize: number;
   colorCount: number;
+  /** P9: board topology for this room (fixed between rounds). */
+  shape: BoardShape;
   p1: PlayerSession;
   p2: PlayerSession | null;
   /** P6.6: live spectator seats (receive snapshots, can never act). */
@@ -128,6 +131,7 @@ export interface CreateRoomInput {
   gridSize?: number;
   colorCount?: number;
   challengeType?: ChallengeType;
+  shape?: BoardShape;
   themeId?: string;
   turnTimerSec?: 0 | 30 | 60;
 }
@@ -194,6 +198,7 @@ export interface RoomService {
       gridSize?: number;
       colorCount?: number;
       challengeType?: ChallengeType;
+      shape?: BoardShape;
       turnTimerSec?: 0 | 30 | 60;
     },
   ): RoomOpResult;
@@ -231,6 +236,7 @@ const sanitize = (room: RoomInternal): OnlineRoomState => ({
   roomId: room.roomId,
   gridSize: room.gridSize,
   colorCount: room.colorCount,
+  shape: room.shape,
   grid: room.grid,
   turn: room.turn,
   firstTurnPlayer: room.firstTurnPlayer,
@@ -327,7 +333,8 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
   const applyMoveToRoom = (room: RoomInternal, role: 1 | 2, color: number) => {
     const currentCells = role === 1 ? room.p1Cells : room.p2Cells;
     const opponentCells = role === 1 ? room.p2Cells : room.p1Cells;
-    const { newGrid, newCells, gain } = expandPlayerTerritory(
+    const { newGrid, newCells, gain } = expandTerritoryForShape(
+      room.shape,
       room.grid,
       currentCells,
       opponentCells,
@@ -349,17 +356,14 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     room.turn = role === 1 ? 2 : 1;
     room.turnStartedAt = now();
 
-    const totalCells = room.gridSize * room.gridSize;
-    const outcome = checkMultiplayerGameOver(
-      totalCells,
-      room.p1Cells.length,
-      room.p2Cells.length,
-      room.colorCount,
-      room.p1Color,
-      room.p2Color,
+    const outcome = checkGameOverForShape(
+      room.shape,
       room.grid,
       room.p1Cells,
       room.p2Cells,
+      room.colorCount,
+      room.p1Color,
+      room.p2Color,
     );
     room.status = outcome;
     if (outcome === 'p1_won') {
@@ -403,7 +407,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       if (newColorCount !== undefined) room.colorCount = newColorCount;
     }
 
-    const board = generateTwoPlayerGrid(room.gridSize, room.colorCount);
+    const board = generateBoardForShape(room.shape, room.gridSize, room.colorCount);
     room.grid = board.grid;
     room.p1Cells = board.p1Cells;
     room.p2Cells = board.p2Cells;
@@ -434,12 +438,14 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           ? (input.colorCount ?? 4)
           : 4;
 
-      const board = generateTwoPlayerGrid(gridSize, colorCount);
+      const shape: BoardShape = input.shape === 'wheel' ? 'wheel' : 'classic';
+      const board = generateBoardForShape(shape, gridSize, colorCount);
       const room: RoomInternal = {
         roomId,
         version: 1,
         gridSize,
         colorCount,
+        shape,
         p1: {
           id: token,
           name: input.playerName?.trim() || 'Player 1',
@@ -687,18 +693,20 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       const structural =
         settings.gridSize !== undefined ||
         settings.colorCount !== undefined ||
-        settings.challengeType !== undefined;
+        settings.challengeType !== undefined ||
+        settings.shape !== undefined;
       if (structural) {
         // Lobby-only (or after a round ended): mid-game changes corrupt the board.
         if (room.status === 'playing') {
           // Theme-only edit was applied; reject the structural part as a whole op.
-          return err('settings_locked', 'Grid/colors can only change between games.');
+          return err('settings_locked', 'Board settings can only change between games.');
         }
         if (role !== 1) {
           return err('settings_locked', 'Only the host can change match settings.');
         }
         if (settings.challengeType !== undefined)
           room.challengeType = settings.challengeType;
+        if (settings.shape !== undefined) room.shape = settings.shape;
         if (room.challengeType === 'standard') {
           if (settings.gridSize !== undefined) room.gridSize = settings.gridSize;
           if (settings.colorCount !== undefined) room.colorCount = settings.colorCount;

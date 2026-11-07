@@ -69,6 +69,8 @@ export interface SoloGameState {
 
 export interface TwoPlayerGameState {
   grid: number[][];
+  /** P9: board topology — classic square or the polar wheel (2P too). */
+  shape: BoardShape;
   turn: PlayerId;
   p1Cells: string[];
   p2Cells: string[];
@@ -91,6 +93,8 @@ export interface OnlineRoomState {
   roomId: string;
   gridSize: number;
   colorCount: number;
+  /** P9: board topology. Optional so pre-wheel snapshots stay readable. */
+  shape?: BoardShape;
   grid: number[][];
   turn: 1 | 2;
   p1Cells: string[];

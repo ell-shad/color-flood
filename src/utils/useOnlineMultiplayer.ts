@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { OnlineRoomState, ChallengeType, ResetProposal, ThemeId } from '../types';
+import { OnlineRoomState, ChallengeType, ResetProposal, ThemeId, BoardShape } from '../types';
 import {
-  generateTwoPlayerGrid,
-  expandPlayerTerritory,
-  checkMultiplayerGameOver,
+  checkGameOverForShape,
+  expandTerritoryForShape,
+  generateBoardForShape,
 } from './floodLogic';
 import type { ServerMessage } from '../../server/protocol';
 import { z } from 'zod';
@@ -350,7 +350,8 @@ export function useOnlineMultiplayer() {
       const currentCells = fromRole === 1 ? prev.p1Cells : prev.p2Cells;
       const opponentCells = fromRole === 1 ? prev.p2Cells : prev.p1Cells;
 
-      const { newGrid, newCells, gain } = expandPlayerTerritory(
+      const { newGrid, newCells, gain } = expandTerritoryForShape(
+        prev.shape ?? 'classic',
         prev.grid,
         currentCells,
         opponentCells,
@@ -362,17 +363,14 @@ export function useOnlineMultiplayer() {
       const nextP1Color = fromRole === 1 ? color : prev.p1Color;
       const nextP2Color = fromRole === 2 ? color : prev.p2Color;
 
-      const totalCells = prev.gridSize * prev.gridSize;
-      const outcome = checkMultiplayerGameOver(
-        totalCells,
-        nextP1Cells.length,
-        nextP2Cells.length,
-        prev.colorCount,
-        nextP1Color,
-        nextP2Color,
+      const outcome = checkGameOverForShape(
+        prev.shape ?? 'classic',
         newGrid,
         nextP1Cells,
         nextP2Cells,
+        prev.colorCount,
+        nextP1Color,
+        nextP2Color,
       );
 
       const series = { ...prev.series };
@@ -435,6 +433,7 @@ export function useOnlineMultiplayer() {
       colorCount = 4,
       challengeType: ChallengeType = 'standard',
       themeId: ThemeId = 'arcade',
+      shape: BoardShape = 'classic',
     ) => {
       setConnectionStatus('connecting');
       setErrorMessage(null);
@@ -445,11 +444,12 @@ export function useOnlineMultiplayer() {
       const isProg = challengeType === 'progressive';
       const size = isProg ? 10 : gridSize;
       const colors = isProg ? 4 : colorCount;
-      const board = generateTwoPlayerGrid(size, colors);
+      const board = generateBoardForShape(shape, size, colors);
       const preview: OnlineRoomState = {
         roomId: '000000',
         gridSize: size,
         colorCount: colors,
+        shape,
         grid: board.grid,
         turn: 1,
         firstTurnPlayer: 1,
@@ -495,6 +495,7 @@ export function useOnlineMultiplayer() {
             gridSize: size,
             colorCount: colors,
             challengeType,
+            shape,
             themeId,
           });
         } else {
@@ -683,6 +684,7 @@ export function useOnlineMultiplayer() {
       gridSize?: number;
       colorCount?: number;
       challengeType?: ChallengeType;
+      shape?: BoardShape;
       turnTimerSec?: 0 | 30 | 60;
     }) => {
       const current = roomStateRef.current;
@@ -695,6 +697,7 @@ export function useOnlineMultiplayer() {
               gridSize: settings.gridSize ?? prev.gridSize,
               colorCount: settings.colorCount ?? prev.colorCount,
               challengeType: settings.challengeType ?? prev.challengeType,
+              shape: settings.shape ?? prev.shape,
               turnTimerSec: settings.turnTimerSec ?? prev.turnTimerSec,
               resetProposal: settings.challengeType ? null : prev.resetProposal,
             }
@@ -708,6 +711,7 @@ export function useOnlineMultiplayer() {
         gridSize: settings.gridSize,
         colorCount: settings.colorCount,
         challengeType: settings.challengeType,
+        shape: settings.shape,
         turnTimerSec: settings.turnTimerSec,
       });
     },

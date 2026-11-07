@@ -255,15 +255,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         )}
 
-        {/* P7: Board Shape (solo only) — classic square or mandala wheel. */}
-        {mode === 'solo' && onChangeBoardShape && (
+        {/* P7/P9: Board Shape — classic square or mandala wheel (both modes). */}
+        {onChangeBoardShape && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                 Board Shape
               </label>
               <span className="text-[10px] text-indigo-400 font-mono">
-                wheel floods from the center out
+                {mode === 'solo' ? 'floods from the center out' : 'seeds both on the outer ring'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">

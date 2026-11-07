@@ -38,6 +38,8 @@ export const ColorCount = z
   .int()
   .refine((v) => [4, 5, 6, 7, 8].includes(v));
 export const ChallengeType = z.enum(['standard', 'progressive']);
+/** P9: board topology — classic square or polar wheel. */
+export const Shape = z.enum(['classic', 'wheel']);
 export const ThemeId = z.string().trim().min(1).max(32);
 export const Emoji = z.string().max(10);
 /** Optional per-turn move timer (P3.5): off or a fixed number of seconds. */
@@ -54,6 +56,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
     gridSize: GridSize.optional(),
     colorCount: ColorCount.optional(),
     challengeType: ChallengeType.optional(),
+    shape: Shape.optional(),
     themeId: ThemeId.optional(),
     turnTimerSec: TurnTimer.optional(),
   }),
@@ -103,6 +106,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
     gridSize: GridSize.optional(),
     colorCount: ColorCount.optional(),
     challengeType: ChallengeType.optional(),
+    shape: Shape.optional(),
     turnTimerSec: TurnTimer.optional(),
   }),
 

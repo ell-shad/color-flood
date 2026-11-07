@@ -1,10 +1,13 @@
-import type { BotDifficulty } from '../types';
-import { getBestMultiplayerMove } from './floodLogic';
+import type { BotDifficulty, BoardShape } from '../types';
+import { getBestMoveForShape } from './floodLogic';
 import type { BotWorkerRequest, BotWorkerResponse } from './botWorker';
 
 /**
  * Singleton Web Worker client for bot moves (P2.7). Falls back to synchronous
  * computation when workers are unavailable (old browsers, test environments).
+ *
+ * P9: the request carries the board topology — wheels are searched with the
+ * polar kernels, squares keep the flat alpha-beta engine.
  */
 
 const FALLBACK_DEADLINE_MS = 600;
@@ -36,8 +39,24 @@ export interface BotMoveRequest {
   p1Color: number;
   p2Color: number;
   colorCount: number;
+  /** Board topology (omitted ⇒ classic square, e.g. legacy callers/tests). */
+  shape?: BoardShape;
   difficulty: BotDifficulty;
 }
+
+/** Same computation the worker runs, on the main thread (fallback path). */
+const computeSync = (req: BotMoveRequest): number =>
+  getBestMoveForShape(
+    req.shape ?? 'classic',
+    req.grid,
+    req.activePlayer,
+    req.p1Cells,
+    req.p2Cells,
+    req.p1Color,
+    req.p2Color,
+    req.colorCount,
+    req.difficulty,
+  ).bestColor;
 
 /**
  * Compute the bot's move. Off the main thread when workers work; resolves with the
@@ -48,17 +67,7 @@ export const requestBotMove = (req: BotMoveRequest): Promise<number> =>
     const w = getWorker();
     if (!w) {
       // Synchronous fallback (blocking; rare — only when workers are unavailable).
-      const { bestColor } = getBestMultiplayerMove(
-        req.grid,
-        req.activePlayer,
-        req.p1Cells,
-        req.p2Cells,
-        req.p1Color,
-        req.p2Color,
-        req.colorCount,
-        req.difficulty,
-      );
-      resolve(bestColor);
+      resolve(computeSync(req));
       return;
     }
 
@@ -78,17 +87,7 @@ export const requestBotMove = (req: BotMoveRequest): Promise<number> =>
       w.removeEventListener('message', onMessage);
       w.removeEventListener('error', onError);
       workerBroken = true;
-      const { bestColor } = getBestMultiplayerMove(
-        req.grid,
-        req.activePlayer,
-        req.p1Cells,
-        req.p2Cells,
-        req.p1Color,
-        req.p2Color,
-        req.colorCount,
-        req.difficulty,
-      );
-      resolve(bestColor);
+      resolve(computeSync(req));
     };
     w.addEventListener('message', onMessage);
     w.addEventListener('error', onError);
@@ -98,16 +97,6 @@ export const requestBotMove = (req: BotMoveRequest): Promise<number> =>
       // Structured-clone failure or detached worker: synchronous fallback.
       w.removeEventListener('message', onMessage);
       w.removeEventListener('error', onError);
-      const { bestColor } = getBestMultiplayerMove(
-        req.grid,
-        req.activePlayer,
-        req.p1Cells,
-        req.p2Cells,
-        req.p1Color,
-        req.p2Color,
-        req.colorCount,
-        req.difficulty,
-      );
-      resolve(bestColor);
+      resolve(computeSync(req));
     }
   });

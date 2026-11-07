@@ -7,11 +7,13 @@ import type {
   GridSize,
   SeriesScore,
   PlayerId,
+  BoardShape,
 } from '../types';
 import {
-  generateTwoPlayerGrid,
-  expandPlayerTerritory,
-  checkMultiplayerGameOver,
+  cellCountOf,
+  checkGameOverForShape,
+  expandTerritoryForShape,
+  generateBoardForShape,
 } from '../utils/floodLogic';
 import { PROGRESSIVE_STAGES } from '../utils/themes';
 import { requestBotMove } from '../utils/botWorkerClient';
@@ -75,6 +77,7 @@ type LocalAction =
       stage: number;
       stageWins: { 1: number[]; 2: number[] };
       challengeType: ChallengeType;
+      shape: BoardShape;
     }
   | { type: 'move'; color: number; colors: number }
   | { type: 'reset_meta' };
@@ -89,13 +92,16 @@ const buildFreshRound = (action: {
   stage: number;
   stageWins: { 1: number[]; 2: number[] };
   challengeType: ChallengeType;
+  shape: BoardShape;
 }): TwoPlayerGameState => {
-  const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateTwoPlayerGrid(
+  const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateBoardForShape(
+    action.shape,
     action.size,
     action.colors,
   );
   return {
     grid,
+    shape: action.shape,
     turn: action.startTurn,
     p1Cells,
     p2Cells,
@@ -131,7 +137,8 @@ const localReducer = (
       const turn = state.turn;
       const currentCells = turn === 1 ? state.p1Cells : state.p2Cells;
       const opponentCells = turn === 1 ? state.p2Cells : state.p1Cells;
-      const { newGrid, newCells, gain } = expandPlayerTerritory(
+      const { newGrid, newCells, gain } = expandTerritoryForShape(
+        state.shape,
         state.grid,
         currentCells,
         opponentCells,
@@ -143,17 +150,14 @@ const localReducer = (
       const nextP1Color = turn === 1 ? action.color : state.p1Color;
       const nextP2Color = turn === 2 ? action.color : state.p2Color;
 
-      const totalCells = state.grid.length * state.grid.length;
-      const outcome = checkMultiplayerGameOver(
-        totalCells,
-        nextP1Cells.length,
-        nextP2Cells.length,
-        action.colors,
-        nextP1Color,
-        nextP2Color,
+      const outcome = checkGameOverForShape(
+        state.shape,
         newGrid,
         nextP1Cells,
         nextP2Cells,
+        action.colors,
+        nextP1Color,
+        nextP2Color,
       );
 
       const nextStageWins = { 1: [...state.stageWins[1]], 2: [...state.stageWins[2]] };
@@ -205,6 +209,8 @@ export interface LocalMatchOptions {
   challengeType: ChallengeType;
   colorCount: ColorCount;
   gridSize: GridSize;
+  /** P9: topology of newly created rounds (classic square or polar wheel). */
+  boardShape: BoardShape;
   /** vs-bot play: automates P2 turns. */
   botEnabled: boolean;
   botDifficulty: BotDifficulty;
@@ -229,6 +235,7 @@ export interface LocalMatch {
     stage?: number;
     stageWins?: { 1: number[]; 2: number[] };
     challengeTypeOverride?: ChallengeType;
+    shape?: BoardShape;
   }) => void;
   advanceRound: (nextStageOverride?: number) => void;
   resetSeries: () => void;
@@ -236,7 +243,12 @@ export interface LocalMatch {
 
 export function useLocalMatch(
   opts: LocalMatchOptions,
-  initial: { challengeType: ChallengeType; colorCount: ColorCount; gridSize: GridSize },
+  initial: {
+    challengeType: ChallengeType;
+    colorCount: ColorCount;
+    gridSize: GridSize;
+    shape: BoardShape;
+  },
 ): LocalMatch {
   const { botEnabled, botDifficulty, colorCount } = opts;
   const [state, dispatch] = useReducer(localReducer, null, () => {
@@ -252,6 +264,7 @@ export function useLocalMatch(
         stage: 1,
         stageWins: EMPTY_STAGE_WINS,
         challengeType: 'progressive',
+        shape: initial.shape,
       });
     }
     // Non-progressive local match honors the player's chosen board.
@@ -263,6 +276,7 @@ export function useLocalMatch(
       stage: 1,
       stageWins: EMPTY_STAGE_WINS,
       challengeType: initial.challengeType,
+      shape: initial.shape,
     });
   });
 
@@ -287,6 +301,7 @@ export function useLocalMatch(
       stage,
       stageWins: args.stageWins ?? { 1: [], 2: [] },
       challengeType: type,
+      shape: args.shape ?? o.boardShape,
     });
     o.onMoveStart?.(args.startTurn ?? 1);
   }, []);
@@ -313,6 +328,7 @@ export function useLocalMatch(
         stage: targetStage,
         stageWins: s.stageWins,
         challengeType: s.challengeType,
+        shape: o.boardShape,
       });
     } else {
       dispatch({
@@ -324,6 +340,7 @@ export function useLocalMatch(
         stage: s.currentStage,
         stageWins: s.stageWins,
         challengeType: s.challengeType,
+        shape: o.boardShape,
       });
     }
     o.onMoveStart?.(nextFirst);
@@ -349,7 +366,8 @@ export function useLocalMatch(
       // same pure engine call when it transforms the state (see header docs).
       const currentCells = turn === 1 ? s.p1Cells : s.p2Cells;
       const opponentCells = turn === 1 ? s.p2Cells : s.p1Cells;
-      const { newCells, gain } = expandPlayerTerritory(
+      const { newCells, gain } = expandTerritoryForShape(
+        s.shape,
         s.grid,
         currentCells,
         opponentCells,
@@ -359,17 +377,15 @@ export function useLocalMatch(
       const nextP2Cells = turn === 2 ? newCells : s.p2Cells;
       const nextP1Color = turn === 1 ? color : s.p1Color;
       const nextP2Color = turn === 2 ? color : s.p2Color;
-      const totalCells = s.grid.length * s.grid.length;
-      const outcome = checkMultiplayerGameOver(
-        totalCells,
-        nextP1Cells.length,
-        nextP2Cells.length,
-        colors,
-        nextP1Color,
-        nextP2Color,
+      const totalCells = cellCountOf(s.grid);
+      const outcome = checkGameOverForShape(
+        s.shape,
         s.grid,
         nextP1Cells,
         nextP2Cells,
+        colors,
+        nextP1Color,
+        nextP2Color,
       );
 
       optsRef.current.onMoveStart?.(turn, color);
@@ -446,6 +462,7 @@ export function useLocalMatch(
         p2Color: current.p2Color,
         colorCount: activeColorCountOf(current, colorCount),
         difficulty: botDifficulty,
+        shape: current.shape,
       }).then((bestColor) => {
         if (cancelled) return;
         // Stale response (state changed while the worker computed) is dropped.

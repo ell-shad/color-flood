@@ -1,5 +1,5 @@
-import { getBestMultiplayerMove } from './floodLogic';
-import type { BotDifficulty } from '../types';
+import { getBestMoveForShape } from './floodLogic';
+import type { BotDifficulty, BoardShape } from '../types';
 
 /**
  * Web Worker entry for the master bot minimax (P2.7). Runs the alpha-beta search off
@@ -16,6 +16,8 @@ export interface BotWorkerRequest {
   p1Color: number;
   p2Color: number;
   colorCount: number;
+  /** P9: board topology — wheels use the polar search. */
+  shape?: BoardShape;
   difficulty: BotDifficulty;
   /** Wall-clock cap for the search; checked every 256 nodes. */
   deadlineMs?: number;
@@ -31,7 +33,8 @@ self.onmessage = (e: MessageEvent<BotWorkerRequest>) => {
   const req = e.data;
   let bestColor = 0;
   try {
-    const { bestColor: move } = getBestMultiplayerMove(
+    const { bestColor: move } = getBestMoveForShape(
+      req.shape ?? 'classic',
       req.grid,
       req.activePlayer,
       req.p1Cells,

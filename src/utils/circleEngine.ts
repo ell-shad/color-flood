@@ -199,6 +199,271 @@ export const bestWheelMoveWithGain = (
   return best;
 };
 
+// --- Two-player wheel (P9) ---------------------------------------------------
+//
+// The square battle seeds each player in an opposite corner and lets them flood
+// into neutral cells; the polar equivalent seeds them at opposite points of the
+// OUTER ring and floods inward/around. Same 4-neighbour rule as solo, but the
+// ring wraps, so sector c-1/c+1 are always neighbours.
+//
+// Cell ownership stays in the shared `"r,c"` string format, so the scoreboard,
+// snapshots and protocol need no new encoding — only the topology differs.
+
+const cellKey = (r: number, c: number): string => `${r},${c}`;
+const readKey = (k: string): [number, number] => {
+  const [r, c] = k.split(',');
+  return [Number(r), Number(c)];
+};
+
+/** Polar neighbours: both ways around the ring (wrapping), then inward/outward. */
+export const wheelNeighbors = (
+  r: number,
+  c: number,
+  rings: number,
+  sectors: number,
+): Array<[number, number]> => {
+  const out: Array<[number, number]> = [
+    [r, (c + 1) % sectors],
+    [r, (c + sectors - 1) % sectors],
+  ];
+  if (r + 1 < rings) out.push([r + 1, c]);
+  if (r > 0) out.push([r - 1, c]);
+  return out;
+};
+
+/** Connected same-color component containing (startR, startC), BFS order. */
+const wheelComponent = (
+  grid: number[][],
+  startR: number,
+  startC: number,
+  color: number,
+): string[] => {
+  const rings = grid.length;
+  const sectors = grid[0].length;
+  const seen = new Set<string>([cellKey(startR, startC)]);
+  const queue: Array<[number, number]> = [[startR, startC]];
+  const out: string[] = [cellKey(startR, startC)];
+  let head = 0;
+  while (head < queue.length) {
+    const [r, c] = queue[head++];
+    for (const [nr, nc] of wheelNeighbors(r, c, rings, sectors)) {
+      const k = cellKey(nr, nc);
+      if (!seen.has(k) && grid[nr][nc] === color) {
+        seen.add(k);
+        out.push(k);
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return out;
+};
+
+export interface TwoPlayerWheelBoard {
+  grid: number[][];
+  p1Cells: string[];
+  p2Cells: string[];
+  p1Color: number;
+  p2Color: number;
+}
+
+/**
+ * Fair two-player wheel: P1 seeds the outer ring at sector 0, P2 at the sector
+ * opposite it, with different starting colors and non-overlapping territories.
+ * Retries on the rare wrap-around overlap, exactly like the square generator.
+ */
+export const generateTwoPlayerWheel = (
+  size: number,
+  colorCount: number,
+  rng: Rng = Math.random,
+): TwoPlayerWheelBoard => {
+  const { rings, sectors } = wheelGeometry(size);
+  const p1r = rings - 1;
+  const p1c = 0;
+  const p2r = rings - 1;
+  const p2c = Math.floor(sectors / 2);
+
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const grid: number[][] = Array.from({ length: rings }, () =>
+      Array.from({ length: sectors }, () => Math.floor(rng() * colorCount)),
+    );
+    const p1Color = grid[p1r][p1c];
+    let p2Color = grid[p2r][p2c];
+    if (p2Color === p1Color) {
+      p2Color = (p1Color + 1 + Math.floor(rng() * (colorCount - 1))) % colorCount;
+      grid[p2r][p2c] = p2Color;
+    }
+    const p1Cells = wheelComponent(grid, p1r, p1c, p1Color);
+    const p2Cells = wheelComponent(grid, p2r, p2c, p2Color);
+    const p2Set = new Set(p2Cells);
+    if (!p1Cells.some((k) => p2Set.has(k))) {
+      return { grid, p1Cells, p2Cells, p1Color, p2Color };
+    }
+  }
+
+  // Guaranteed-separated fallback: force the two seed cells to distinct colors.
+  const grid: number[][] = Array.from({ length: rings }, () =>
+    Array.from({ length: sectors }, () => Math.floor(rng() * colorCount)),
+  );
+  grid[p1r][p1c] = 0;
+  grid[p2r][p2c] = 1;
+  return {
+    grid,
+    p1Cells: wheelComponent(grid, p1r, p1c, 0),
+    p2Cells: wheelComponent(grid, p2r, p2c, 1),
+    p1Color: 0,
+    p2Color: 1,
+  };
+};
+
+/**
+ * Territory expansion on the wheel: recolor own cells, then claim reachable
+ * neutral cells of `targetColor` (never through an opponent cell). Mirrors
+ * `expandPlayerTerritory` on the square board, including insertion order.
+ */
+export const expandWheelTerritory = (
+  grid: number[][],
+  currentCells: string[],
+  opponentCells: string[],
+  targetColor: number,
+): { newGrid: number[][]; newCells: string[]; gain: number } => {
+  const rings = grid.length;
+  const sectors = grid[0].length;
+  const out = grid.map((row) => [...row]);
+  const opponentSet = new Set(opponentCells);
+  const owned = new Set<string>();
+  const newCells: string[] = [];
+  const queue: Array<[number, number]> = [];
+
+  for (const k of currentCells) {
+    if (owned.has(k)) continue;
+    owned.add(k);
+    const [r, c] = readKey(k);
+    out[r][c] = targetColor;
+    newCells.push(k);
+    queue.push([r, c]);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const [r, c] = queue[head++];
+    for (const [nr, nc] of wheelNeighbors(r, c, rings, sectors)) {
+      const k = cellKey(nr, nc);
+      if (!owned.has(k) && !opponentSet.has(k) && out[nr][nc] === targetColor) {
+        owned.add(k);
+        newCells.push(k);
+        queue.push([nr, nc]);
+      }
+    }
+  }
+
+  return { newGrid: out, newCells, gain: newCells.length - currentCells.length };
+};
+
+/** Terminal check for the wheel — same majority/blocked rules as the square. */
+export const checkWheelMultiplayerGameOver = (
+  totalCells: number,
+  p1Count: number,
+  p2Count: number,
+  colorCount: number,
+  p1Color: number,
+  p2Color: number,
+  grid: number[][],
+  p1Cells: string[],
+  p2Cells: string[],
+): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
+  const majority = Math.floor(totalCells / 2) + 1;
+  if (p1Count >= majority) return 'p1_won';
+  if (p2Count >= majority) return 'p2_won';
+
+  if (p1Count + p2Count >= totalCells) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+
+  const legal = (own: number, other: number) => {
+    const list: number[] = [];
+    for (let i = 0; i < colorCount; i++) if (i !== own && i !== other) list.push(i);
+    return list;
+  };
+  const canGain = (own: string[], other: string[], ownColor: number, otherColor: number) =>
+    legal(ownColor, otherColor).some(
+      (c) => expandWheelTerritory(grid, own, other, c).gain > 0,
+    );
+
+  if (
+    !canGain(p1Cells, p2Cells, p1Color, p2Color) &&
+    !canGain(p2Cells, p1Cells, p2Color, p1Color)
+  ) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+
+  return 'playing';
+};
+
+/**
+ * Bot / hint choice on the wheel. `master` weighs the move against the best
+ * immediate reply (the square master's old one-ply heuristic — a full alpha-beta
+ * over an axial board would need a different evaluation), `medium` is greedy and
+ * `easy` is mostly random, matching the square ladder's feel.
+ */
+export const bestWheelMultiplayerMove = (
+  grid: number[][],
+  activePlayer: 1 | 2,
+  p1Cells: string[],
+  p2Cells: string[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+  difficulty: 'easy' | 'medium' | 'master' = 'master',
+  rng: Rng = Math.random,
+): { bestColor: number; maxGain: number } => {
+  const mine = activePlayer === 1 ? p1Cells : p2Cells;
+  const theirs = activePlayer === 1 ? p2Cells : p1Cells;
+  const myColor = activePlayer === 1 ? p1Color : p2Color;
+  const theirColor = activePlayer === 1 ? p2Color : p1Color;
+
+  const legal: number[] = [];
+  for (let i = 0; i < colorCount; i++) {
+    if (i !== myColor && i !== theirColor) legal.push(i);
+  }
+  if (legal.length === 0) return { bestColor: 0, maxGain: 0 };
+
+  const gains = new Map<number, number>();
+  for (const c of legal) gains.set(c, expandWheelTerritory(grid, mine, theirs, c).gain);
+
+  if (difficulty === 'easy' && rng() < 0.6) {
+    const pick = legal[Math.floor(rng() * legal.length)];
+    return { bestColor: pick, maxGain: gains.get(pick) ?? 0 };
+  }
+
+  if (difficulty === 'medium') {
+    let best = legal[0];
+    for (const c of legal) if ((gains.get(c) ?? 0) > (gains.get(best) ?? 0)) best = c;
+    return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+  }
+
+  let best = legal[0];
+  let bestScore = -Infinity;
+  for (const c of legal) {
+    const { newGrid, newCells } = expandWheelTerritory(grid, mine, theirs, c);
+    let reply = 0;
+    for (let r = 0; r < colorCount; r++) {
+      if (r === c || r === theirColor) continue;
+      const g = expandWheelTerritory(newGrid, theirs, newCells, r).gain;
+      if (g > reply) reply = g;
+    }
+    const score = (gains.get(c) ?? 0) * 1.5 - reply * 0.8;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+};
+
 /** Convenience for seeded reconstruction (share links / replays). */
 export const generateSeededWheelBoard = (
   size: number,

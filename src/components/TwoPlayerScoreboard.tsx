@@ -6,7 +6,9 @@ import {
   SeriesScore,
   ActiveEmote,
   GameTheme,
+  BoardShape,
 } from '../types';
+import { wheelCellCount } from '../utils/circleEngine';
 import { THEMES } from '../utils/themes';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { ProgressiveTrack } from './ProgressiveTrack';
@@ -14,6 +16,8 @@ import { ProgressiveTrack } from './ProgressiveTrack';
 interface TwoPlayerScoreboardProps {
   gameState: TwoPlayerGameState;
   gridSize: number;
+  /** P9: topology — a wheel's cell count is rings × sectors, not side². */
+  shape?: BoardShape;
   opponent: MultiplayerOpponent;
   seriesScore: SeriesScore;
   isBotThinking?: boolean;
@@ -35,6 +39,7 @@ interface TwoPlayerScoreboardProps {
 export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
   gameState,
   gridSize,
+  shape = 'classic',
   opponent,
   seriesScore,
   isBotThinking = false,
@@ -52,7 +57,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
 }) => {
   const [copiedCode, setCopiedCode] = useState(false);
 
-  const totalCells = gridSize * gridSize;
+  const totalCells = shape === 'wheel' ? wheelCellCount(gridSize) : gridSize * gridSize;
   const p1Count = gameState.p1Cells.length;
   const p2Count = gameState.p2Cells.length;
   const neutralCount = Math.max(0, totalCells - p1Count - p2Count);
@@ -99,6 +104,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
           stageWins={gameState.stageWins || { 1: [], 2: [] }}
           p1Name={displayName1}
           p2Name={displayName2}
+          shape={shape}
         />
       )}
 

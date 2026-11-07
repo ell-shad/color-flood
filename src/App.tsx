@@ -224,8 +224,8 @@ export default function App() {
               systemMessage={session.onlineSystemMessage}
               gridSize={session.gridSize}
               colorCount={session.colorCount}
-              onCreateRoom={(name, gSize, cCount, cType) =>
-                session.createOnlineRoom(name, gSize, cCount, cType, session.themeId)
+              onCreateRoom={(name, gSize, cCount, cType, shape) =>
+                session.createOnlineRoom(name, gSize, cCount, cType, session.themeId, shape)
               }
               onJoinRoom={session.joinOnlineRoom}
               onSpectateRoom={session.spectateOnline}
@@ -258,6 +258,7 @@ export default function App() {
                 <TwoPlayerScoreboard
                   gameState={session.activeMatch ?? session.localState}
                   gridSize={session.matchGridSize}
+                  shape={session.boardShape}
                   opponent={session.opponent}
                   seriesScore={session.matchSeries}
                   isBotThinking={session.isBotThinking}
@@ -282,13 +283,22 @@ export default function App() {
                     className="relative"
                     style={{ width: boardPx, height: boardPx }}
                   >
-                {session.mode === 'solo' && session.soloState.shape === 'wheel' ? (
+                {session.boardShape === 'wheel' ? (
                   <WheelBoard
-                    grid={session.soloState.grid}
-                    size={session.soloState.boardSize}
+                    grid={session.gridView.grid}
+                    size={
+                      session.mode === 'solo'
+                        ? session.soloState.boardSize
+                        : session.gridView.gridSize
+                    }
                     theme={session.currentTheme}
                     showColorSymbols={session.showColorSymbols}
                     boardPx={boardPx}
+                    mode={session.mode}
+                    opponent={session.opponent}
+                    p1Cells={session.gridView.p1Cells}
+                    p2Cells={session.gridView.p2Cells}
+                    showTerritoryOverlay={session.showTerritoryOverlay}
                   />
                 ) : (
                   <GameGrid

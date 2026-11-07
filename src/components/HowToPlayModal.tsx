@@ -95,8 +95,9 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
                   <strong>Wheel boards:</strong> switch Board Shape to <em>Wheel</em> in
-                  Settings — same flood rule, but your territory pours out of the center
-                  core and spreads ring by ring.
+                  Settings — same flood rule, but solo play pours out of the center core
+                  and spreads ring by ring, while a two-player match seeds both players on
+                  the outer ring and floods inward.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">

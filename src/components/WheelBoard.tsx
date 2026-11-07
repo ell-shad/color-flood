@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { GameTheme } from '../types';
+import { GameMode, GameTheme, MultiplayerOpponent } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
 import { wheelGeometry } from '../utils/circleEngine';
@@ -31,6 +31,12 @@ interface WheelBoardProps {
   frameWidth?: string;
   /** Measured square edge from useBoardFit — the board fills its box. */
   boardPx?: number;
+  /** P9: 2P territory overlays (solo passes nothing). */
+  mode?: GameMode;
+  opponent?: MultiplayerOpponent;
+  p1Cells?: string[];
+  p2Cells?: string[];
+  showTerritoryOverlay?: boolean;
 }
 
 interface WheelCellProps {
@@ -47,6 +53,8 @@ interface WheelCellProps {
    * restarts when (and only when) this sector's color changes.
    */
   colorIndex: number;
+  /** P9: 0 = neutral, 1/2 = owned by that player (coloured outline). */
+  owner: 0 | 1 | 2;
   glyph: string;
   inkColor: string;
   inkShadow: string;
@@ -60,6 +68,7 @@ const WheelCell = React.memo(function WheelCell({
   color,
   waveDelay,
   colorIndex,
+  owner,
   glyph,
   inkColor,
   inkShadow,
@@ -70,6 +79,8 @@ const WheelCell = React.memo(function WheelCell({
         className="wheel-cell"
         d={d}
         fill={color}
+        stroke={owner === 1 ? '#22D3EE' : owner === 2 ? '#FB7185' : 'none'}
+        strokeWidth={owner === 0 ? 0 : 0.55}
         style={{
           transition: 'fill 0.26s ease-out',
           transitionDelay: `${waveDelay}s`,
@@ -132,6 +143,11 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
   showColorSymbols = false,
   frameWidth,
   boardPx,
+  mode = 'solo',
+  opponent,
+  p1Cells = [],
+  p2Cells = [],
+  showTerritoryOverlay = true,
 }) => {
 
   const shape = useMemo(() => wheelGeometry(size), [size]);
@@ -177,6 +193,25 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
     return out;
   }, [shape]);
 
+  const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
+  const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
+  const showOwnership = mode === 'multiplayer' && showTerritoryOverlay;
+
+  /** P9: "P1"/"P2" badges on each player's seed cell (outer ring). */
+  const seedLabels = useMemo(() => {
+    if (mode !== 'multiplayer') return [];
+    const out: Array<{ cx: number; cy: number; label: string; tint: string }> = [];
+    const add = (k: string | undefined, label: string, tint: string) => {
+      if (!k) return;
+      const [r, c] = k.split(',').map(Number);
+      const cell = cells[(r - 1) * shape.sectors + c];
+      if (cell) out.push({ cx: cell.cx, cy: cell.cy, label, tint });
+    };
+    add(p1Cells[0], 'P1', '#22D3EE');
+    add(p2Cells[0], opponent === 'bot' ? 'BOT' : 'P2', '#FB7185');
+    return out;
+  }, [cells, shape.sectors, mode, p1Cells, p2Cells, opponent]);
+
   // The core disc always mirrors ring 0's uniform color — the flood source.
   const seedHex = theme.colors[grid[0]?.[0] ?? 0] || '#FF595E';
 
@@ -214,6 +249,14 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
           const cell = grid[rr]?.[c] ?? 0;
           const waveDelay = Math.min(0.24, rr * 0.014);
           const hex = theme.colors[cell] || '#FF595E';
+          const k = `${rr},${c}`;
+          const owner: 0 | 1 | 2 = !showOwnership
+            ? 0
+            : p1Set.has(k)
+              ? 1
+              : p2Set.has(k)
+                ? 2
+                : 0;
           const ink = showColorSymbols ? cellInkOn(hex) : null;
           return (
             <WheelCell
@@ -225,12 +268,29 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
               color={hex}
               waveDelay={waveDelay}
               colorIndex={cell}
+              owner={owner}
               glyph={ink ? String(cell + 1) : ''}
               inkColor={ink ? ink.color : ''}
               inkShadow={ink ? ink.shadow : ''}
             />
           );
         })}
+
+        {/* P9: seed badges, so each player can find their starting territory. */}
+        {seedLabels.map(({ cx, cy, label, tint }) => (
+          <g key={label} pointerEvents="none">
+            <circle cx={cx} cy={cy} r={3.1} fill="#0F172A" opacity={0.85} />
+            <text
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              style={{ fill: tint, fontSize: label.length > 2 ? 2 : 2.6, fontWeight: 900 }}
+            >
+              {label}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );

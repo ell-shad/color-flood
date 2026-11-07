@@ -1,4 +1,10 @@
-import { BotDifficulty, PlayerId, GridSize, ColorCount } from '../types';
+import { BotDifficulty, PlayerId, GridSize, ColorCount, BoardShape } from '../types';
+import {
+  bestWheelMultiplayerMove,
+  checkWheelMultiplayerGameOver,
+  expandWheelTerritory,
+  generateTwoPlayerWheel,
+} from './circleEngine';
 import {
   connectedRegionFlat,
   countRegionFlat,
@@ -21,6 +27,109 @@ import {
  * `engine.ts` (flat typed arrays + index BFS) and is shared by client and server;
  * this module preserves the original nested-grid / string-key API for existing callers.
  */
+
+/**
+ * P9: topology-aware adapters. Square callers keep using the flat engine; wheel
+ * callers get the polar kernels. Everything two-player (local match, server
+ * rooms, online optimistic moves) goes through these, so the rules can never
+ * diverge between client and server.
+ */
+
+/** Cell count of any supported board: square side² or wheel rings × sectors. */
+export const cellCountOf = (grid: number[][]): number =>
+  grid.length * (grid[0]?.length ?? 0);
+
+export const generateBoardForShape = (
+  shape: BoardShape,
+  size: number,
+  colorCount: number,
+  rng: Rng = Math.random,
+): TwoPlayerGridResult =>
+  shape === 'wheel'
+    ? generateTwoPlayerWheel(size, colorCount, rng)
+    : generateTwoPlayerGrid(size, colorCount, rng);
+
+export const expandTerritoryForShape = (
+  shape: BoardShape,
+  grid: number[][],
+  currentCells: string[],
+  opponentCells: string[],
+  targetColor: number,
+): { newGrid: number[][]; newCells: string[]; gain: number } =>
+  shape === 'wheel'
+    ? expandWheelTerritory(grid, currentCells, opponentCells, targetColor)
+    : expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
+
+export const checkGameOverForShape = (
+  shape: BoardShape,
+  grid: number[][],
+  p1Cells: string[],
+  p2Cells: string[],
+  colorCount: number,
+  p1Color: number,
+  p2Color: number,
+): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
+  const totalCells = cellCountOf(grid);
+  return shape === 'wheel'
+    ? checkWheelMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      )
+    : checkMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      );
+};
+
+/** Bot / hint choice on either topology (same difficulty ladder). */
+export const getBestMoveForShape = (
+  shape: BoardShape,
+  grid: number[][],
+  activePlayer: PlayerId,
+  p1Cells: string[],
+  p2Cells: string[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+  difficulty: BotDifficulty = 'master',
+  options: BotMoveOptions = {},
+): { bestColor: number; maxGain: number } =>
+  shape === 'wheel'
+    ? bestWheelMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+      )
+    : getBestMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+        options,
+      );
 
 export const COLORS = [
   '#FF595E', // 0: Coral Red
