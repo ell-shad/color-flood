@@ -17,8 +17,7 @@ import {
  * The polygons come from the same layout the flood walks, and they tile the
  * square exactly (each cell is the intersection of its own half-planes), so
  * the board needs no gaps, no depth sorting and no per-cell clipping. Cells
- * are stroked with their own colour: neighbouring fills then overlap by half a
- * pixel, which hides the anti-aliased seam between two different colours.
+ * are stroked with a dark separator so every polygon edge stays legible.
  *
  * `grid[r][c]` is cell index `r * side + c` in lattice order (see the engine),
  * which keeps the solo reducer, undo diffs, records and share links unchanged.
@@ -72,9 +71,13 @@ const Facet = React.memo(function Facet({
         fill={color}
         fillOpacity={ghost ? GHOST_ALPHA : 1}
         stroke={
-          isSeed ? 'rgba(255,255,255,0.92)' : ghost ? 'rgba(148,163,184,0.18)' : color
+          isSeed
+            ? 'rgba(248,250,252,0.96)'
+            : ghost
+              ? 'rgba(226,232,240,0.42)'
+              : 'rgba(15,23,42,0.9)'
         }
-        strokeWidth={isSeed ? 0.9 : ghost ? 0.16 : 0.5}
+        strokeWidth={isSeed ? 1.35 : ghost ? 0.32 : 1.05}
         strokeLinejoin="round"
         style={{
           transition: 'fill 0.26s ease-out',

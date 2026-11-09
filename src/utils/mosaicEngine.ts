@@ -51,9 +51,9 @@ export interface MosaicLayout {
 
 const EPS = 1e-9;
 /** Jitter as a fraction of a lattice step; < 0.5 keeps the lattice order. */
-const SITE_JITTER = 0.42;
-/** Lloyd iterations: evens out cell sizes without flattening the mosaic. */
-const RELAX_STEPS = 1;
+const SITE_JITTER = 0.48;
+/** Disabled: Lloyd relaxation evens cell sizes, but the mosaic should stay irregular. */
+const RELAX_STEPS = 0;
 
 const squarePolygon = (): Point[] => [
   [0, 0],
