@@ -7,6 +7,12 @@ import {
   generateTwoPlayerWheel,
 } from './circleEngine';
 import {
+  bestCubeMultiplayerMove,
+  checkCubeMultiplayerGameOver,
+  expandCubeTerritory,
+  generateTwoPlayerCube,
+} from './cubeEngine';
+import {
   connectedRegionFlat,
   countRegionFlat,
   expandTerritoryFlat,
@@ -49,6 +55,8 @@ export const generateBoardForShape = (
   switch (shape) {
     case 'wheel':
       return generateTwoPlayerWheel(size, colorCount, rng);
+    case 'cube':
+      return generateTwoPlayerCube(size, colorCount, rng);
     case 'classic':
       return generateTwoPlayerGrid(size, colorCount, rng);
     default:
@@ -66,6 +74,8 @@ export const expandTerritoryForShape = (
   switch (shape) {
     case 'wheel':
       return expandWheelTerritory(grid, currentCells, opponentCells, targetColor);
+    case 'cube':
+      return expandCubeTerritory(grid, currentCells, opponentCells, targetColor);
     case 'classic':
       return expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
     default:
@@ -86,6 +96,18 @@ export const checkGameOverForShape = (
   switch (shape) {
     case 'wheel':
       return checkWheelMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      );
+    case 'cube':
+      return checkCubeMultiplayerGameOver(
         totalCells,
         p1Cells.length,
         p2Cells.length,
@@ -129,6 +151,17 @@ export const getBestMoveForShape = (
   switch (shape) {
     case 'wheel':
       return bestWheelMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+      );
+    case 'cube':
+      return bestCubeMultiplayerMove(
         grid,
         activePlayer,
         p1Cells,

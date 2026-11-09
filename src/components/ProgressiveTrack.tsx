@@ -2,6 +2,7 @@ import React from 'react';
 import { Crown, Lock, Swords, Sparkles } from 'lucide-react';
 import { PROGRESSIVE_STAGES } from '../utils/themes';
 import { assertNever } from '../utils/boardShape';
+import { cubeSideForSize } from '../utils/cubeEngine';
 import { wheelGeometry } from '../utils/circleEngine';
 import type { BoardShape } from '../types';
 
@@ -88,6 +89,12 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                 const geo = wheelGeometry(stage.gridSize);
                 sizeText = `${geo.rings}×${geo.sectors}`;
                 sizeWords = `${geo.rings} rings by ${geo.sectors} sectors`;
+                break;
+              }
+              case 'cube': {
+                const side = cubeSideForSize(stage.gridSize);
+                sizeText = `${side}×${side}×6`;
+                sizeWords = `cube with ${side} cells per side`;
                 break;
               }
               case 'classic':

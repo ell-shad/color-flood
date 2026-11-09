@@ -19,6 +19,8 @@ export function isWheel(shape: BoardShape): boolean {
       return false;
     case 'wheel':
       return true;
+    case 'cube':
+      return false;
     default:
       return assertNever(shape);
   }
@@ -30,6 +32,8 @@ export function isClassic(shape: BoardShape): boolean {
     case 'classic':
       return true;
     case 'wheel':
+      return false;
+    case 'cube':
       return false;
     default:
       return assertNever(shape);
@@ -48,6 +52,8 @@ export function parseBoardShape(raw: unknown): BoardShape {
       return 'classic';
     case 'wheel':
       return 'wheel';
+    case 'cube':
+      return 'cube';
     default:
       return 'classic';
   }

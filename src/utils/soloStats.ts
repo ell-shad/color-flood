@@ -3,6 +3,7 @@ import { loadJson, saveJson } from './storage';
 import type { BoardShape } from '../types';
 import { assertNever, parseBoardShape } from './boardShape';
 import { type SoloStars, rateSoloStars } from './soloBalance';
+import { rateCubeStars } from './cubeEngine';
 import { rateWheelStars } from './circleEngine';
 
 /**
@@ -146,6 +147,8 @@ export const statsStarsFor = (entry: SoloConfigStats): SoloStars | null => {
   switch (entry.shape) {
     case 'wheel':
       return rateWheelStars(entry.bestMoves, entry.size, entry.colors);
+    case 'cube':
+      return rateCubeStars(entry.bestMoves, entry.size, entry.colors);
     case 'classic':
       return rateSoloStars(entry.bestMoves, entry.size, entry.colors);
     default:

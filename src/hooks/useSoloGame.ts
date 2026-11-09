@@ -13,6 +13,12 @@ import {
   checkWheelWin,
   getMaxWheelMoves,
 } from '../utils/circleEngine';
+import {
+  generateCubeBoard,
+  floodCube,
+  checkCubeWin,
+  getMaxCubeMoves,
+} from '../utils/cubeEngine';
 import { buildMoveDiff } from '../utils/replay';
 import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { mulberry32 } from '../utils/engine';
@@ -119,6 +125,10 @@ const soloReducer = (
           grid = generateWheelBoard(action.size, action.colors, mulberry32(seed));
           maxMoves = getMaxWheelMoves(action.size, action.colors);
           break;
+        case 'cube':
+          grid = generateCubeBoard(action.size, action.colors, mulberry32(seed));
+          maxMoves = getMaxCubeMoves(action.size, action.colors);
+          break;
         case 'classic':
           grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
           maxMoves = maxSoloMovesLimit(action.size, action.colors);
@@ -148,6 +158,10 @@ const soloReducer = (
         case 'wheel':
           newGrid = floodWheel(state.grid, action.color);
           isWin = checkWheelWin(newGrid);
+          break;
+        case 'cube':
+          newGrid = floodCube(state.grid, action.color);
+          isWin = checkCubeWin(newGrid);
           break;
         case 'classic':
           newGrid = floodSolo(state.grid, action.color);
