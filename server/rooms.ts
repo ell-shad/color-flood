@@ -5,6 +5,7 @@ import {
   generateBoardForShape,
 } from '../src/utils/floodLogic';
 import { buildMoveDiff } from '../src/utils/replay';
+import { assertNever } from '../src/utils/boardShape';
 import { THEMES } from '../src/utils/themes';
 import type {
   OnlineRoomState,
@@ -467,7 +468,21 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
           ? (input.colorCount ?? 4)
           : 4;
 
-      const shape: BoardShape = input.shape === 'wheel' ? 'wheel' : 'classic';
+      let shape: BoardShape;
+      switch (input.shape) {
+        case 'classic':
+          shape = 'classic';
+          break;
+        case 'wheel':
+          shape = 'wheel';
+          break;
+        case undefined:
+          shape = 'classic';
+          break;
+        default:
+          assertNever(input.shape as never);
+          break;
+      }
       const board = generateBoardForShape(shape, gridSize, colorCount);
       const room: RoomInternal = {
         roomId,

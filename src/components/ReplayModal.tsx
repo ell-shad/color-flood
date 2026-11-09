@@ -16,6 +16,7 @@ import {
   reconstructTwoPlayerReplayStates,
   type MultiplayerReplayData,
 } from '../utils/replay';
+import { isWheel } from '../utils/boardShape';
 import { WheelBoard } from './WheelBoard';
 import { GameGrid } from './GameGrid';
 import type { SoloMoveDiff, GameTheme, BoardShape } from '../types';
@@ -57,7 +58,7 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
   history,
   playedColors,
   theme,
-  shape = 'classic',
+  shape = 'classic' as BoardShape,
   size = 10,
   stepMs = 700,
   multiplayer,
@@ -174,7 +175,7 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
               boards is state.grid — the state object itself would render a
               blank wheel (WheelBoard's optional chaining) and crash GameGrid. */}
           <div className="flex justify-center">
-            {shape === 'wheel' ? (
+            {isWheel(shape) ? (
               <WheelBoard
                 grid={state ? state.grid : replayGrid}
                 size={size}

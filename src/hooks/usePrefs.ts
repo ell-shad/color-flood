@@ -11,6 +11,7 @@ import type {
   ChallengeType,
 } from '../types';
 import { loadBool, loadString, loadStringOr, saveString } from '../utils/storage';
+import { parseBoardShape } from '../utils/boardShape';
 import { isMuted, setMuted } from '../utils/soundEffects';
 
 /**
@@ -83,9 +84,7 @@ export function usePrefs(): Prefs {
 
   const [boardShape, setBoardShape] = useState<BoardShape>(() => {
     // Unknown saved values fall back to the classic square (forward-compat).
-    return loadString('board-shape', 'color-flood-board-shape') === 'wheel'
-      ? 'wheel'
-      : 'classic';
+    return parseBoardShape(loadString('board-shape', 'color-flood-board-shape'));
   });
 
   const [opponent, setOpponent] = useState<MultiplayerOpponent>(() => {

@@ -14,6 +14,7 @@ import {
   getMaxWheelMoves,
 } from '../utils/circleEngine';
 import { buildMoveDiff } from '../utils/replay';
+import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { mulberry32 } from '../utils/engine';
 import { maxSoloMovesLimit } from '../utils/soloBalance';
 import { loadJson, saveJson } from '../utils/storage';
@@ -41,7 +42,7 @@ const HighScoresSchema = z.array(HighScoreSchema).max(100);
 export const loadHighScores = (): HighScore[] =>
   (loadJson('high-scores', HighScoresSchema, 'color-flood-high-scores') ?? []).map(
     (s) => ({
-      shape: s.shape === 'wheel' ? 'wheel' : 'classic',
+      shape: parseBoardShape(s.shape),
       size: s.size,
       colors: s.colors,
       moves: s.moves,
@@ -111,14 +112,20 @@ const soloReducer = (
       // P7: wheels are grids[rings][sectors] (uniform inner ring seed); the
       // move budget is the calibrated 0.9× solo limit, so parity with the
       // beam-calibrated square difficulty carries over.
-      const grid =
-        shape === 'wheel'
-          ? generateWheelBoard(action.size, action.colors, mulberry32(seed))
-          : generateSoloGrid(action.size, action.colors, mulberry32(seed));
-      const maxMoves =
-        shape === 'wheel'
-          ? getMaxWheelMoves(action.size, action.colors)
-          : maxSoloMovesLimit(action.size, action.colors);
+      let grid: number[][];
+      let maxMoves: number;
+      switch (shape) {
+        case 'wheel':
+          grid = generateWheelBoard(action.size, action.colors, mulberry32(seed));
+          maxMoves = getMaxWheelMoves(action.size, action.colors);
+          break;
+        case 'classic':
+          grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
+          maxMoves = maxSoloMovesLimit(action.size, action.colors);
+          break;
+        default:
+          return assertNever(shape);
+      }
       return {
         grid,
         moves: 0,
@@ -135,13 +142,21 @@ const soloReducer = (
     case 'move': {
       if (!state || state.status !== 'playing') return state;
       if (action.color === state.grid[0][0]) return state; // same as current flood color
-      const newGrid =
-        state.shape === 'wheel'
-          ? floodWheel(state.grid, action.color)
-          : floodSolo(state.grid, action.color);
+      let newGrid: number[][];
+      let isWin: boolean;
+      switch (state.shape) {
+        case 'wheel':
+          newGrid = floodWheel(state.grid, action.color);
+          isWin = checkWheelWin(newGrid);
+          break;
+        case 'classic':
+          newGrid = floodSolo(state.grid, action.color);
+          isWin = checkSoloWin(newGrid);
+          break;
+        default:
+          return assertNever(state.shape);
+      }
       const newMoves = state.moves + 1;
-      const isWin =
-        state.shape === 'wheel' ? checkWheelWin(newGrid) : checkSoloWin(newGrid);
       const isLoss = !isWin && newMoves >= state.maxMoves;
       return {
         ...state,

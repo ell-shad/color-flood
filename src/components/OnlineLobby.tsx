@@ -18,6 +18,7 @@ import {
   Square,
 } from 'lucide-react';
 import { OnlineRoomState, ChallengeType, BoardShape } from '../types';
+import { isWheel } from '../utils/boardShape';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { loadStringOr, saveString } from '../utils/storage';
 
@@ -396,9 +397,9 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             </button>
             <button
               onClick={() => setSelectedShape('wheel')}
-              aria-pressed={selectedShape === 'wheel'}
+              aria-pressed={isWheel(selectedShape)}
               className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                selectedShape === 'wheel'
+                isWheel(selectedShape)
                   ? 'bg-fuchsia-950/70 border-fuchsia-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
@@ -408,7 +409,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
             </button>
           </div>
           <p className="text-[9px] text-slate-500 leading-tight">
-            {selectedShape === 'wheel'
+            {isWheel(selectedShape)
               ? 'Both players start on the outer ring and flood inward.'
               : 'Both players start in opposite corners.'}
           </p>

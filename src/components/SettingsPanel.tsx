@@ -29,6 +29,29 @@ import {
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 
+const BOARD_SHAPE_OPTIONS: Array<{
+  id: BoardShape;
+  label: string;
+  title: string;
+  Icon: typeof Square;
+  activeClass: string;
+}> = [
+  {
+    id: 'classic',
+    label: 'Classic',
+    title: 'Classic square flood from the top-left corner',
+    Icon: Square,
+    activeClass: 'bg-indigo-600 text-white shadow border border-indigo-400/50',
+  },
+  {
+    id: 'wheel',
+    label: 'Wheel',
+    title: 'Polar wheel: hollow center, flood grows ring by ring',
+    Icon: Circle,
+    activeClass: 'bg-fuchsia-600 text-white shadow border border-fuchsia-400/50',
+  },
+];
+
 interface SettingsPanelProps {
   gridSize: GridSize;
   onChangeGridSize: (size: GridSize) => void;
@@ -267,30 +290,22 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <button
-                onClick={() => onChangeBoardShape('classic')}
-                title="Classic square flood from the top-left corner"
-                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  boardShape === 'classic'
-                    ? 'bg-indigo-600 text-white shadow border border-indigo-400/50'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
-                }`}
-              >
-                <Square className="w-3 h-3" />
-                <span>Classic</span>
-              </button>
-              <button
-                onClick={() => onChangeBoardShape('wheel')}
-                title="Polar wheel: hollow center, flood grows ring by ring"
-                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  boardShape === 'wheel'
-                    ? 'bg-fuchsia-600 text-white shadow border border-fuchsia-400/50'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
-                }`}
-              >
-                <Circle className="w-3 h-3" />
-                <span>Wheel</span>
-              </button>
+              {BOARD_SHAPE_OPTIONS.map(({ id, label, title, Icon, activeClass }) => (
+                <button
+                  key={id}
+                  onClick={() => onChangeBoardShape(id)}
+                  title={title}
+                  aria-pressed={boardShape === id}
+                  className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    boardShape === id
+                      ? activeClass
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span>{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}

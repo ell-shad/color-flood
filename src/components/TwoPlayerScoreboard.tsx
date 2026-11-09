@@ -8,7 +8,7 @@ import {
   GameTheme,
   BoardShape,
 } from '../types';
-import { wheelCellCount } from '../utils/circleEngine';
+import { cellCountOf } from '../utils/floodLogic';
 import { THEMES } from '../utils/themes';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { ProgressiveTrack } from './ProgressiveTrack';
@@ -56,8 +56,11 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
   p2Connected = true,
 }) => {
   const [copiedCode, setCopiedCode] = useState(false);
+  // Kept in the props API for callers, but cell counts now come from the grid.
+  void gridSize;
 
-  const totalCells = shape === 'wheel' ? wheelCellCount(gridSize) : gridSize * gridSize;
+  // Any supported topology reports its cell count from the actual board grid.
+  const totalCells = cellCountOf(gameState.grid);
   const p1Count = gameState.p1Cells.length;
   const p2Count = gameState.p2Cells.length;
   const neutralCount = Math.max(0, totalCells - p1Count - p2Count);

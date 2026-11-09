@@ -7,6 +7,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useBoardFit } from './hooks/useBoardFit';
 import { loadBool, saveString } from './utils/storage';
+import { isWheel } from './utils/boardShape';
 
 // Boot-critical chrome: needed for the very first playable frame.
 import { Header } from './components/Header';
@@ -330,7 +331,7 @@ export default function App() {
               >
                 {boardPx > 0 && (
                   <div className="relative" style={{ width: boardPx, height: boardPx }}>
-                    {session.boardShape === 'wheel' ? (
+                    {isWheel(session.boardShape) ? (
                       <WheelBoard
                         grid={session.gridView.grid}
                         size={

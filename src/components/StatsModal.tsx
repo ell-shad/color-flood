@@ -20,6 +20,7 @@ import {
   avgMovesFor,
 } from '../utils/soloStats';
 import { type DailyStreak } from '../utils/daily';
+import { isWheel } from '../utils/boardShape';
 import { type SoloStars } from '../utils/soloBalance';
 
 interface StatsModalProps {
@@ -196,7 +197,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                           <td className="py-1.5 px-2 text-left font-mono font-bold text-indigo-300">
                             {/* P7.3: rows are keyed by topology (classic ⊞ / wheel ◉) */}
                             <span className="inline-flex items-center gap-1">
-                              {entry.shape === 'wheel' ? (
+                              {isWheel(entry.shape) ? (
                                 <Circle
                                   className="w-3 h-3 text-fuchsia-300 shrink-0"
                                   aria-hidden="true"
@@ -209,10 +210,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                               )}
                               <span>
                                 {entry.size}
-                                {entry.shape === 'wheel' ? '' : '²'}·{entry.colors}
+                                {isWheel(entry.shape) ? '' : '²'}·{entry.colors}
                               </span>
                               <span className="sr-only">
-                                {entry.shape === 'wheel' ? 'wheel board' : 'classic board'}
+                                {isWheel(entry.shape) ? 'wheel board' : 'classic board'}
                               </span>
                             </span>
                           </td>

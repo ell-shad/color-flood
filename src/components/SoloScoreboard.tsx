@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, Lightbulb, Star, Undo2, Flame } from 'lucide-react';
 import { SoloGameState, BoardShape } from '../types';
+import { assertNever } from '../utils/boardShape';
 import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
 import { rateWheelStars } from '../utils/circleEngine';
 
@@ -40,7 +41,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
   colorCount,
   onUndo,
   canUndo = false,
-  shape = 'classic',
+  shape = 'classic' as BoardShape,
   boardSize,
   onOpenDaily,
   dailyStreak = 0,
@@ -52,12 +53,20 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
   // Stars are only meaningful once the board is solved; the rating size is
   // the ladder size (10–18), never the wheel's ring count.
   const ratingSize = boardSize ?? gameState.grid.length;
-  const stars: SoloStars | null =
-    gameState.status === 'won'
-      ? shape === 'wheel'
-        ? rateWheelStars(gameState.moves, ratingSize, colorCount)
-        : rateSoloStars(gameState.moves, ratingSize, colorCount)
-      : null;
+  let stars: SoloStars | null = null;
+  if (gameState.status === 'won') {
+    switch (shape) {
+      case 'wheel':
+        stars = rateWheelStars(gameState.moves, ratingSize, colorCount);
+        break;
+      case 'classic':
+        stars = rateSoloStars(gameState.moves, ratingSize, colorCount);
+        break;
+      default:
+        assertNever(shape);
+        break;
+    }
+  }
 
   const usedPercent = Math.min(100, (gameState.moves / gameState.maxMoves) * 100);
 

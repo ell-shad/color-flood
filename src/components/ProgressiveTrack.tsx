@@ -1,6 +1,7 @@
 import React from 'react';
 import { Crown, Lock, Swords, Sparkles } from 'lucide-react';
 import { PROGRESSIVE_STAGES } from '../utils/themes';
+import { assertNever } from '../utils/boardShape';
 import { wheelGeometry } from '../utils/circleEngine';
 import type { BoardShape } from '../types';
 
@@ -25,7 +26,7 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
   stageWins,
   p1Name = 'P1',
   p2Name = 'P2',
-  shape = 'classic',
+  shape = 'classic' as BoardShape,
 }) => {
   return (
     <div className="w-full bg-slate-900/90 border border-slate-750 rounded-xl px-2 py-1 shadow-md">
@@ -67,7 +68,11 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
               icon = <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />;
             }
 
-            const owner = p1Won ? `won by ${p1Name}` : p2Won ? `won by ${p2Name || 'P2'}` : '';
+            const owner = p1Won
+              ? `won by ${p1Name}`
+              : p2Won
+                ? `won by ${p2Name || 'P2'}`
+                : '';
             const status = owner
               ? owner
               : isCurrent
@@ -76,16 +81,26 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                   ? 'tied'
                   : 'locked';
 
-            const geo = shape === 'wheel' ? wheelGeometry(stage.gridSize) : null;
-            const sizeText = geo ? `${geo.rings}×${geo.sectors}` : `${stage.gridSize}²`;
-            const sizeWords = geo
-              ? `${geo.rings} rings by ${geo.sectors} sectors`
-              : `${stage.gridSize} by ${stage.gridSize}`;
+            let sizeText = `${stage.gridSize}²`;
+            let sizeWords = `${stage.gridSize} by ${stage.gridSize}`;
+            switch (shape) {
+              case 'wheel': {
+                const geo = wheelGeometry(stage.gridSize);
+                sizeText = `${geo.rings}×${geo.sectors}`;
+                sizeWords = `${geo.rings} rings by ${geo.sectors} sectors`;
+                break;
+              }
+              case 'classic':
+                break;
+              default:
+                assertNever(shape);
+                break;
+            }
 
             return (
               <div
                 key={stage.stageNumber}
-                title={`Stage ${stage.stageNumber}: ${geo ? `${geo.rings}×${geo.sectors}` : `${stage.gridSize}×${stage.gridSize}`}, ${stage.colorCount} colors — ${status}`}
+                title={`Stage ${stage.stageNumber}: ${sizeWords}, ${stage.colorCount} colors — ${status}`}
                 aria-label={`Stage ${stage.stageNumber} of 5, ${sizeWords}, ${stage.colorCount} colors, ${status}`}
                 className={`flex-1 min-w-0 rounded-md border px-0.5 py-0.5 flex items-center justify-center gap-0.5 transition-all ${statusBg}`}
               >

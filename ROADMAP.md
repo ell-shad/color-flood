@@ -62,7 +62,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
-| 11 — Cube board mode | 🟡 | — | WIP. NEXT: P11.1 — make existing two-shape handling exhaustive, then add the CSS-3D cube surface phase by phase. |
+| 11 — Cube board mode | 🟡 | — | WIP. NEXT: P11.2 — pure cube engine + dispatchers + calibration. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -329,7 +329,7 @@ integer 3D edge coordinates rather than hand-written edge tables.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P11.1 | Exhaustive shape handling: replace binary shape ternaries with switches/lookups + `never` checks, use shared cell-count helpers, and verify classic/wheel behavior is unchanged | ⬜ |
+| P11.1 | Exhaustive shape handling: replace binary shape ternaries with switches/lookups + `never` checks, use shared cell-count helpers, and verify classic/wheel behavior is unchanged | ✅ |
 | P11.2 | Pure TypeScript cube engine (`cubeEngine.ts`): derived surface geometry/adjacency, solo flood/hint/win, 2P generation/expansion/game-over/bot moves, dispatchers, calibration constants, and engine tests | ⬜ |
 | P11.3 | Cube shape plumbing: `BoardShape`, protocol/server, share links, records/stats, prefs, selectors, tutorial/help copy, scoreboards and ProgressiveTrack | ⬜ |
 | P11.4 | CSS-3D `CubeBoard` with memoized cells, drag/key rotation, reduced-motion support, unfolded-net minimap, and exhaustive `BoardRenderer` integration | ⬜ |

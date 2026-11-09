@@ -1,4 +1,5 @@
 import { GRID_SIZES, COLOR_COUNTS } from './floodLogic';
+import { assertNever } from './boardShape';
 import type { GridSize, ColorCount, BoardShape } from '../types';
 
 /**
@@ -28,9 +29,17 @@ const MAX_UINT32 = 0xffffffff;
  * different board than the sender saw.
  */
 const parseShape = (raw: string | null): BoardShape | null => {
-  if (raw === null || raw === '') return 'classic';
-  if (raw === 'classic' || raw === 'wheel') return raw;
-  return null;
+  switch (raw) {
+    case null:
+    case '':
+      return 'classic';
+    case 'classic':
+      return 'classic';
+    case 'wheel':
+      return 'wheel';
+    default:
+      return null;
+  }
 };
 
 /** Validates seed/size/colors/shape against the legal board space (null when off). */
@@ -62,7 +71,19 @@ export const buildSoloShareLink = (
   baseHref?: string,
 ): string => {
   const url = new URL(baseHref ?? window.location.href);
-  const shape = params.shape === 'wheel' ? '&shape=wheel' : '';
+  let shape = '';
+  switch (params.shape) {
+    case 'classic':
+      shape = '';
+      break;
+    case 'wheel':
+      shape = '&shape=wheel';
+      break;
+    default:
+      assertNever(params.shape);
+      break;
+  }
+  // Classic links stay exactly as they were before P7.3; wheel links append `&shape=wheel`.
   url.search = `?seed=${params.seed}&size=${params.size}&colors=${params.colors}${shape}`;
   return url.toString();
 };

@@ -1,4 +1,5 @@
 import { BotDifficulty, PlayerId, GridSize, ColorCount, BoardShape } from '../types';
+import { assertNever } from './boardShape';
 import {
   bestWheelMultiplayerMove,
   checkWheelMultiplayerGameOver,
@@ -44,10 +45,16 @@ export const generateBoardForShape = (
   size: number,
   colorCount: number,
   rng: Rng = Math.random,
-): TwoPlayerGridResult =>
-  shape === 'wheel'
-    ? generateTwoPlayerWheel(size, colorCount, rng)
-    : generateTwoPlayerGrid(size, colorCount, rng);
+): TwoPlayerGridResult => {
+  switch (shape) {
+    case 'wheel':
+      return generateTwoPlayerWheel(size, colorCount, rng);
+    case 'classic':
+      return generateTwoPlayerGrid(size, colorCount, rng);
+    default:
+      return assertNever(shape);
+  }
+};
 
 export const expandTerritoryForShape = (
   shape: BoardShape,
@@ -55,10 +62,16 @@ export const expandTerritoryForShape = (
   currentCells: string[],
   opponentCells: string[],
   targetColor: number,
-): { newGrid: number[][]; newCells: string[]; gain: number } =>
-  shape === 'wheel'
-    ? expandWheelTerritory(grid, currentCells, opponentCells, targetColor)
-    : expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
+): { newGrid: number[][]; newCells: string[]; gain: number } => {
+  switch (shape) {
+    case 'wheel':
+      return expandWheelTerritory(grid, currentCells, opponentCells, targetColor);
+    case 'classic':
+      return expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
+    default:
+      return assertNever(shape);
+  }
+};
 
 export const checkGameOverForShape = (
   shape: BoardShape,
@@ -70,19 +83,9 @@ export const checkGameOverForShape = (
   p2Color: number,
 ): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
   const totalCells = cellCountOf(grid);
-  return shape === 'wheel'
-    ? checkWheelMultiplayerGameOver(
-        totalCells,
-        p1Cells.length,
-        p2Cells.length,
-        colorCount,
-        p1Color,
-        p2Color,
-        grid,
-        p1Cells,
-        p2Cells,
-      )
-    : checkMultiplayerGameOver(
+  switch (shape) {
+    case 'wheel':
+      return checkWheelMultiplayerGameOver(
         totalCells,
         p1Cells.length,
         p2Cells.length,
@@ -93,6 +96,21 @@ export const checkGameOverForShape = (
         p1Cells,
         p2Cells,
       );
+    case 'classic':
+      return checkMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      );
+    default:
+      return assertNever(shape);
+  }
 };
 
 /** Bot / hint choice on either topology (same difficulty ladder). */
@@ -107,9 +125,10 @@ export const getBestMoveForShape = (
   colorCount: number,
   difficulty: BotDifficulty = 'master',
   options: BotMoveOptions = {},
-): { bestColor: number; maxGain: number } =>
-  shape === 'wheel'
-    ? bestWheelMultiplayerMove(
+): { bestColor: number; maxGain: number } => {
+  switch (shape) {
+    case 'wheel':
+      return bestWheelMultiplayerMove(
         grid,
         activePlayer,
         p1Cells,
@@ -118,8 +137,9 @@ export const getBestMoveForShape = (
         p2Color,
         colorCount,
         difficulty,
-      )
-    : getBestMultiplayerMove(
+      );
+    case 'classic':
+      return getBestMultiplayerMove(
         grid,
         activePlayer,
         p1Cells,
@@ -130,6 +150,10 @@ export const getBestMoveForShape = (
         difficulty,
         options,
       );
+    default:
+      return assertNever(shape);
+  }
+};
 
 export const COLORS = [
   '#FF595E', // 0: Coral Red

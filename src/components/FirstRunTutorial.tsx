@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MousePointerClick, Keyboard, Swords } from 'lucide-react';
+import { isWheel } from '../utils/boardShape';
 import type { BoardShape } from '../types';
 
 /**
@@ -23,7 +24,7 @@ interface FirstRunTutorialProps {
 export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
   hasMadeFirstMove,
   onFinish,
-  boardShape = 'classic',
+  boardShape = 'classic' as BoardShape,
 }) => {
   const [manualStep, setManualStep] = useState(0);
   // Step 0 auto-clears the moment the player actually floods one color —
@@ -61,7 +62,7 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
                 1–8
               </kbd>
               ) — every touching cell of that color{' '}
-              {boardShape === 'wheel'
+              {isWheel(boardShape)
                 ? 'joins the flood pouring out of the center core'
                 : 'joins your flood from the top-left corner'}
               . <strong className="text-indigo-300">Try a move now!</strong>

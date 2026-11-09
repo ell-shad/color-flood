@@ -21,6 +21,7 @@ import type {
 } from '../types';
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
+import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import {
   playEmotePopSound,
@@ -837,13 +838,16 @@ export function useGameSession(): GameSession {
   const rematchRequestedBy = roomState?.rematchRequestedBy ?? null;
   // P9: topology of the board on screen. Online rooms carry their own shape;
   // local matches store it on the state; solo keeps it on the board itself.
-  const boardShape: BoardShape =
-    prefs.mode === 'solo'
-      ? (soloState?.shape ?? prefs.boardShape)
-      : prefs.opponent === 'online'
-        ? (roomState?.shape ?? 'classic')
-        : (localState?.shape ?? prefs.boardShape);
-  // Cell count follows the board (square side² or wheel rings × sectors).
+  // Older online snapshots predate shapes and therefore load as classic.
+  let boardShape: BoardShape;
+  if (prefs.mode === 'solo') {
+    boardShape = soloState?.shape ?? prefs.boardShape;
+  } else if (prefs.opponent === 'online') {
+    boardShape = parseBoardShape(roomState?.shape);
+  } else {
+    boardShape = localState?.shape ?? prefs.boardShape;
+  }
+  // Cell count follows the board (classic/unified rows × cols, including the
   const totalCells = Math.max(
     1,
     cellCountOf(
@@ -955,13 +959,20 @@ export function useGameSession(): GameSession {
       // P7: the hint engine follows the board topology; P7.3 also reports the
       // wheel's immediate gain and reads the palette off the board (a shared
       // or daily board may not match the current prefs).
-      if (s.shape === 'wheel') {
-        const wheelHint = bestWheelMoveWithGain(s.grid, s.boardColors);
-        setHint(wheelHint?.color ?? null);
-        setHintGain(wheelHint?.gain);
-      } else {
-        setHint(getBestSoloMove(s.grid, s.boardColors));
-        setHintGain(undefined);
+      switch (s.shape) {
+        case 'wheel': {
+          const wheelHint = bestWheelMoveWithGain(s.grid, s.boardColors);
+          setHint(wheelHint?.color ?? null);
+          setHintGain(wheelHint?.gain);
+          break;
+        }
+        case 'classic':
+          setHint(getBestSoloMove(s.grid, s.boardColors));
+          setHintGain(undefined);
+          break;
+        default:
+          assertNever(s.shape as never);
+          break;
       }
       return;
     }
