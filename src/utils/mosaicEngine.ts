@@ -45,7 +45,7 @@ export interface MosaicCell {
 export interface MosaicLayout {
   side: number;
   cells: MosaicCell[];
-  /** Index of the cell whose site is closest to the board centre. */
+  /** Index of the cell nearest the bottom centre. */
   seed: number;
 }
 
@@ -206,12 +206,13 @@ const buildLayout = (side: number): MosaicLayout => {
   }));
 
   let seed = 0;
-  let best = Infinity;
+  let seedScore = Infinity;
   for (let i = 0; i < cells.length; i++) {
     const [x, y] = cells[i].site;
-    const d = (x - 0.5) ** 2 + (y - 0.5) ** 2;
-    if (d < best) {
-      best = d;
+    // Bottom-centre origin: the closest site to the bottom edge, then centre-x.
+    const score = (1 - y) * 2 + Math.abs(x - 0.5);
+    if (score < seedScore) {
+      seedScore = score;
       seed = i;
     }
   }
@@ -244,7 +245,7 @@ export const mosaicCellCount = (size: number): number => mosaicSide(size) ** 2;
 const rowOf = (index: number, side: number): number => Math.floor(index / side);
 const colOf = (index: number, side: number): number => index % side;
 
-/** The solo flood origin: `[r, c]` of the cell nearest the board centre. */
+/** The solo flood origin: the bottom-centre cell. */
 export const mosaicSeedCell = (side: number): [number, number] => {
   const { seed } = mosaicLayout(side);
   return [rowOf(seed, side), colOf(seed, side)];
@@ -371,13 +372,13 @@ export const bestMosaicMove = (grid: number[][], colorCount: number): number | n
 /**
  * Move budget and stars.
  *
- * A mosaic cell has ~5.5 neighbours instead of 4, so its flood grows faster
- * than the square's. The factor is measured against the greedy solver in
- * `scripts/mosaicSim.ts` (500 seeds/config): the budget keeps the same
- * "competent player always finishes, sloppy play does not" band as the other
- * boards, and par sits at 0.85× of the same limit.
+ * The bottom-centre origin needs more room than the earlier centre origin, so
+ * this factor is measured after that change against the greedy solver in
+ * `scripts/mosaicSim.ts` (500 seeds/config). The bottom-origin run gives
+ * 99.4–100% greedy wins at 0.95× with a 0.63–0.75 average-need/budget band;
+ * par sits at 0.85× of the same limit.
  */
-export const MOSAIC_LIMIT_FACTOR = 0.9;
+export const MOSAIC_LIMIT_FACTOR = 0.95;
 export const MOSAIC_PAR_FACTOR = 0.85;
 
 export const getMaxMosaicMoves = (size: number, colorCount: number): number =>

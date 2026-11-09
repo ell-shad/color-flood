@@ -63,7 +63,7 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
               </kbd>
               ) — every touching cell of that color{' '}
               {isMosaic(boardShape)
-                ? 'joins the flood spreading out of the middle of the mosaic'
+                ? 'joins the flood spreading upward from the marked shard at the bottom of the mosaic'
                 : isCube(boardShape)
                   ? 'joins the flood from the center of one cube face and wraps across edges'
                   : isWheel(boardShape)

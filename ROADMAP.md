@@ -63,7 +63,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
 | 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. P11.7 follow-up: cube is now solo-only (multiplayer is flat-board only). Gates green. |
-| 13 — Mosaic board mode | ✅ | — | DONE. Voronoi/polygonal tiling solo mode: `mosaicEngine`, SVG MosaicBoard, exhaustive shape plumbing, share links, stats/records, replay-compatible storage; fixed-seed layout shared by engine and UI. Calibration: 500 seeds/config, greedy 100% at 0.9× budget with 0.55–0.72 need/budget. Browser smoke verified a 100-cell mosaic from `?shape=mosaic`; visual follow-up increases cell-shape variety and darkens edges. Gates green. |
+| 13 — Mosaic board mode | ✅ | — | DONE. Voronoi/polygonal tiling solo mode: `mosaicEngine`, SVG MosaicBoard, exhaustive shape plumbing, share links, stats/records, replay-compatible storage; fixed-seed layout shared by engine and UI. Calibration: 500 seeds/config, greedy 99.4–100% at 0.95× budget with 0.63–0.75 need/budget. Browser smoke verified a 100-cell mosaic from `?shape=mosaic`; visual follow-up increases cell-shape variety, thins the borders, hides the white seed treatment, and moves the start marker to the bottom centre. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -391,7 +391,7 @@ only, following the cube follow-up rule.
 | P13.1 | Voronoi/mosaic engine: fixed-seed jittered lattice, polygon coverage, adjacency, center flood, hint/win/count, budget/stars, engine tests | ✅ |
 | P13.2 | SVG MosaicBoard + exhaustive renderer, solo current-color/hint dispatch, share links, records/stats, selector and copy plumbing | ✅ |
 | P13.3 | Verification, calibration table, browser smoke test, final gates | ✅ |
-| P13.4 | Visual follow-up: more varied “deformed” Voronoi cell shapes (4–8 sides on the 18×18 layout) and darker, wider polygon borders | ✅ |
+| P13.4 | Visual follow-up: more varied “deformed” Voronoi cell shapes (4–8 sides on the 18×18 layout), thinner/clearer borders, a dark start marker instead of a white seed treatment, and a bottom-centre origin | ✅ |
 
 **Phase 13 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
 and `npm run build` green; calibration recorded; daily challenge remains classic.
@@ -400,37 +400,37 @@ and `npm run build` green; calibration recorded; daily challenge remains classic
 
 ### Phase 13 calibration ledger (greedy mosaic hint, 500 seeds/config)
 
-Source: `npx tsx scripts/mosaicSim.ts --boards=500 --factors=0.9`.
-Budget = 0.9× the same ladder/color classic solo limit; `MOSAIC_LIMIT_FACTOR=0.9`,
-`MOSAIC_PAR_FACTOR=0.85`. Every sampled board was solved by the greedy hint within budget.
+Source: `npx tsx scripts/mosaicSim.ts --boards=500 --factors=0.95`.
+Budget = 0.95× the same ladder/color classic solo limit; `MOSAIC_LIMIT_FACTOR=0.95`,
+`MOSAIC_PAR_FACTOR=0.85`. Every sampled board was solved by the greedy hint within budget except two configs at 99.4–99.8%.
 
 | Config | Cells | Avg need | Budget | Need/budget | Greedy win |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 10·4 | 100 | 8.2 | 13 | 0.63 | 100% |
-| 10·5 | 100 | 10.2 | 15 | 0.68 | 100% |
-| 10·6 | 100 | 12.4 | 18 | 0.69 | 100% |
-| 10·7 | 100 | 14.1 | 20 | 0.71 | 100% |
-| 10·8 | 100 | 16.1 | 23 | 0.70 | 100% |
-| 12·4 | 144 | 8.9 | 14 | 0.64 | 100% |
-| 12·5 | 144 | 11.5 | 18 | 0.64 | 100% |
-| 12·6 | 144 | 14.1 | 21 | 0.67 | 100% |
-| 12·7 | 144 | 16.3 | 23 | 0.71 | 100% |
-| 12·8 | 144 | 18.6 | 26 | 0.72 | 100% |
-| 14·4 | 196 | 9.8 | 16 | 0.61 | 100% |
-| 14·5 | 196 | 13.0 | 21 | 0.62 | 100% |
-| 14·6 | 196 | 15.7 | 24 | 0.66 | 100% |
-| 14·7 | 196 | 18.3 | 28 | 0.65 | 100% |
-| 14·8 | 196 | 21.0 | 31 | 0.68 | 100% |
-| 16·4 | 256 | 10.6 | 18 | 0.59 | 100% |
-| 16·5 | 256 | 14.1 | 23 | 0.61 | 100% |
-| 16·6 | 256 | 17.2 | 27 | 0.64 | 100% |
-| 16·7 | 256 | 20.2 | 32 | 0.63 | 100% |
-| 16·8 | 256 | 23.0 | 35 | 0.66 | 100% |
-| 18·4 | 324 | 11.6 | 21 | 0.55 | 100% |
-| 18·5 | 324 | 15.2 | 25 | 0.61 | 100% |
-| 18·6 | 324 | 19.0 | 31 | 0.61 | 100% |
-| 18·7 | 324 | 22.2 | 35 | 0.63 | 100% |
-| 18·8 | 324 | 25.3 | 40 | 0.63 | 100% |
+| 10·4 | 100 | 8.7 | 13 | 0.67 | 99.8% |
+| 10·5 | 100 | 11.3 | 16 | 0.71 | 100% |
+| 10·6 | 100 | 13.6 | 19 | 0.72 | 100% |
+| 10·7 | 100 | 15.7 | 21 | 0.75 | 99.4% |
+| 10·8 | 100 | 17.7 | 24 | 0.74 | 100% |
+| 12·4 | 144 | 10.0 | 15 | 0.66 | 100% |
+| 12·5 | 144 | 13.0 | 19 | 0.68 | 99.8% |
+| 12·6 | 144 | 16.0 | 22 | 0.73 | 100% |
+| 12·7 | 144 | 18.3 | 25 | 0.73 | 100% |
+| 12·8 | 144 | 20.8 | 28 | 0.74 | 100% |
+| 14·4 | 196 | 11.1 | 17 | 0.65 | 100% |
+| 14·5 | 196 | 14.7 | 22 | 0.67 | 100% |
+| 14·6 | 196 | 17.9 | 26 | 0.69 | 100% |
+| 14·7 | 196 | 20.7 | 29 | 0.71 | 100% |
+| 14·8 | 196 | 23.8 | 32 | 0.74 | 100% |
+| 16·4 | 256 | 12.6 | 19 | 0.66 | 100% |
+| 16·5 | 256 | 16.7 | 24 | 0.70 | 100% |
+| 16·6 | 256 | 20.5 | 29 | 0.71 | 100% |
+| 16·7 | 256 | 24.2 | 33 | 0.73 | 100% |
+| 16·8 | 256 | 27.3 | 37 | 0.74 | 100% |
+| 18·4 | 324 | 13.9 | 22 | 0.63 | 100% |
+| 18·5 | 324 | 18.2 | 27 | 0.68 | 100% |
+| 18·6 | 324 | 22.8 | 32 | 0.71 | 100% |
+| 18·7 | 324 | 26.8 | 37 | 0.73 | 100% |
+| 18·8 | 324 | 30.7 | 42 | 0.73 | 100% |
 
 ---
 

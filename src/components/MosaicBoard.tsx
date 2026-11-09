@@ -70,14 +70,8 @@ const Facet = React.memo(function Facet({
         points={points}
         fill={color}
         fillOpacity={ghost ? GHOST_ALPHA : 1}
-        stroke={
-          isSeed
-            ? 'rgba(248,250,252,0.96)'
-            : ghost
-              ? 'rgba(226,232,240,0.42)'
-              : 'rgba(15,23,42,0.9)'
-        }
-        strokeWidth={isSeed ? 1.35 : ghost ? 0.32 : 1.05}
+        stroke={ghost ? 'rgba(226,232,240,0.42)' : 'rgba(15,23,42,0.58)'}
+        strokeWidth={ghost ? 0.2 : isSeed ? 0.65 : 0.42}
         strokeLinejoin="round"
         style={{
           transition: 'fill 0.26s ease-out',
@@ -97,6 +91,29 @@ const Facet = React.memo(function Facet({
         >
           {glyph}
         </text>
+      )}
+      {isSeed && (
+        <g aria-label="Starting shard">
+          <circle
+            cx={cell.site[0] * 100}
+            cy={cell.site[1] * 100}
+            r={2.7}
+            fill="#0f172a"
+            stroke="#22d3ee"
+            strokeWidth={0.45}
+          />
+          <text
+            x={cell.site[0] * 100}
+            y={cell.site[1] * 100}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="#f8fafc"
+            fontSize={3.1}
+            fontWeight={900}
+          >
+            S
+          </text>
+        </g>
       )}
     </>
   );

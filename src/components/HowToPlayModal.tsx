@@ -115,8 +115,8 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
                 <p>
                   <strong>Mosaic boards (solo only):</strong> switch Board Shape to{' '}
                   <em>Mosaic</em> — the board is an irregular tiling of polygonal shards
-                  and the flood starts in the shard nearest the middle, spreading shard by
-                  shard across shared edges.
+                  and the flood starts in the marked shard at the bottom centre, spreading
+                  shard by shard across shared edges.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">

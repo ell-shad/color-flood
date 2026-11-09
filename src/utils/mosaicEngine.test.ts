@@ -91,15 +91,14 @@ describe('mosaic topology', () => {
     expect(mosaicDistanceField(12)).toEqual(mosaicDistanceField(12));
   });
 
-  it('seeds the flood from the cell nearest the board centre', () => {
+  it('seeds the flood from the bottom-centre cell', () => {
     for (const side of [10, 12, 18]) {
       const { cells, seed } = mosaicLayout(side);
       const [r, c] = mosaicSeedCell(side);
       expect(seed).toBe(r * side + c);
-      const distances = cells.map(
-        ({ site }) => (site[0] - 0.5) ** 2 + (site[1] - 0.5) ** 2,
-      );
-      expect(distances[seed]).toBe(Math.min(...distances));
+      const scores = cells.map(({ site }) => (1 - site[1]) * 2 + Math.abs(site[0] - 0.5));
+      expect(scores[seed]).toBe(Math.min(...scores));
+      expect(r).toBe(side - 1);
     }
   });
 });
