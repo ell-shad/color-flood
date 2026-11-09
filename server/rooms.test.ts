@@ -538,8 +538,8 @@ describe('P10.4 online round replay recording', () => {
     expect(Array.isArray(ended.roundHistory![0].gained)).toBe(true);
   });
 
-  it('reconstructs the opening board from the server record on both shapes', () => {
-    for (const shape of ['classic', 'wheel', 'cube'] as const) {
+  it('reconstructs the opening board from the server record on both flat shapes', () => {
+    for (const shape of ['classic', 'wheel'] as const) {
       const { service, advance } = makeService();
       const created = service.createRoom({
         playerName: 'Host',
@@ -581,7 +581,7 @@ describe('P10.4 online round replay recording', () => {
     }
   });
 
-  it('creates and plays a cube room with the server surface grid', () => {
+  it('falls back to the flat board when asked for the solo-only cube room', () => {
     const { service } = makeService();
     const created = service.createRoom({
       playerName: 'Host',
@@ -592,10 +592,9 @@ describe('P10.4 online round replay recording', () => {
     const joined = service.joinRoom(created.roomId, 'Guest');
     if (!joined.ok) throw new Error('join failed');
     const room = service.readState(created.roomId)!;
-    expect(room.shape).toBe('cube');
-    expect(room.grid).toHaveLength(24);
-    expect(room.grid.every((row) => row.length === 4)).toBe(true);
-    expect(room.grid.length * room.grid[0].length).toBe(96);
+    expect(room.shape).toBe('classic');
+    expect(room.grid).toHaveLength(10);
+    expect(room.grid.every((row) => row.length === 10)).toBe(true);
 
     const st = service.readState(created.roomId)!;
     const occupied = new Set([st.p1Color, st.p2Color]);
@@ -604,7 +603,20 @@ describe('P10.4 online round replay recording', () => {
     const after = service.readState(created.roomId)!;
     expect(after.movesCount).toBe(1);
     expect(after.turn).toBe(2);
-    expect(after.roundHistory).toBeUndefined();
+  });
+
+  it('drops a cube shape update on an existing room', () => {
+    const { service } = makeService();
+    // Still in the lobby (no guest yet), so the structural edit is allowed.
+    const created = service.createRoom({
+      playerName: 'Host',
+      gridSize: 10,
+      colorCount: 4,
+    });
+    expect(
+      service.updateSettings(created.roomId, created.token, { shape: 'cube' }).ok,
+    ).toBe(true);
+    expect(service.readState(created.roomId)!.shape).toBe('classic');
   });
 
   it('clears the recording when the next round starts', () => {

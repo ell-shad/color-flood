@@ -1,4 +1,4 @@
-import type { BoardShape } from '../types';
+import type { BoardShape, GameMode } from '../types';
 
 /**
  * P11.1: exhaustive board-shape predicates.
@@ -67,6 +67,25 @@ export function isCube(shape: BoardShape): boolean {
     default:
       return assertNever(shape);
   }
+}
+
+/**
+ * True for topologies that exist only in solo play. The cube surface is a solo
+ * mode: its six-face seeding and territory markers are too hard to read with
+ * two players on the same screen.
+ */
+export function isSoloOnlyShape(shape: BoardShape): boolean {
+  return isCube(shape);
+}
+
+/**
+ * The shape a game may actually play in `mode`. Multiplayer — local 2P, vs bot
+ * and online — is flat-board only, so a stored `cube` preference falls back to
+ * classic there instead of seeding a board the mode does not support.
+ */
+export function shapeForMode(shape: BoardShape, mode: GameMode): BoardShape {
+  if (mode === 'solo') return shape;
+  return isSoloOnlyShape(shape) ? 'classic' : shape;
 }
 
 /**

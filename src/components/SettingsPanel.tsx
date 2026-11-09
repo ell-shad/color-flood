@@ -29,6 +29,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { isSoloOnlyShape, parseBoardShape } from '../utils/boardShape';
 
 const BOARD_SHAPE_OPTIONS: Array<{
   id: BoardShape;
@@ -133,6 +134,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
   const panelRef = useModalA11y(true);
+  // P12: solo-only topologies are not offered outside solo, and a stored cube
+  // preference shows as the flat board it actually plays as there.
+  const shapeOptions = BOARD_SHAPE_OPTIONS.filter(
+    ({ id }) => mode === 'solo' || !isSoloOnlyShape(id),
+  );
+  const activeShape = parseBoardShape(boardShape);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
@@ -286,7 +293,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           )}
 
-          {/* P7/P9: Board Shape — classic square or mandala wheel (both modes). */}
+          {/* P7/P9/P12: Board Shape — classic square, mandala wheel, and (solo
+              only) the cube surface. */}
           {onChangeBoardShape && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -294,20 +302,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   Board Shape
                 </label>
                 <span className="text-[10px] text-indigo-400 font-mono">
-                  {mode === 'solo'
+                  {shapeOptions.length > 2
                     ? 'floods from the center out'
                     : 'seeds both on the outer ring'}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {BOARD_SHAPE_OPTIONS.map(({ id, label, title, Icon, activeClass }) => (
+              <div
+                className={`grid gap-1.5 ${
+                  shapeOptions.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+                }`}
+              >
+                {shapeOptions.map(({ id, label, title, Icon, activeClass }) => (
                   <button
                     key={id}
                     onClick={() => onChangeBoardShape(id)}
                     title={title}
-                    aria-pressed={boardShape === id}
+                    aria-pressed={activeShape === id}
                     className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      boardShape === id
+                      activeShape === id
                         ? activeClass
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
                     }`}
@@ -317,6 +329,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   </button>
                 ))}
               </div>
+              {mode !== 'solo' && (
+                <p className="text-[9px] text-slate-500 leading-tight">
+                  Cube is a solo mode — multiplayer stays on the flat boards.
+                </p>
+              )}
             </div>
           )}
 

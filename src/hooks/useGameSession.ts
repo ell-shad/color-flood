@@ -21,7 +21,7 @@ import type {
 } from '../types';
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
-import { assertNever, parseBoardShape } from '../utils/boardShape';
+import { assertNever, parseBoardShape, shapeForMode } from '../utils/boardShape';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import { bestCubeMoveWithGain, cubeSeedCell, getCubeSide } from '../utils/cubeEngine';
 import {
@@ -327,7 +327,9 @@ export function useGameSession(): GameSession {
       challengeType: prefs.challengeType,
       colorCount: prefs.colorCount,
       gridSize: prefs.gridSize,
-      boardShape: prefs.boardShape,
+      // P12: the cube is solo-only, so a stored cube preference must never
+      // reach a multiplayer round.
+      boardShape: shapeForMode(prefs.boardShape, 'multiplayer'),
       botEnabled: prefs.opponent === 'bot',
       botDifficulty: prefs.botDifficulty,
       onMoveStart: (turn, color) => {
@@ -365,7 +367,7 @@ export function useGameSession(): GameSession {
       challengeType: prefs.challengeType,
       colorCount: prefs.colorCount,
       gridSize: prefs.gridSize,
-      shape: prefs.boardShape,
+      shape: shapeForMode(prefs.boardShape, 'multiplayer'),
     },
   );
 
@@ -1231,11 +1233,11 @@ export function useGameSession(): GameSession {
           stage: m.currentStage,
           stageWins: m.stageWins,
           challengeTypeOverride: m.challengeType,
-          shape,
+          shape: shapeForMode(shape, 'multiplayer'),
         });
       }
       if (roomState) {
-        updateRoomSettings({ shape });
+        updateRoomSettings({ shape: shapeForMode(shape, 'multiplayer') });
       }
     },
     [

@@ -103,10 +103,11 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Cube boards:</strong> switch Board Shape to <em>Cube</em> in
-                  Settings — solo play floods from the center of one cube face and wraps
-                  across edges; use drag or arrow keys to rotate the cube and check the
-                  flat net for hidden faces.
+                  <strong>Cube boards (solo only):</strong> switch Board Shape to{' '}
+                  <em>Cube</em> in Settings — the flood starts at the center of one cube
+                  face and wraps across edges; use drag or arrow keys to rotate the cube
+                  and check the flat net for hidden faces. Two-player matches always use
+                  the flat boards.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">

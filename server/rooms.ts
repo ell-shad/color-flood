@@ -5,7 +5,7 @@ import {
   generateBoardForShape,
 } from '../src/utils/floodLogic';
 import { buildMoveDiff } from '../src/utils/replay';
-import { assertNever } from '../src/utils/boardShape';
+import { assertNever, shapeForMode } from '../src/utils/boardShape';
 import { THEMES } from '../src/utils/themes';
 import type {
   OnlineRoomState,
@@ -476,9 +476,9 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         case 'wheel':
           shape = 'wheel';
           break;
+        // The cube surface is solo-only, so a room never hosts one: an old
+        // client asking for it gets the flat board instead of a dead room.
         case 'cube':
-          shape = 'cube';
-          break;
         case undefined:
           shape = 'classic';
           break;
@@ -755,7 +755,9 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         }
         if (settings.challengeType !== undefined)
           room.challengeType = settings.challengeType;
-        if (settings.shape !== undefined) room.shape = settings.shape;
+        // Same solo-only rule as createRoom: a multiplayer room stays flat.
+        if (settings.shape !== undefined)
+          room.shape = shapeForMode(settings.shape, 'multiplayer');
         if (room.challengeType === 'standard') {
           if (settings.gridSize !== undefined) room.gridSize = settings.gridSize;
           if (settings.colorCount !== undefined) room.colorCount = settings.colorCount;

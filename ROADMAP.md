@@ -62,8 +62,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
-| 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. Gates green. |
-| 12 — Sphere mode | ⏸ research | — | RESEARCH DONE (no code): `docs/sphere-mode-research.md` compares lat/long, cube-sphere and icosphere/Goldberg topologies. Recommendation: `shape: 'sphere'` as a cube-sphere projection that reuses `cubeEngine` unchanged (4-neighbour graph, existing calibration, antipodal 2P start). |
+| 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. P11.7 follow-up: cube is now solo-only (multiplayer is flat-board only). Gates green. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -335,6 +334,7 @@ integer 3D edge coordinates rather than hand-written edge tables.
 | P11.3 | Cube shape plumbing: `BoardShape`, protocol/server, share links, records/stats, prefs, selectors, tutorial/help copy, scoreboards and ProgressiveTrack | ✅ |
 | P11.4 | CSS-3D `CubeBoard` with memoized cells, drag/key rotation, reduced-motion support, unfolded-net minimap, and exhaustive `BoardRenderer` integration | ✅ |
 | P11.5 | Cube verification: replay/records/server plumbing tests, browser smoke tests for solo/2P/online/share/replay/mobile, calibration notes, and final green gates | ✅ |
+| P11.7 | Cube is solo-only: `shapeForMode`/`isSoloOnlyShape` coerce a stored cube to classic in every multiplayer path, Settings and the online lobby drop the option (with a note), the server coerces `cube` rooms/settings to classic, and the help copy states the rule | ✅ |
 
 **Phase 11 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
 and `npm run build` are all green; calibration numbers (win rate and need/budget per config) are
@@ -375,22 +375,6 @@ Budget = 1.05× the same ladder/color classic solo limit; `CUBE_LIMIT_FACTOR=1.0
 | 18·6 | 25.4 | 36 | 0.70 | 100% |
 | 18·7 | 30.1 | 41 | 0.73 | 100% |
 | 18·8 | 34.5 | 46 | 0.75 | 100% |
-
----
-
-## Phase 12 — Sphere Board Mode ⏸ (research only)
-
-**Goal:** a fourth display topology, `'sphere'`, on a closed spherical surface.
-
-A sphere cannot be covered by a regular quad mesh (Euler characteristic), so every spherical
-grid carries defects: lat/long puts them on two poles, a cube-sphere keeps a perfect
-4-neighbour graph and hides its 8 pinches at the cube corners, and an icosphere/Goldberg grid
-has exactly 12 pentagons. The recommendation is the **cube-sphere**: the graph stays
-graph-for-graph the cube (so flood/hint/2P/bot/replay and the calibrated budget all carry
-over) and only the projection changes.
-
-Full comparison, design, task breakdown (P12.1–P12.4) and risks:
-[`docs/sphere-mode-research.md`](docs/sphere-mode-research.md).
 
 ---
 

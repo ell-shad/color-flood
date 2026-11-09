@@ -306,8 +306,8 @@ describe('P3.8 protocol integration (two live clients)', () => {
   });
 });
 
-describe('P11 cube protocol integration', () => {
-  it('creates, joins and validates a cube room over the socket', async () => {
+describe('P12 solo-only shapes over the wire', () => {
+  it('serves a flat room when a client asks for the cube', async () => {
     const host = await TestClient.connect(port());
     host.send({
       type: 'create_room',
@@ -319,16 +319,15 @@ describe('P11 cube protocol integration', () => {
     const created = (await host.expect('room_created')) as SessionAckMessage;
     const roomId = created.roomId;
     const room = instance.service.readState(roomId)!;
-    expect(room.shape).toBe('cube');
-    expect(room.grid).toHaveLength(24);
-    expect(room.grid[0]).toHaveLength(4);
+    expect(room.shape).toBe('classic');
+    expect(room.grid).toHaveLength(10);
 
     const guest = await TestClient.connect(port());
     guest.send({ type: 'join_room', roomId, playerName: 'Guest' });
     const joined = (await guest.expect('room_joined')) as SessionAckMessage;
     expect(joined.role).toBe(2);
     const started = (await host.expect('match_started')) as StateUpdateMessage;
-    expect(started.snapshot.roomState.shape).toBe('cube');
+    expect(started.snapshot.roomState.shape).toBe('classic');
 
     host.send({
       type: 'move',
@@ -337,9 +336,8 @@ describe('P11 cube protocol integration', () => {
       color: legalColor(roomId),
     });
     const made = (await guest.expect('move_made')) as StateUpdateMessage;
-    expect(made.snapshot.roomState.shape).toBe('cube');
+    expect(made.snapshot.roomState.shape).toBe('classic');
     expect(made.snapshot.roomState.movesCount).toBe(1);
     expect(made.snapshot.roomState.turn).toBe(2);
-    expect(made.snapshot.roomState.roundHistory).toBeUndefined();
   });
 });
