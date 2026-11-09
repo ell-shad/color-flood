@@ -386,13 +386,14 @@ export default function App() {
                           onResetSeries={session.resetSeries}
                           dailyShareText={session.dailyShareText}
                           onWatchReplay={
-                            // P10.3: solo rounds replay from the machine's
-                            // diffs; multiplayer rounds from the recording
-                            // (P10.4 extends the button to online seats).
+                            // P10.3/P10.4: solo rounds replay from the
+                            // machine's diffs; multiplayer rounds from the
+                            // recording — any opponent (the session only
+                            // materializes multiplayerReplay for FINISHED
+                            // rounds that carry history).
                             (session.mode === 'solo' &&
                               session.soloState.status !== 'playing') ||
                             (session.mode === 'multiplayer' &&
-                              session.opponent !== 'online' &&
                               !!session.multiplayerReplay)
                               ? () => setShowReplay(true)
                               : undefined

@@ -813,6 +813,8 @@ export function useGameSession(): GameSession {
         moves: roomState.roundHistory,
         p1Name: playerNames.p1,
         p2Name: playerNames.p2,
+        // Online rooms badge P2 the same way the live HUD does (never BOT).
+        opponent: 'online',
       };
     }
     const m = localState;

@@ -61,7 +61,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 6 — Features | ✅ | 7169686 (P6.6) | DONE. P6.1 daily (`a273487`), P6.2 stats (`71da7dc`), P6.3 share+replay (`ff045b6`), P6.4 PWA (`a14b6b6`), P6.5 i18n **SKIPPED by user decision** (single language), P6.6 online: spectator seats + host-instant rematch + remembered name verified (`7169686`); E2E: 3-seat browser flow (host/P2/watcher), turn-timer forfeit → rematch broadcast, spectator authority audited |
 | 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
-| 10 — Two-player replay | 🟡 | — | WIP. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay |
+| 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -288,7 +288,7 @@ with their real commit messages as IDs.
 
 ---
 
-## Phase 10 — Two-Player Replay 🟡
+## Phase 10 — Two-Player Replay ✅
 
 **Goal:** the replay viewer (P6.3) is solo-only — no multiplayer round can be watched back,
 so 2P games (and the P9 wheel rounds in particular) have no replay. Extend the same
@@ -305,7 +305,7 @@ gained keys — no opening-board snapshot is needed anywhere.
 | P10.1 | Shared recording format: move `buildMoveDiff` into `utils/replay.ts`; add `TwoPlayerMoveRecord { player, color, diff, gained }` + `boardSize` to the local match state; the local reducer records one entry per move (pass & play and bot alike) | ✅ |
 | P10.2 | Two-player reconstruction: `reconstructTwoPlayerReplayStates` rebuilds grid + p1/p2 ownership states backward from a final board (+ classic & wheel unit tests) | ✅ |
 | P10.3 | ReplayModal multiplayer mode: render replay states with the real boards (GameGrid / WheelBoard territory overlays) and "player played color N" chips; wire GameOverModal "Watch replay" for local and bot matches; live E2E on both shapes | ✅ |
-| P10.4 | Online replay: the server records the same move history in rooms and exposes it in snapshots for ended rounds; wire replay for online seats and spectators; two-browser E2E incl. a mid-game refresher | ⬜ |
+| P10.4 | Online replay: the server records the same move history in rooms and exposes it in snapshots for ended rounds; wire replay for online seats and spectators; two-browser E2E incl. a mid-game refresher | ✅ |
 
 **Phase 10 checks:** typecheck, tests, lint and build green; live browser E2E: finish a wheel
 2P round locally and step the replay (ring/sector states + ownership tints + player chips), a

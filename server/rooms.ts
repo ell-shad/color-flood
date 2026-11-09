@@ -4,6 +4,7 @@ import {
   expandTerritoryForShape,
   generateBoardForShape,
 } from '../src/utils/floodLogic';
+import { buildMoveDiff } from '../src/utils/replay';
 import { THEMES } from '../src/utils/themes';
 import type {
   OnlineRoomState,
@@ -11,6 +12,7 @@ import type {
   ResetProposal,
   ThemeId,
   BoardShape,
+  TwoPlayerMoveRecord,
 } from '../src/types';
 import type { ServerMessage, RoomSnapshot, ServerErrorCode } from './protocol';
 
@@ -80,6 +82,13 @@ export interface RoomInternal {
   turnTimerSec: 0 | 30 | 60;
   /** Server timestamp of the current turn's start. */
   turnStartedAt: number;
+  /**
+   * P10.4: one TwoPlayerMoveRecord per move of the CURRENT round. It is the
+   * same recording format the local machines use, applied server-side (the
+   * server is the replay authority for online rooms). Cleared on every new
+   * round; shipped in snapshots only once the round has ended.
+   */
+  history: TwoPlayerMoveRecord[];
 }
 
 /** Disconnect grace before an idle player forfeits the current game. */
@@ -232,40 +241,50 @@ export interface ServiceDeps {
   now?: () => number;
 }
 
-const sanitize = (room: RoomInternal): OnlineRoomState => ({
-  roomId: room.roomId,
-  gridSize: room.gridSize,
-  colorCount: room.colorCount,
-  shape: room.shape,
-  grid: room.grid,
-  turn: room.turn,
-  firstTurnPlayer: room.firstTurnPlayer,
-  roundNumber: room.roundNumber,
-  p1Cells: room.p1Cells,
-  p2Cells: room.p2Cells,
-  p1Color: room.p1Color,
-  p2Color: room.p2Color,
-  status: room.status,
-  p1Moves: room.p1Moves,
-  p2Moves: room.p2Moves,
-  movesCount: room.movesCount,
-  lastGains: room.lastGains,
-  series: room.series,
-  rematchRequestedBy: room.rematchRequestedBy,
-  resetProposal: room.resetProposal,
-  /** Live spectator seat count. */
-  spectatorCount: room.spectators.length,
-  challengeType: room.challengeType,
-  currentStage: room.currentStage,
-  stageWins: room.stageWins,
-  themeId: room.themeId,
-  p1Name: room.p1.name,
-  p2Name: room.p2 ? room.p2.name : null,
-  p1Connected: room.p1.connected,
-  p2Connected: room.p2 ? room.p2.connected : false,
-  lastEmote: room.lastEmote,
-  turnTimerSec: room.turnTimerSec,
-});
+const sanitize = (room: RoomInternal): OnlineRoomState => {
+  const state: OnlineRoomState = {
+    roomId: room.roomId,
+    gridSize: room.gridSize,
+    colorCount: room.colorCount,
+    shape: room.shape,
+    grid: room.grid,
+    turn: room.turn,
+    firstTurnPlayer: room.firstTurnPlayer,
+    roundNumber: room.roundNumber,
+    p1Cells: room.p1Cells,
+    p2Cells: room.p2Cells,
+    p1Color: room.p1Color,
+    p2Color: room.p2Color,
+    status: room.status,
+    p1Moves: room.p1Moves,
+    p2Moves: room.p2Moves,
+    movesCount: room.movesCount,
+    lastGains: room.lastGains,
+    series: room.series,
+    rematchRequestedBy: room.rematchRequestedBy,
+    resetProposal: room.resetProposal,
+    /** Live spectator seat count. */
+    spectatorCount: room.spectators.length,
+    challengeType: room.challengeType,
+    currentStage: room.currentStage,
+    stageWins: room.stageWins,
+    themeId: room.themeId,
+    p1Name: room.p1.name,
+    p2Name: room.p2 ? room.p2.name : null,
+    p1Connected: room.p1.connected,
+    p2Connected: room.p2 ? room.p2.connected : false,
+    lastEmote: room.lastEmote,
+    turnTimerSec: room.turnTimerSec,
+  };
+  // P10.4: the replay recording rides a snapshot only when the round has
+  // ENDED (forfeits included—they change no cells, so the recording stays
+  // consistent with the final board). Mid-game payloads stay lean, and the
+  // history can never leak to the opponent before they finish playing.
+  if (room.status === 'p1_won' || room.status === 'p2_won' || room.status === 'draw') {
+    state.roundHistory = room.history;
+  }
+  return state;
+};
 
 export const createRoomService = (deps: ServiceDeps): RoomService => {
   const store = deps.store ?? createInMemoryStore();
@@ -340,6 +359,12 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       opponentCells,
       color,
     );
+    // P10.4: the round recording — same format as the local machines. The
+    // diff must come off the PRE-move grid, and gained is the exact tail of
+    // newCells after the previous territory (engines keep insertion order —
+    // pinned by the replay contract tests).
+    const diff = buildMoveDiff(room.grid, newGrid);
+    const gained = newCells.slice(currentCells.length);
     if (role === 1) {
       room.p1Cells = newCells;
       room.p1Color = color;
@@ -355,6 +380,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     room.movesCount += 1;
     room.turn = role === 1 ? 2 : 1;
     room.turnStartedAt = now();
+    room.history.push({ player: role, color, diff, gained });
 
     const outcome = checkGameOverForShape(
       room.shape,
@@ -418,6 +444,9 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
     room.p2Moves = 0;
     room.movesCount = 0;
     room.lastGains = { 1: 0, 2: 0 };
+    // P10.4: the finished round's recording goes with it — the next round
+    // starts recording empty.
+    room.history = [];
     room.rematchRequestedBy = null;
     room.resetProposal = null;
   };
@@ -468,6 +497,8 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         p2Moves: 0,
         movesCount: 0,
         lastGains: { 1: 0, 2: 0 },
+        // P10.4: rounds start with nothing to replay.
+        history: [],
         series: { p1: 0, p2: 0, draws: 0 },
         rematchRequestedBy: null,
         resetProposal: null,

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createRoomService, createInMemoryStore } from '../server/rooms';
+import { reconstructTwoPlayerReplayStates } from '../src/utils/replay';
 import type { RoomInternal } from '../server/rooms';
 import type { ServerMessage } from '../server/protocol';
 
@@ -492,5 +493,113 @@ describe('P6.6 spectator seats and host-instant rematch', () => {
     expect(live.ok).toBe(false);
     if (!live.ok) expect(live.code).toBe('not_active');
     expect(service.readState(roomId)!.roundNumber).toBe(1);
+  });
+});
+
+describe('P10.4 online round replay recording', () => {
+  const legalColor = (service: ReturnType<typeof createRoomService>, roomId: string) => {
+    const st = service.readState(roomId)!;
+    const occupied = new Set([st.p1Color, st.p2Color]);
+    for (let c = 0; c < st.colorCount; c++) {
+      if (!occupied.has(c)) return c;
+    }
+    return 0;
+  };
+
+  it('keeps history private during play and exposes it when the round ends', () => {
+    const { service, advance } = makeService();
+    const created = service.createRoom({
+      playerName: 'Host',
+      gridSize: 10,
+      colorCount: 4,
+    });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+    const roomId = created.roomId;
+
+    expect(service.readState(roomId)!.roundHistory).toBeUndefined();
+    const color = legalColor(service, roomId);
+    expect(service.move(roomId, created.token, color).ok).toBe(true);
+    const playing = service.readState(roomId)!;
+    expect(playing.status).toBe('playing');
+    expect(playing.movesCount).toBe(1);
+    expect(playing.roundHistory).toBeUndefined();
+
+    // Force a forfeit after the recorded move. The forfeit does not repaint
+    // the board, so the one current-round record remains a complete replay.
+    service.updateSettings(roomId, created.token, { turnTimerSec: 30 });
+    advance(32_000);
+    expect(service.enforceTurnTimers()).toBe(1);
+    const ended = service.readState(roomId)!;
+    expect(ended.status).toBe('p1_won');
+    expect(ended.roundHistory).toHaveLength(1);
+    expect(ended.roundHistory![0]).toMatchObject({ player: 1, color });
+    expect(Array.isArray(ended.roundHistory![0].diff)).toBe(true);
+    expect(Array.isArray(ended.roundHistory![0].gained)).toBe(true);
+  });
+
+  it('reconstructs the opening board from the server record on both shapes', () => {
+    for (const shape of ['classic', 'wheel'] as const) {
+      const { service, advance } = makeService();
+      const created = service.createRoom({
+        playerName: 'Host',
+        gridSize: 10,
+        colorCount: 4,
+        shape,
+        turnTimerSec: 30,
+      });
+      const joined = service.joinRoom(created.roomId, 'Guest');
+      if (!joined.ok) throw new Error('join failed');
+      const roomId = created.roomId;
+      const opening = service.readState(roomId)!;
+
+      // Ten alternating moves (the round can legitimately end earlier).
+      for (let i = 0; i < 10; i++) {
+        const token = i % 2 === 0 ? created.token : joined.token!;
+        const result = service.move(roomId, token, legalColor(service, roomId));
+        expect(result.ok).toBe(true);
+        if (service.readState(roomId)!.status !== 'playing') break;
+      }
+      // End any still-running round with the clock, so it shares the same
+      // shape/visibility path as a natural finish.
+      if (service.readState(roomId)!.status === 'playing') {
+        advance(32_000);
+        expect(service.enforceTurnTimers()).toBe(1);
+      }
+      const ended = service.readState(roomId)!;
+      expect(ended.status).not.toBe('playing');
+      const replay = reconstructTwoPlayerReplayStates(
+        ended.grid,
+        ended.p1Cells,
+        ended.p2Cells,
+        ended.roundHistory ?? [],
+      );
+      expect(replay).toHaveLength(ended.roundHistory!.length + 1);
+      expect(replay[0].grid).toEqual(opening.grid);
+      expect(replay[0].p1Cells).toEqual(opening.p1Cells);
+      expect(replay[0].p2Cells).toEqual(opening.p2Cells);
+    }
+  });
+
+  it('clears the recording when the next round starts', () => {
+    const { service, store, advance } = makeService();
+    const created = service.createRoom({ playerName: 'Host', turnTimerSec: 30 });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+    const roomId = created.roomId;
+
+    expect(service.move(roomId, created.token, legalColor(service, roomId)).ok).toBe(
+      true,
+    );
+    advance(32_000);
+    expect(service.enforceTurnTimers()).toBe(1);
+    expect(store.get(roomId)!.history).toHaveLength(1);
+
+    expect(service.forceRematch(roomId, created.token, {}).ok).toBe(true);
+    const next = service.readState(roomId)!;
+    expect(next.status).toBe('playing');
+    expect(next.roundNumber).toBe(2);
+    expect(next.roundHistory).toBeUndefined();
+    expect(store.get(roomId)!.history).toHaveLength(0);
   });
 });
