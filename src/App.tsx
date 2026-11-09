@@ -386,8 +386,14 @@ export default function App() {
                           onResetSeries={session.resetSeries}
                           dailyShareText={session.dailyShareText}
                           onWatchReplay={
-                            session.mode === 'solo' &&
-                            session.soloState.status !== 'playing'
+                            // P10.3: solo rounds replay from the machine's
+                            // diffs; multiplayer rounds from the recording
+                            // (P10.4 extends the button to online seats).
+                            (session.mode === 'solo' &&
+                              session.soloState.status !== 'playing') ||
+                            (session.mode === 'multiplayer' &&
+                              session.opponent !== 'online' &&
+                              !!session.multiplayerReplay)
                               ? () => setShowReplay(true)
                               : undefined
                           }
@@ -558,21 +564,40 @@ export default function App() {
           </Suspense>
         )}
 
-        {/* P6.3: replay viewer (over the game-over card) */}
-        {showReplay && session.mode === 'solo' && session.soloState && (
-          <Suspense fallback={null}>
-            <ReplayModal
-              isOpen={true}
-              onClose={() => setShowReplay(false)}
-              grid={session.soloState.grid}
-              history={session.soloState.history}
-              playedColors={session.soloState.playedColors}
-              theme={session.currentTheme}
-              shape={session.soloState.shape}
-              size={session.soloState.boardSize}
-            />
-          </Suspense>
-        )}
+        {/* P6.3/P10.3: replay viewer (over the game-over card) — solo rounds
+            step recorded diffs; multiplayer rounds walk recorded moves with
+            their ownership overlay. */}
+        {showReplay &&
+          (session.mode === 'solo'
+            ? !!session.soloState
+            : !!session.multiplayerReplay) && (
+            <Suspense fallback={null}>
+              {session.mode === 'solo' && session.soloState ? (
+                <ReplayModal
+                  isOpen={true}
+                  onClose={() => setShowReplay(false)}
+                  grid={session.soloState.grid}
+                  history={session.soloState.history}
+                  playedColors={session.soloState.playedColors}
+                  theme={session.currentTheme}
+                  shape={session.soloState.shape}
+                  size={session.soloState.boardSize}
+                />
+              ) : session.multiplayerReplay ? (
+                <ReplayModal
+                  isOpen={true}
+                  onClose={() => setShowReplay(false)}
+                  grid={session.multiplayerReplay.grid}
+                  history={[]}
+                  playedColors={[]}
+                  theme={session.currentTheme}
+                  shape={session.multiplayerReplay.shape}
+                  size={session.multiplayerReplay.size}
+                  multiplayer={session.multiplayerReplay}
+                />
+              ) : null}
+            </Suspense>
+          )}
 
         {showInfoModal && (
           <Suspense fallback={null}>

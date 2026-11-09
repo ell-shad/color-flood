@@ -304,7 +304,7 @@ gained keys — no opening-board snapshot is needed anywhere.
 | -- | ---- | ------ |
 | P10.1 | Shared recording format: move `buildMoveDiff` into `utils/replay.ts`; add `TwoPlayerMoveRecord { player, color, diff, gained }` + `boardSize` to the local match state; the local reducer records one entry per move (pass & play and bot alike) | ✅ |
 | P10.2 | Two-player reconstruction: `reconstructTwoPlayerReplayStates` rebuilds grid + p1/p2 ownership states backward from a final board (+ classic & wheel unit tests) | ✅ |
-| P10.3 | ReplayModal multiplayer mode: render replay states with the real boards (GameGrid / WheelBoard territory overlays) and "player played color N" chips; wire GameOverModal "Watch replay" for local and bot matches; live E2E on both shapes | ⬜ |
+| P10.3 | ReplayModal multiplayer mode: render replay states with the real boards (GameGrid / WheelBoard territory overlays) and "player played color N" chips; wire GameOverModal "Watch replay" for local and bot matches; live E2E on both shapes | ✅ |
 | P10.4 | Online replay: the server records the same move history in rooms and exposes it in snapshots for ended rounds; wire replay for online seats and spectators; two-browser E2E incl. a mid-game refresher | ⬜ |
 
 **Phase 10 checks:** typecheck, tests, lint and build green; live browser E2E: finish a wheel

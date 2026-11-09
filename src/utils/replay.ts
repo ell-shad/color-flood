@@ -1,4 +1,10 @@
-import type { SoloMoveDiff, TwoPlayerMoveRecord } from '../types';
+import type {
+  SoloMoveDiff,
+  TwoPlayerMoveRecord,
+  BoardShape,
+  GridSize,
+  MultiplayerOpponent,
+} from '../types';
 
 /**
  * P5.6 (moved here in P10.1 so the two-player machines record with the exact
@@ -47,6 +53,28 @@ export const reconstructReplayStates = (
 };
 
 // --- Two-player reconstruction (P10.2) --------------------------------------
+
+/**
+ * P10.3: everything the replay viewer needs to watch a finished two-player
+ * round. `grid`/`p1Cells`/`p2Cells` are the finished round's final board and
+ * ownership; `moves` replays backward from them (no opening snapshot).
+ */
+export interface MultiplayerReplayData {
+  shape: BoardShape;
+  size: GridSize;
+  colorCount: number;
+  /** Final board of the finished round. */
+  grid: number[][];
+  /** Trailing ownership of the finished round. */
+  p1Cells: string[];
+  p2Cells: string[];
+  moves: TwoPlayerMoveRecord[];
+  /** Labels shown on the "who played" chips. */
+  p1Name: string;
+  p2Name: string;
+  /** boards show a BOT badge instead of P2 for bot opponents (P10.3). */
+  opponent?: MultiplayerOpponent;
+}
 
 /**
  * P10.2: one snapped state of a two-player replay — the board colors and

@@ -11,9 +11,15 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
-import { reconstructReplayStates } from '../utils/replay';
+import {
+  reconstructReplayStates,
+  reconstructTwoPlayerReplayStates,
+  type MultiplayerReplayData,
+} from '../utils/replay';
 import { WheelBoard } from './WheelBoard';
+import { GameGrid } from './GameGrid';
 import type { SoloMoveDiff, GameTheme, BoardShape } from '../types';
+import type { TwoPlayerReplayState } from '../utils/replay';
 
 interface ReplayModalProps {
   isOpen: boolean;
@@ -31,6 +37,12 @@ interface ReplayModalProps {
   size?: number;
   /** Auto-advance cadence for the play button (ms). */
   stepMs?: number;
+  /**
+   * P10.3: two-player replay material. When present the viewer walks the
+   * recorded moves (boards + ownership) and renders the real live boards —
+   * it replaces the solo path entirely for this open.
+   */
+  multiplayer?: MultiplayerReplayData;
 }
 
 /**
@@ -48,11 +60,24 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
   shape = 'classic',
   size = 10,
   stepMs = 700,
+  multiplayer,
 }) => {
   // P5.3: dialog semantics, focus trap, focus restore.
   const panelRef = useModalA11y(isOpen);
 
-  const states = useMemo(() => reconstructReplayStates(grid, history), [grid, history]);
+  // P10.3: the two-player material mirrors the solo walk — only the
+  // reconstruction source differs (records instead of diffs, plus ownership).
+  const states = useMemo(() => {
+    if (multiplayer) {
+      return reconstructTwoPlayerReplayStates(
+        grid,
+        multiplayer.p1Cells,
+        multiplayer.p2Cells,
+        multiplayer.moves,
+      );
+    }
+    return reconstructReplayStates(grid, history);
+  }, [multiplayer, grid, history]);
   const last = states.length - 1;
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -88,12 +113,34 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
   if (!isOpen) return null;
 
   const replayGrid = states[Math.min(index, last)] ?? grid;
+  // P10.3: the complete two-player state at this step (ownership), or null.
+  const state = multiplayer
+    ? (states[Math.min(index, last)] as TwoPlayerReplayState)
+    : null;
   // playedColors are 0-based palette indices (solo machine recording).
-  const moveChip = index > 0 ? playedColors[index - 1] : null;
+  // P10.3: in multiplayer the chip color comes from the recorded move itself
+  // (App passes playedColors=[] for 2P rounds — the records own that info).
+  const moveChip =
+    index > 0
+      ? multiplayer
+        ? (multiplayer.moves[index - 1]?.color ?? null)
+        : playedColors[index - 1]
+      : null;
   const chipBg =
     moveChip !== undefined && moveChip !== null
       ? theme.colors[moveChip % theme.colors.length]
       : null;
+
+  // P10.3: who played the move at this step (name for the chip/heading).
+  const moveRecord = index > 0 && multiplayer ? multiplayer.moves[index - 1] : null;
+  const who = moveRecord
+    ? moveRecord.player === 1
+      ? multiplayer!.p1Name
+      : multiplayer!.p2Name
+    : null;
+  // The same cyan/rose identity tint palette the live territories use.
+  const playerTint =
+    moveRecord !== null ? (moveRecord.player === 1 ? '#22D3EE' : '#FB7185') : null;
 
   return (
     <AnimatePresence>
@@ -121,14 +168,35 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
             </button>
           </div>
 
-          {/* Board frame — P7.3: wheels replay on the polar board */}
+          {/* Board frame — P7.3: wheels replay on the polar board; P10.3:
+              two-player states render the live boards, overlay included. A 2P
+              state wraps the grid + ownership, so the ARRAY passed to the
+              boards is state.grid — the state object itself would render a
+              blank wheel (WheelBoard's optional chaining) and crash GameGrid. */}
           <div className="flex justify-center">
             {shape === 'wheel' ? (
               <WheelBoard
-                grid={replayGrid}
+                grid={state ? state.grid : replayGrid}
                 size={size}
                 theme={theme}
                 frameWidth="min(100%, 300px)"
+                // P10.3: ownership overlay + BOT badge in 2P replays.
+                mode={multiplayer ? 'multiplayer' : 'solo'}
+                opponent={multiplayer?.opponent}
+                p1Cells={state ? state.p1Cells : []}
+                p2Cells={state ? state.p2Cells : []}
+                showTerritoryOverlay={true}
+              />
+            ) : multiplayer && state ? (
+              <GameGrid
+                grid={state.grid}
+                gridSize={state.grid.length}
+                mode="multiplayer"
+                opponent={multiplayer.opponent}
+                p1Cells={state.p1Cells}
+                p2Cells={state.p2Cells}
+                showTerritoryOverlay={true}
+                theme={theme}
               />
             ) : (
               <div
@@ -159,7 +227,9 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
           {/* Progress + played-color chip */}
           <div className="text-center space-y-1">
             <p className="text-xs font-bold text-slate-300 tabular-nums">
-              {index === 0 ? 'Opening board' : `Move ${index} of ${last}`}
+              {index === 0
+                ? 'Opening board'
+                : `Move ${index} of ${last}${multiplayer ? ` — ${who}` : ''}`}
             </p>
             {moveChip !== null && chipBg && (
               <p className="flex items-center justify-center gap-1.5 text-xs text-slate-300">
@@ -168,7 +238,17 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
                   style={{ backgroundColor: chipBg }}
                   aria-hidden="true"
                 />
-                <span>Palette {moveChip + 1}</span>
+                <span className="font-bold" style={{ color: playerTint ?? undefined }}>
+                  {who}
+                </span>
+                {multiplayer ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>Palette {moveChip + 1}</span>
+                  </>
+                ) : (
+                  <span>Palette {moveChip + 1}</span>
+                )}
               </p>
             )}
           </div>

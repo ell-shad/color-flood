@@ -455,6 +455,18 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
               </button>
             )}
 
+            {/* P10.3: step through the finished round (recording is wired per
+                opponent — local and bot in P10.3, online in P10.4). */}
+            {onWatchReplay && (
+              <button
+                onClick={onWatchReplay}
+                className="w-full py-1.5 px-3 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-750"
+              >
+                <Play className="w-3 h-3 text-indigo-300" aria-hidden="true" />
+                <span>Watch replay</span>
+              </button>
+            )}
+
             {opponent === 'online' && onLeaveRoom && (
               <button
                 onClick={onLeaveRoom}

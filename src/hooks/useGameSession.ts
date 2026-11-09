@@ -48,6 +48,7 @@ import {
   type SoloStats,
 } from '../utils/soloStats';
 import { buildSoloShareLink, soloShareParamsFromLocation } from '../utils/shareLink';
+import type { MultiplayerReplayData } from '../utils/replay';
 import { hapticLose, hapticMove, hapticTurn, hapticWin } from '../utils/haptics';
 import { usePrefs } from './usePrefs';
 import { useSoloGame } from './useSoloGame';
@@ -180,6 +181,11 @@ export interface GameSession {
   currentHighScore: number | null;
   isBotThinking: boolean;
   lastMovingPlayer: PlayerId;
+  /**
+   * P10.3: replay material for the finished multiplayer round (pass & play,
+   * vs bot; online arrives with P10.4). Null while a round is running.
+   */
+  multiplayerReplay: MultiplayerReplayData | null;
 
   // --- Derived view props (kill the JSX ternaries) ---
   /** Hints toggle visibility: online play never shows the hint button. */
@@ -788,6 +794,44 @@ export function useGameSession(): GameSession {
     prefs.mode === 'solo' && dailyRound ? dailyRound.size : prefs.gridSize;
   const activeTurn = activeMatch?.turn ?? 1;
   const matchStatus = activeMatch?.status ?? 'playing';
+
+  // P10.3: replay material for the finished multiplayer round (null while a
+  // round is running, while the lobby shows, or before the recording exists).
+  const multiplayerReplay: MultiplayerReplayData | null = (() => {
+    if (prefs.mode !== 'multiplayer' || matchStatus === 'playing') return null;
+    if (prefs.opponent === 'online') {
+      // P10.4 seats this — until a round's history arrives in the snapshot
+      // there is nothing to replay yet.
+      if (!roomState?.roundHistory) return null;
+      return {
+        shape: roomState.shape ?? 'classic',
+        size: (roomState.gridSize || 10) as GridSize,
+        colorCount: roomState.colorCount,
+        grid: roomState.grid,
+        p1Cells: roomState.p1Cells,
+        p2Cells: roomState.p2Cells,
+        moves: roomState.roundHistory,
+        p1Name: playerNames.p1,
+        p2Name: playerNames.p2,
+      };
+    }
+    const m = localState;
+    if (!m || m.status === 'playing') return null;
+    return {
+      shape: m.shape,
+      size: m.boardSize,
+      colorCount: matchColorCountOf(m, prefs.colorCount),
+      grid: m.grid,
+      p1Cells: m.p1Cells,
+      p2Cells: m.p2Cells,
+      moves: m.history,
+      p1Name: playerNames.p1,
+      p2Name: playerNames.p2,
+      // The boards swap P2's badge for BOT in bot matches (mirrors live play).
+      opponent: prefs.opponent === 'bot' ? 'bot' : 'local',
+    };
+  })();
+
   const rematchRequestedBy = roomState?.rematchRequestedBy ?? null;
   // P9: topology of the board on screen. Online rooms carry their own shape;
   // local matches store it on the state; solo keeps it on the board itself.
@@ -1306,6 +1350,7 @@ export function useGameSession(): GameSession {
     currentHighScore,
     isBotThinking,
     lastMovingPlayer,
+    multiplayerReplay,
     // Derived view props
     showHintButton,
     paletteColorCount,
