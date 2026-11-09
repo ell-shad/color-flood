@@ -103,6 +103,15 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
+                  <strong>Cube boards:</strong> switch Board Shape to <em>Cube</em> in
+                  Settings — solo play floods from the center of one cube face and wraps
+                  across edges; use drag or arrow keys to rotate the cube and check the
+                  flat net for hidden faces.
+                </p>
+              </div>
+              <div className="flex gap-2.5 items-start">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p>
                   <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify
                   the color that claims the highest number of adjacent cells in one
                   stroke.

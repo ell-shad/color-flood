@@ -5,6 +5,7 @@ import {
   soloShareParamsFromSearch,
 } from './shareLink';
 import { WHEEL_GEOMETRY, generateSeededWheelBoard } from './circleEngine';
+import { generateSeededCubeBoard, getCubeSide } from './cubeEngine';
 
 describe('parseSoloShareParams', () => {
   it('round-trips valid params (shape absent ⇒ classic)', () => {
@@ -113,5 +114,36 @@ describe('P7.3 wheel share round-trip', () => {
       rings: shared.length,
       sectors: shared[0].length,
     });
+  });
+});
+
+describe('P11 cube share round-trip', () => {
+  it('parses and builds ?shape=cube without changing classic links', () => {
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=cube')).toEqual({
+      seed: 7,
+      size: 10,
+      colors: 4,
+      shape: 'cube',
+    });
+    const link = buildSoloShareLink(
+      { seed: 42, size: 14, colors: 6, shape: 'cube' },
+      'https://example.com/',
+    );
+    expect(new URL(link).searchParams.get('shape')).toBe('cube');
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=sphere')).toBeNull();
+  });
+
+  it('rebuilds the identical cube from the link params', () => {
+    const link = buildSoloShareLink(
+      { seed: 987654321, size: 12, colors: 6, shape: 'cube' },
+      'https://example.com/',
+    );
+    const parsed = soloShareParamsFromSearch(new URL(link).search);
+    expect(parsed).not.toBeNull();
+    if (!parsed) return;
+    const shared = generateSeededCubeBoard(parsed.size, parsed.colors, parsed.seed);
+    const original = generateSeededCubeBoard(12, 6, 987654321);
+    expect(shared).toEqual(original);
+    expect(getCubeSide(shared)).toBe(5);
   });
 });

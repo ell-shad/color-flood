@@ -15,10 +15,11 @@ import {
   Trophy,
   Eye,
   Circle,
+  Box,
   Square,
 } from 'lucide-react';
 import { OnlineRoomState, ChallengeType, BoardShape } from '../types';
-import { isWheel } from '../utils/boardShape';
+import { isCube, isWheel } from '../utils/boardShape';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { loadStringOr, saveString } from '../utils/storage';
 
@@ -382,7 +383,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold block">
             Board Shape
           </span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setSelectedShape('classic')}
               aria-pressed={selectedShape === 'classic'}
@@ -407,11 +408,25 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
               <Circle className="w-3 h-3" />
               Wheel
             </button>
+            <button
+              onClick={() => setSelectedShape('cube')}
+              aria-pressed={isCube(selectedShape)}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isCube(selectedShape)
+                  ? 'bg-emerald-950/70 border-emerald-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Box className="w-3 h-3" />
+              Cube
+            </button>
           </div>
           <p className="text-[9px] text-slate-500 leading-tight">
-            {isWheel(selectedShape)
-              ? 'Both players start on the outer ring and flood inward.'
-              : 'Both players start in opposite corners.'}
+            {isCube(selectedShape)
+              ? 'Players seed on opposite cube faces and flood across edges.'
+              : isWheel(selectedShape)
+                ? 'Both players start on the outer ring and flood inward.'
+                : 'Both players start in opposite corners.'}
           </p>
         </div>
 

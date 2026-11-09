@@ -42,8 +42,8 @@ export const EMPTY_SOLO_STATS: SoloStats = {
 };
 
 const ConfigStatsSchema = z.object({
-  // P7.3: rows recorded before shapes existed are classic squares.
-  shape: z.enum(['classic', 'wheel']).optional(),
+  // P7.3/P11: rows recorded before shapes existed are classic squares.
+  shape: z.enum(['classic', 'wheel', 'cube']).optional(),
   size: z.number().int().min(4).max(32),
   colors: z.number().int().min(2).max(12),
   games: z.number().int().min(0).max(9_999),
@@ -61,8 +61,8 @@ const SoloStatsSchema = z.object({
     current: z.number().int().min(0).max(9_999),
     best: z.number().int().min(0).max(9_999),
   }),
-  // 25 configs × 2 topologies, plus headroom.
-  byConfig: z.array(ConfigStatsSchema).max(60),
+  // 25 configs × 3 topologies, plus headroom.
+  byConfig: z.array(ConfigStatsSchema).max(90),
 });
 
 export const loadSoloStats = (): SoloStats => {

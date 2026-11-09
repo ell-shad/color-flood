@@ -38,8 +38,8 @@ export const ColorCount = z
   .int()
   .refine((v) => [4, 5, 6, 7, 8].includes(v));
 export const ChallengeType = z.enum(['standard', 'progressive']);
-/** P9: board topology — classic square or polar wheel. */
-export const Shape = z.enum(['classic', 'wheel']);
+/** P9/P11: board topology — classic square, polar wheel, or cube surface. */
+export const Shape = z.enum(['classic', 'wheel', 'cube']);
 export const ThemeId = z.string().trim().min(1).max(32);
 export const Emoji = z.string().max(10);
 /** Optional per-turn move timer (P3.5): off or a fixed number of seconds. */

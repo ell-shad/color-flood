@@ -37,8 +37,8 @@ import { z } from 'zod';
 // --- High scores (persisted per config) --------------------------------------
 
 const HighScoreSchema = z.object({
-  // P7.3: rows written before shapes existed load as classic square records.
-  shape: z.enum(['classic', 'wheel']).optional(),
+  // P7.3/P11: rows written before shapes existed load as classic square records.
+  shape: z.enum(['classic', 'wheel', 'cube']).optional(),
   size: z.number().int().min(5).max(30),
   colors: z.number().int().min(2).max(12),
   moves: z.number().int().min(1).max(9999),

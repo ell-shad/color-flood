@@ -476,6 +476,9 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         case 'wheel':
           shape = 'wheel';
           break;
+        case 'cube':
+          shape = 'cube';
+          break;
         case undefined:
           shape = 'classic';
           break;

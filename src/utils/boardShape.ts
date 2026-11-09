@@ -40,6 +40,19 @@ export function isClassic(shape: BoardShape): boolean {
   }
 }
 
+/** True for the cube-surface topology. */
+export function isCube(shape: BoardShape): boolean {
+  switch (shape) {
+    case 'classic':
+    case 'wheel':
+      return false;
+    case 'cube':
+      return true;
+    default:
+      return assertNever(shape);
+  }
+}
+
 /**
  * Parse an optional persisted/legacy shape value. Unknown values keep the
  * long-standing classic behavior (old snapshots and links predate shapes).

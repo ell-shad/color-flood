@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MousePointerClick, Keyboard, Swords } from 'lucide-react';
-import { isWheel } from '../utils/boardShape';
+import { isCube, isWheel } from '../utils/boardShape';
 import type { BoardShape } from '../types';
 
 /**
@@ -62,9 +62,11 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
                 1–8
               </kbd>
               ) — every touching cell of that color{' '}
-              {isWheel(boardShape)
-                ? 'joins the flood pouring out of the center core'
-                : 'joins your flood from the top-left corner'}
+              {isCube(boardShape)
+                ? 'joins the flood from the center of one cube face and wraps across edges'
+                : isWheel(boardShape)
+                  ? 'joins the flood pouring out of the center core'
+                  : 'joins your flood from the top-left corner'}
               . <strong className="text-indigo-300">Try a move now!</strong>
             </p>
           </div>

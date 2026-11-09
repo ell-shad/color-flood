@@ -8,6 +8,7 @@ import {
 } from './soloStats';
 import { rateSoloStars } from './soloBalance';
 import { rateWheelStars } from './circleEngine';
+import { rateCubeStars } from './cubeEngine';
 
 describe('updateSoloStats', () => {
   it('records a first win: totals, streak, config entry with best', () => {
@@ -101,6 +102,31 @@ describe('updateSoloStats', () => {
     expect(statsStarsFor(s.byConfig[1])).toBe(rateWheelStars(12, 10, 4));
     // The wheel par is tighter, so the same 12 moves must not earn more stars.
     expect(rateWheelStars(12, 10, 4)).toBeLessThanOrEqual(rateSoloStars(12, 10, 4));
+  });
+
+  it('keeps cube records separate and rates cubes on their own par', () => {
+    let s = updateSoloStats(EMPTY_SOLO_STATS, {
+      shape: 'cube',
+      size: 12,
+      colors: 5,
+      moves: 14,
+      won: true,
+    });
+    s = updateSoloStats(s, {
+      shape: 'cube',
+      size: 12,
+      colors: 5,
+      moves: 13,
+      won: true,
+    });
+    expect(s.byConfig).toHaveLength(1);
+    expect(s.byConfig[0]).toMatchObject({
+      shape: 'cube',
+      games: 2,
+      wins: 2,
+      bestMoves: 13,
+    });
+    expect(statsStarsFor(s.byConfig[0])).toBe(rateCubeStars(13, 12, 5));
   });
 
   it('star rating is derived from the best win', () => {

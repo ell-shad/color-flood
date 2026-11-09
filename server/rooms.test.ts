@@ -539,7 +539,7 @@ describe('P10.4 online round replay recording', () => {
   });
 
   it('reconstructs the opening board from the server record on both shapes', () => {
-    for (const shape of ['classic', 'wheel'] as const) {
+    for (const shape of ['classic', 'wheel', 'cube'] as const) {
       const { service, advance } = makeService();
       const created = service.createRoom({
         playerName: 'Host',
@@ -579,6 +579,32 @@ describe('P10.4 online round replay recording', () => {
       expect(replay[0].p1Cells).toEqual(opening.p1Cells);
       expect(replay[0].p2Cells).toEqual(opening.p2Cells);
     }
+  });
+
+  it('creates and plays a cube room with the server surface grid', () => {
+    const { service } = makeService();
+    const created = service.createRoom({
+      playerName: 'Host',
+      gridSize: 10,
+      colorCount: 4,
+      shape: 'cube',
+    });
+    const joined = service.joinRoom(created.roomId, 'Guest');
+    if (!joined.ok) throw new Error('join failed');
+    const room = service.readState(created.roomId)!;
+    expect(room.shape).toBe('cube');
+    expect(room.grid).toHaveLength(24);
+    expect(room.grid.every((row) => row.length === 4)).toBe(true);
+    expect(room.grid.length * room.grid[0].length).toBe(96);
+
+    const st = service.readState(created.roomId)!;
+    const occupied = new Set([st.p1Color, st.p2Color]);
+    const color = [0, 1, 2, 3].find((c) => !occupied.has(c))!;
+    expect(service.move(created.roomId, created.token, color).ok).toBe(true);
+    const after = service.readState(created.roomId)!;
+    expect(after.movesCount).toBe(1);
+    expect(after.turn).toBe(2);
+    expect(after.roundHistory).toBeUndefined();
   });
 
   it('clears the recording when the next round starts', () => {

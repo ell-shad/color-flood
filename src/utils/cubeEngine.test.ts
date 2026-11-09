@@ -22,6 +22,7 @@ import {
   getMaxCubeMoves,
 } from './cubeEngine';
 import { mulberry32 } from './engine';
+import { buildMoveDiff, reconstructTwoPlayerReplayStates } from './replay';
 import { cellCountOf } from './floodLogic';
 
 describe('P11 cube topology', () => {
@@ -290,5 +291,49 @@ describe('P11 two-player cube', () => {
       expandCubeTerritory(board.grid, board.p1Cells, board.p2Cells, master.bestColor)
         .gain,
     );
+  });
+
+  it('replays a cube round backward from the final board and records', () => {
+    const board = generateTwoPlayerCube(12, 5, mulberry32(2024));
+    let grid = board.grid;
+    let p1 = board.p1Cells;
+    let p2 = board.p2Cells;
+    let p1Color = board.p1Color;
+    let p2Color = board.p2Color;
+    const records = [];
+    const firstFree = (a: number, b: number, count: number) => {
+      for (let c = 0; c < count; c++) if (c !== a && c !== b) return c;
+      return 0;
+    };
+    for (let step = 0; step < 6; step++) {
+      const player: 1 | 2 = step % 2 === 0 ? 1 : 2;
+      const mine = player === 1 ? p1 : p2;
+      const theirs = player === 1 ? p2 : p1;
+      const color = firstFree(p1Color, p2Color, 5);
+      const expanded = expandCubeTerritory(grid, mine, theirs, color);
+      records.push({
+        player,
+        color,
+        diff: buildMoveDiff(grid, expanded.newGrid),
+        gained: expanded.newCells.slice(mine.length),
+      });
+      grid = expanded.newGrid;
+      if (player === 1) {
+        p1 = expanded.newCells;
+        p1Color = color;
+      } else {
+        p2 = expanded.newCells;
+        p2Color = color;
+      }
+    }
+
+    const replay = reconstructTwoPlayerReplayStates(grid, p1, p2, records);
+    expect(replay).toHaveLength(records.length + 1);
+    expect(replay[0]).toEqual({
+      grid: board.grid,
+      p1Cells: board.p1Cells,
+      p2Cells: board.p2Cells,
+    });
+    expect(replay[replay.length - 1]).toEqual({ grid, p1Cells: p1, p2Cells: p2 });
   });
 });
