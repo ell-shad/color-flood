@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { Github, Linkedin, Info, Eye } from 'lucide-react';
 
@@ -8,23 +8,64 @@ import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useBoardFit } from './hooks/useBoardFit';
 import { loadBool, saveString } from './utils/storage';
 
+// Boot-critical chrome: needed for the very first playable frame.
 import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
 import { TwoPlayerScoreboard } from './components/TwoPlayerScoreboard';
 import { GameGrid } from './components/GameGrid';
 import { WheelBoard } from './components/WheelBoard';
 import { ColorPalette } from './components/ColorPalette';
-import { GameOverModal } from './components/GameOverModal';
-import { SettingsPanel } from './components/SettingsPanel';
-import { OnlineLobby } from './components/OnlineLobby';
-import { MultiplayerEmotes } from './components/MultiplayerEmotes';
-import { ResetApprovalModal } from './components/ResetApprovalModal';
-import { ThemeSelectorModal } from './components/ThemeSelectorModal';
-import { HowToPlayModal } from './components/HowToPlayModal';
-import { FirstRunTutorial } from './components/FirstRunTutorial';
-import { DailyChallengeModal } from './components/DailyChallengeModal';
-import { StatsModal } from './components/StatsModal';
-import { ReplayModal } from './components/ReplayModal';
+
+/**
+ * Perf: everything else is split out of the initial bundle. These views are
+ * only reachable behind a user action (settings sheet, modals, online lobby)
+ * or a mode gate — eagerly bundling them grew the module graph so the dev
+ * server's transform waterfall (and the prod initial chunk with it) made
+ * both the site and the game noticeably slower to appear. Each is mounted
+ * under a <Suspense fallback={null}> boundary that only renders when its
+ * gate opens, so its code is fetched on first use instead of at boot.
+ */
+const GameOverModal = lazy(() =>
+  import('./components/GameOverModal').then((m) => ({ default: m.GameOverModal })),
+);
+const SettingsPanel = lazy(() =>
+  import('./components/SettingsPanel').then((m) => ({ default: m.SettingsPanel })),
+);
+const OnlineLobby = lazy(() =>
+  import('./components/OnlineLobby').then((m) => ({ default: m.OnlineLobby })),
+);
+const MultiplayerEmotes = lazy(() =>
+  import('./components/MultiplayerEmotes').then((m) => ({
+    default: m.MultiplayerEmotes,
+  })),
+);
+const ResetApprovalModal = lazy(() =>
+  import('./components/ResetApprovalModal').then((m) => ({
+    default: m.ResetApprovalModal,
+  })),
+);
+const ThemeSelectorModal = lazy(() =>
+  import('./components/ThemeSelectorModal').then((m) => ({
+    default: m.ThemeSelectorModal,
+  })),
+);
+const HowToPlayModal = lazy(() =>
+  import('./components/HowToPlayModal').then((m) => ({ default: m.HowToPlayModal })),
+);
+const FirstRunTutorial = lazy(() =>
+  import('./components/FirstRunTutorial').then((m) => ({ default: m.FirstRunTutorial })),
+);
+const DailyChallengeModal = lazy(() =>
+  import('./components/DailyChallengeModal').then((m) => ({
+    default: m.DailyChallengeModal,
+  })),
+);
+const StatsModal = lazy(() =>
+  import('./components/StatsModal').then((m) => ({ default: m.StatsModal })),
+);
+const ReplayModal = lazy(() =>
+  import('./components/ReplayModal').then((m) => ({ default: m.ReplayModal })),
+);
 
 /**
  * P4.1: App is now a thin render shell.
@@ -216,24 +257,33 @@ export default function App() {
         <main className="w-full max-w-xl mx-auto px-2 sm:px-3 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
           {/* Online Match: Show Lobby or Game */}
           {session.isOnlineLobbyActive ? (
-            <OnlineLobby
-              roomState={session.roomState}
-              myRole={session.myRole}
-              connectionStatus={session.connectionStatus}
-              errorMessage={session.onlineError}
-              systemMessage={session.onlineSystemMessage}
-              gridSize={session.gridSize}
-              colorCount={session.colorCount}
-              onCreateRoom={(name, gSize, cCount, cType, shape) =>
-                session.createOnlineRoom(name, gSize, cCount, cType, session.themeId, shape)
-              }
-              onJoinRoom={session.joinOnlineRoom}
-              onSpectateRoom={session.spectateOnline}
-              onLeaveRoom={session.leaveOnlineRoom}
-              onClearError={session.clearOnlineError}
-              errorCode={session.onlineErrorCode}
-              spectatorCount={session.spectatorCount}
-            />
+            <Suspense fallback={null}>
+              <OnlineLobby
+                roomState={session.roomState}
+                myRole={session.myRole}
+                connectionStatus={session.connectionStatus}
+                errorMessage={session.onlineError}
+                systemMessage={session.onlineSystemMessage}
+                gridSize={session.gridSize}
+                colorCount={session.colorCount}
+                onCreateRoom={(name, gSize, cCount, cType, shape) =>
+                  session.createOnlineRoom(
+                    name,
+                    gSize,
+                    cCount,
+                    cType,
+                    session.themeId,
+                    shape,
+                  )
+                }
+                onJoinRoom={session.joinOnlineRoom}
+                onSpectateRoom={session.spectateOnline}
+                onLeaveRoom={session.leaveOnlineRoom}
+                onClearError={session.clearOnlineError}
+                errorCode={session.onlineErrorCode}
+                spectatorCount={session.spectatorCount}
+              />
+            </Suspense>
           ) : (
             <div className="w-full flex-1 min-h-0 flex flex-col justify-center gap-1.5 sm:gap-2">
               {/* Active Mode Scoreboard */}
@@ -279,94 +329,100 @@ export default function App() {
                 className="relative w-full flex items-center justify-center"
               >
                 {boardPx > 0 && (
-                  <div
-                    className="relative"
-                    style={{ width: boardPx, height: boardPx }}
-                  >
-                {session.boardShape === 'wheel' ? (
-                  <WheelBoard
-                    grid={session.gridView.grid}
-                    size={
-                      session.mode === 'solo'
-                        ? session.soloState.boardSize
-                        : session.gridView.gridSize
-                    }
-                    theme={session.currentTheme}
-                    showColorSymbols={session.showColorSymbols}
-                    boardPx={boardPx}
-                    mode={session.mode}
-                    opponent={session.opponent}
-                    p1Cells={session.gridView.p1Cells}
-                    p2Cells={session.gridView.p2Cells}
-                    showTerritoryOverlay={session.showTerritoryOverlay}
-                  />
-                ) : (
-                  <GameGrid
-                    grid={session.gridView.grid}
-                    gridSize={session.gridView.gridSize}
-                    mode={session.mode}
-                    opponent={session.opponent}
-                    p1Cells={session.gridView.p1Cells}
-                    p2Cells={session.gridView.p2Cells}
-                    showTerritoryOverlay={session.showTerritoryOverlay}
-                    showColorSymbols={session.showColorSymbols}
-                    lastMovingPlayer={session.lastMovingPlayer}
-                    theme={session.currentTheme}
-                    boardPx={boardPx}
-                  />
-                )}
+                  <div className="relative" style={{ width: boardPx, height: boardPx }}>
+                    {session.boardShape === 'wheel' ? (
+                      <WheelBoard
+                        grid={session.gridView.grid}
+                        size={
+                          session.mode === 'solo'
+                            ? session.soloState.boardSize
+                            : session.gridView.gridSize
+                        }
+                        theme={session.currentTheme}
+                        showColorSymbols={session.showColorSymbols}
+                        boardPx={boardPx}
+                        mode={session.mode}
+                        opponent={session.opponent}
+                        p1Cells={session.gridView.p1Cells}
+                        p2Cells={session.gridView.p2Cells}
+                        showTerritoryOverlay={session.showTerritoryOverlay}
+                      />
+                    ) : (
+                      <GameGrid
+                        grid={session.gridView.grid}
+                        gridSize={session.gridView.gridSize}
+                        mode={session.mode}
+                        opponent={session.opponent}
+                        p1Cells={session.gridView.p1Cells}
+                        p2Cells={session.gridView.p2Cells}
+                        showTerritoryOverlay={session.showTerritoryOverlay}
+                        showColorSymbols={session.showColorSymbols}
+                        lastMovingPlayer={session.lastMovingPlayer}
+                        theme={session.currentTheme}
+                        boardPx={boardPx}
+                      />
+                    )}
 
-                {/* Game Over Modal Overlay */}
-                <GameOverModal
-                  mode={session.mode}
-                  soloStatus={session.soloState.status}
-                  soloMoves={session.soloState.moves}
-                  multiplayerStatus={session.matchStatus}
-                  p1Count={session.gridView.p1Cells.length}
-                  p2Count={session.gridView.p2Cells.length}
-                  totalCells={session.totalCells}
-                  opponent={session.opponent}
-                  seriesScore={session.matchSeries}
-                  challengeType={session.matchChallengeType}
-                  currentStage={session.matchStage}
-                  onPlayAgain={session.playAgain}
-                  onAcceptRematch={session.acceptOnlineRematch}
-                  onDeclineRematch={session.declineOnlineRematch}
-                  onResetSeries={session.resetSeries}
-                  dailyShareText={session.dailyShareText}
-                  onWatchReplay={
-                    session.mode === 'solo' && session.soloState.status !== 'playing'
-                      ? () => setShowReplay(true)
-                      : undefined
-                  }
-                  shareBoardLink={session.soloShareUrl}
-                  p1Name={session.onlineOnly.p1Name}
-                  p2Name={session.onlineOnly.p2Name}
-                  myRole={session.myRole}
-                  rematchRequestedBy={session.rematchRequestedBy}
-                  onLeaveRoom={session.leaveOnlineRoom}
-                  spectating={session.spectating}
-                  isHost={session.myRole === 1}
-                  onHostRematch={session.hostOnlineRematch}
-                />
+                    {/* Game Over Modal Overlay — code-split: fetched only when a
+                    round actually ends (its own render gate, mirrored here). */}
+                    {(session.soloState.status !== 'playing' ||
+                      session.matchStatus !== 'playing') && (
+                      <Suspense fallback={null}>
+                        <GameOverModal
+                          mode={session.mode}
+                          soloStatus={session.soloState.status}
+                          soloMoves={session.soloState.moves}
+                          multiplayerStatus={session.matchStatus}
+                          p1Count={session.gridView.p1Cells.length}
+                          p2Count={session.gridView.p2Cells.length}
+                          totalCells={session.totalCells}
+                          opponent={session.opponent}
+                          seriesScore={session.matchSeries}
+                          challengeType={session.matchChallengeType}
+                          currentStage={session.matchStage}
+                          onPlayAgain={session.playAgain}
+                          onAcceptRematch={session.acceptOnlineRematch}
+                          onDeclineRematch={session.declineOnlineRematch}
+                          onResetSeries={session.resetSeries}
+                          dailyShareText={session.dailyShareText}
+                          onWatchReplay={
+                            session.mode === 'solo' &&
+                            session.soloState.status !== 'playing'
+                              ? () => setShowReplay(true)
+                              : undefined
+                          }
+                          shareBoardLink={session.soloShareUrl}
+                          p1Name={session.onlineOnly.p1Name}
+                          p2Name={session.onlineOnly.p2Name}
+                          myRole={session.myRole}
+                          rematchRequestedBy={session.rematchRequestedBy}
+                          onLeaveRoom={session.leaveOnlineRoom}
+                          spectating={session.spectating}
+                          isHost={session.myRole === 1}
+                          onHostRematch={session.hostOnlineRematch}
+                        />
+                      </Suspense>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Interactive Multiplayer Emote Reaction Bar */}
               {session.mode === 'multiplayer' && (
-                <MultiplayerEmotes
-                  opponent={session.opponent}
-                  myRole={session.myRole}
-                  activeTurn={session.activeTurn}
-                  activeEmotes={session.activeEmotes}
-                  onSendEmote={(sender, emoji) =>
-                    session.triggerEmote(sender, emoji, true)
-                  }
-                  p1Name={session.playerNames.p1}
-                  p2Name={session.playerNames.p2}
-                  disabled={session.emoteBarDisabled}
-                />
+                <Suspense fallback={null}>
+                  <MultiplayerEmotes
+                    opponent={session.opponent}
+                    myRole={session.myRole}
+                    activeTurn={session.activeTurn}
+                    activeEmotes={session.activeEmotes}
+                    onSendEmote={(sender, emoji) =>
+                      session.triggerEmote(sender, emoji, true)
+                    }
+                    p1Name={session.playerNames.p1}
+                    p2Name={session.playerNames.p2}
+                    disabled={session.emoteBarDisabled}
+                  />
+                </Suspense>
               )}
 
               {/* Color Action Palette (hidden for spectator seats) */}
@@ -393,125 +449,150 @@ export default function App() {
         {/* Settings sheet — outside the play column, so opening it never
             moves the board and it stays anchored to the header button. */}
         {showSettings && (
-          <SettingsPanel
-            gridSize={session.gridSize}
-            onChangeGridSize={session.handleChangeGridSize}
-            colorCount={session.colorCount}
-            onChangeColorCount={session.handleChangeColorCount}
-            boardShape={session.boardShape}
-            onChangeBoardShape={session.handleChangeBoardShape}
-            mode={session.mode}
-            opponent={session.opponent}
-            onChangeOpponent={session.setOpponent}
-            botDifficulty={session.botDifficulty}
-            onChangeBotDifficulty={session.handleSetBotDifficulty}
-            showTerritoryOverlay={session.showTerritoryOverlay}
-            onToggleTerritoryOverlay={() => session.setShowTerritoryOverlay((prev) => !prev)}
-            showColorSymbols={session.showColorSymbols}
-            onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
-            showHints={session.showHints}
-            onToggleShowHints={() => session.setShowHints((prev) => !prev)}
-            onResetSeries={session.resetSeries}
-            onSetToEasiest={session.handleSetToEasiest}
-            activeThemeId={session.themeId}
-            onOpenThemeModal={() => setShowThemeModal(true)}
-            challengeType={session.challengeType}
-            onChangeChallengeType={session.handleChangeChallengeType}
-            turnTimerSec={session.roomState?.turnTimerSec ?? 0}
-            onChangeTurnTimerSec={
-              session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
-            }
-            soundMuted={session.soundMuted}
-            onToggleSound={session.toggleSound}
-            onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
-            onClose={() => setShowSettings(false)}
-            onOpenInfo={() => {
-              setShowSettings(false);
-              setShowInfoModal(true);
-            }}
-          />
+          <Suspense fallback={null}>
+            <SettingsPanel
+              gridSize={session.gridSize}
+              onChangeGridSize={session.handleChangeGridSize}
+              colorCount={session.colorCount}
+              onChangeColorCount={session.handleChangeColorCount}
+              boardShape={session.boardShape}
+              onChangeBoardShape={session.handleChangeBoardShape}
+              mode={session.mode}
+              opponent={session.opponent}
+              onChangeOpponent={session.setOpponent}
+              botDifficulty={session.botDifficulty}
+              onChangeBotDifficulty={session.handleSetBotDifficulty}
+              showTerritoryOverlay={session.showTerritoryOverlay}
+              onToggleTerritoryOverlay={() =>
+                session.setShowTerritoryOverlay((prev) => !prev)
+              }
+              showColorSymbols={session.showColorSymbols}
+              onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
+              showHints={session.showHints}
+              onToggleShowHints={() => session.setShowHints((prev) => !prev)}
+              onResetSeries={session.resetSeries}
+              onSetToEasiest={session.handleSetToEasiest}
+              activeThemeId={session.themeId}
+              onOpenThemeModal={() => setShowThemeModal(true)}
+              challengeType={session.challengeType}
+              onChangeChallengeType={session.handleChangeChallengeType}
+              turnTimerSec={session.roomState?.turnTimerSec ?? 0}
+              onChangeTurnTimerSec={
+                session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
+              }
+              soundMuted={session.soundMuted}
+              onToggleSound={session.toggleSound}
+              onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
+              onClose={() => setShowSettings(false)}
+              onOpenInfo={() => {
+                setShowSettings(false);
+                setShowInfoModal(true);
+              }}
+            />
+          </Suspense>
         )}
 
-        {/* Opponent Reset Approval Modal */}
-        <ResetApprovalModal
-          isOpen={Boolean(session.activeOnlineProposal) || session.showLocalResetConfirm}
-          proposal={session.activeOnlineProposal}
-          myRole={session.myRole}
-          opponent={session.opponent}
-          p1Name={session.roomState?.p1Name || 'Player 1'}
-          p2Name={session.roomState?.p2Name || 'Player 2'}
-          isLocalConfirm={session.showLocalResetConfirm}
-          onAccept={
-            session.opponent === 'online'
-              ? session.acceptOnlineRematch
-              : session.confirmLocalReset
-          }
-          onDecline={
-            session.opponent === 'online'
-              ? session.declineOnlineRematch
-              : session.cancelLocalReset
-          }
-          onCancelLocal={session.cancelLocalReset}
-        />
+        {/* Opponent Reset Approval Modal — mounted only while a proposal or
+            local confirm exists; its props already carry every state it needs. */}
+        {(Boolean(session.activeOnlineProposal) || session.showLocalResetConfirm) && (
+          <Suspense fallback={null}>
+            <ResetApprovalModal
+              isOpen={true}
+              proposal={session.activeOnlineProposal}
+              myRole={session.myRole}
+              opponent={session.opponent}
+              p1Name={session.roomState?.p1Name || 'Player 1'}
+              p2Name={session.roomState?.p2Name || 'Player 2'}
+              isLocalConfirm={session.showLocalResetConfirm}
+              onAccept={
+                session.opponent === 'online'
+                  ? session.acceptOnlineRematch
+                  : session.confirmLocalReset
+              }
+              onDecline={
+                session.opponent === 'online'
+                  ? session.declineOnlineRematch
+                  : session.cancelLocalReset
+              }
+              onCancelLocal={session.cancelLocalReset}
+            />
+          </Suspense>
+        )}
 
-        {/* Theme Selector Modal */}
-        <ThemeSelectorModal
-          isOpen={showThemeModal}
-          activeThemeId={session.themeId}
-          onSelectTheme={session.handleSelectTheme}
-          onClose={() => setShowThemeModal(false)}
-        />
+        {showThemeModal && (
+          <Suspense fallback={null}>
+            <ThemeSelectorModal
+              isOpen={true}
+              activeThemeId={session.themeId}
+              onSelectTheme={session.handleSelectTheme}
+              onClose={() => setShowThemeModal(false)}
+            />
+          </Suspense>
+        )}
 
-        {/* P6.1: Daily Challenge hub */}
-        <DailyChallengeModal
-          isOpen={showDaily}
-          onClose={() => setShowDaily(false)}
-          dailyDate={session.dailyDate}
-          dailyShareText={session.dailyShareText}
-          dailyStreak={session.dailyStreak}
-          onStartDaily={() => {
-            session.startDailyChallenge();
-            setShowDaily(false);
-          }}
-        />
+        {showDaily && (
+          <Suspense fallback={null}>
+            <DailyChallengeModal
+              isOpen={true}
+              onClose={() => setShowDaily(false)}
+              dailyDate={session.dailyDate}
+              dailyShareText={session.dailyShareText}
+              dailyStreak={session.dailyStreak}
+              onStartDaily={() => {
+                session.startDailyChallenge();
+                setShowDaily(false);
+              }}
+            />
+          </Suspense>
+        )}
 
-        {/* P6.2: solo statistics */}
-        <StatsModal
-          isOpen={showStats}
-          onClose={() => setShowStats(false)}
-          soloStats={session.soloStats}
-          dailyStreak={session.dailyStreak}
-          onReset={session.resetSoloStats}
-        />
+        {showStats && (
+          <Suspense fallback={null}>
+            <StatsModal
+              isOpen={true}
+              onClose={() => setShowStats(false)}
+              soloStats={session.soloStats}
+              dailyStreak={session.dailyStreak}
+              onReset={session.resetSoloStats}
+            />
+          </Suspense>
+        )}
 
         {/* P6.3: replay viewer (over the game-over card) */}
-        {session.mode === 'solo' && session.soloState && (
-          <ReplayModal
-            isOpen={showReplay}
-            onClose={() => setShowReplay(false)}
-            grid={session.soloState.grid}
-            history={session.soloState.history}
-            playedColors={session.soloState.playedColors}
-            theme={session.currentTheme}
-            shape={session.soloState.shape}
-            size={session.soloState.boardSize}
-          />
+        {showReplay && session.mode === 'solo' && session.soloState && (
+          <Suspense fallback={null}>
+            <ReplayModal
+              isOpen={true}
+              onClose={() => setShowReplay(false)}
+              grid={session.soloState.grid}
+              history={session.soloState.history}
+              playedColors={session.soloState.playedColors}
+              theme={session.currentTheme}
+              shape={session.soloState.shape}
+              size={session.soloState.boardSize}
+            />
+          </Suspense>
         )}
 
-        {/* Rules Modal */}
-        <HowToPlayModal
-          isOpen={showInfoModal}
-          onClose={() => setShowInfoModal(false)}
-          initialMode={session.mode}
-        />
+        {showInfoModal && (
+          <Suspense fallback={null}>
+            <HowToPlayModal
+              isOpen={true}
+              onClose={() => setShowInfoModal(false)}
+              initialMode={session.mode}
+            />
+          </Suspense>
+        )}
 
         {/* P5.7: first-run interactive tutorial (once per device) */}
         {showTutorial && !session.isOnlineLobbyActive && (
-          <FirstRunTutorial
-            hasMadeFirstMove={hasMadeFirstMove}
-            onFinish={finishTutorial}
-            boardShape={session.mode === 'solo' ? session.boardShape : 'classic'}
-          />
+          <Suspense fallback={null}>
+            <FirstRunTutorial
+              hasMadeFirstMove={hasMadeFirstMove}
+              onFinish={finishTutorial}
+              boardShape={session.mode === 'solo' ? session.boardShape : 'classic'}
+            />
+          </Suspense>
         )}
 
         {/* Sleek Minimal Footer */}
