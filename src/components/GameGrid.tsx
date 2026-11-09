@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { GameMode, MultiplayerOpponent, GameTheme } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
+import { BoardCell } from './BoardCell';
 
 /**
  * P4.6: board rendering used to run one framer-motion element per cell (up to
@@ -31,101 +32,6 @@ interface GameGridProps {
   /** Measured square edge from useBoardFit — the board fills its box. */
   boardPx?: number;
 }
-
-interface GridCellProps {
-  color: string;
-  radiusClass: string;
-  glowClass: string;
-  /** Which start-corner halo to render, if any. */
-  startMarker: 'none' | 'p1' | 'p2';
-  p2Label: string;
-  showOverlay: boolean;
-  ownedMarker: 'none' | 'p1' | 'p2';
-  waveDelay: number;
-  /**
-   * Palette index — the pop keyframe is named per color, so the animation
-   * restarts when (and only when) this cell's color changes.
-   */
-  colorIndex: number;
-  /** P5.4: digit glyph ('' = hidden) with AA ink colors for this cell. */
-  symbolGlyph: string;
-  inkColor: string;
-  inkShadow: string;
-}
-
-/**
- * P4.6: memoized cell — per-cell framer-motion loops replaced by a plain
- * div. Following the original animation schedule:
- *   backgroundColor 0.26s ease-out + wave delay, scale pop 0.32s ease-in-out.
- */
-const GridCell = React.memo(function GridCell({
-  color,
-  radiusClass,
-  glowClass,
-  startMarker,
-  p2Label,
-  showOverlay,
-  ownedMarker,
-  waveDelay,
-  colorIndex,
-  symbolGlyph,
-  inkColor,
-  inkShadow,
-}: GridCellProps) {
-  return (
-    <div
-      className={`relative ${radiusClass} shadow-inner flex items-center justify-center ${glowClass}`}
-      style={{
-        backgroundColor: color,
-        transition: 'background-color 0.26s ease-out',
-        transitionDelay: `${waveDelay}s`,
-        // `backwards` not `both`: the finished pop is dropped instead of kept
-        // alive on the element, so a settled board holds no animations at all.
-        animation: `cell-pop-${colorIndex} 0.32s ease-in-out ${waveDelay}s backwards`,
-      }}
-    >
-      {/* P5.4: palette-index digit (1–8) — tells a color-blind player exactly
-          which palette button to press; ink is contrast-checked per cell. */}
-      {symbolGlyph && (
-        <span
-          className="pointer-events-none select-none font-black leading-none text-[11px] sm:text-[13px]"
-          style={{ color: inkColor, textShadow: inkShadow }}
-        >
-          {symbolGlyph}
-        </span>
-      )}
-      {/* Starting Root Corner Animated Halo — visuals unchanged */}
-      {startMarker === 'p1' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <span className="relative flex items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded bg-cyan-400 opacity-40" />
-            <span className="relative bg-slate-950/90 text-cyan-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-cyan-400/70 shadow">
-              P1
-            </span>
-          </span>
-        </div>
-      )}
-      {startMarker === 'p2' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <span className="relative flex items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded bg-rose-400 opacity-40" />
-            <span className="relative bg-slate-950/90 text-rose-300 text-[8px] sm:text-[9px] font-black px-1 py-0.2 rounded border border-rose-400/70 shadow">
-              {p2Label}
-            </span>
-          </span>
-        </div>
-      )}
-
-      {/* Subtle Territory Markers on Owned Cells */}
-      {showOverlay && startMarker === 'none' && ownedMarker === 'p1' && (
-        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-cyan-100/90 shadow-sm pointer-events-none" />
-      )}
-      {showOverlay && startMarker === 'none' && ownedMarker === 'p2' && (
-        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-rose-100/90 shadow-sm pointer-events-none" />
-      )}
-    </div>
-  );
-});
 
 export const GameGrid: React.FC<GameGridProps> = ({
   grid,
@@ -194,7 +100,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
             const ink = showColorSymbols ? cellInkOn(cellHex) : null;
 
             return (
-              <GridCell
+              <BoardCell
                 key={key}
                 color={cellHex}
                 radiusClass={radius}

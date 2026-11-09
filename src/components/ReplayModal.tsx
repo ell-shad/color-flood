@@ -16,9 +16,8 @@ import {
   reconstructTwoPlayerReplayStates,
   type MultiplayerReplayData,
 } from '../utils/replay';
-import { isWheel } from '../utils/boardShape';
-import { WheelBoard } from './WheelBoard';
-import { GameGrid } from './GameGrid';
+import { isCube, isWheel } from '../utils/boardShape';
+import { BoardRenderer } from './BoardRenderer';
 import type { SoloMoveDiff, GameTheme, BoardShape } from '../types';
 import type { TwoPlayerReplayState } from '../utils/replay';
 
@@ -169,35 +168,24 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
             </button>
           </div>
 
-          {/* Board frame — P7.3: wheels replay on the polar board; P10.3:
-              two-player states render the live boards, overlay included. A 2P
-              state wraps the grid + ownership, so the ARRAY passed to the
-              boards is state.grid — the state object itself would render a
-              blank wheel (WheelBoard's optional chaining) and crash GameGrid. */}
+          {/* Board frame — P7.3/P10.3/P11.4: wheel/cube and 2P states render
+              the live boards with ownership overlays. Solo classic keeps the
+              lightweight historical replay grid. A 2P state wraps the grid +
+              ownership, so the ARRAY passed to the boards is state.grid. */}
           <div className="flex justify-center">
-            {isWheel(shape) ? (
-              <WheelBoard
+            {isWheel(shape) || isCube(shape) || multiplayer ? (
+              <BoardRenderer
+                shape={shape}
                 grid={state ? state.grid : replayGrid}
                 size={size}
                 theme={theme}
                 frameWidth="min(100%, 300px)"
-                // P10.3: ownership overlay + BOT badge in 2P replays.
+                boardPx={300}
                 mode={multiplayer ? 'multiplayer' : 'solo'}
                 opponent={multiplayer?.opponent}
                 p1Cells={state ? state.p1Cells : []}
                 p2Cells={state ? state.p2Cells : []}
                 showTerritoryOverlay={true}
-              />
-            ) : multiplayer && state ? (
-              <GameGrid
-                grid={state.grid}
-                gridSize={state.grid.length}
-                mode="multiplayer"
-                opponent={multiplayer.opponent}
-                p1Cells={state.p1Cells}
-                p2Cells={state.p2Cells}
-                showTerritoryOverlay={true}
-                theme={theme}
               />
             ) : (
               <div

@@ -18,6 +18,8 @@ import {
   floodCube,
   checkCubeWin,
   getMaxCubeMoves,
+  cubeSeedCell,
+  getCubeSide,
 } from '../utils/cubeEngine';
 import { buildMoveDiff } from '../utils/replay';
 import { assertNever, parseBoardShape } from '../utils/boardShape';
@@ -104,6 +106,15 @@ type SoloAction =
 /** Uniform random 32-bit seed share links can encode (URL-safe integer). */
 const randomSeed32 = (): number => (Math.random() * 2 ** 32) >>> 0;
 
+const currentFloodColor = (state: SoloGameState): number => {
+  if (state.shape === 'cube') {
+    const side = getCubeSide(state.grid);
+    const [r, c] = cubeSeedCell(side);
+    return state.grid[r][c];
+  }
+  return state.grid[0][0];
+};
+
 const soloReducer = (
   state: SoloGameState | null,
   action: SoloAction,
@@ -151,7 +162,7 @@ const soloReducer = (
     }
     case 'move': {
       if (!state || state.status !== 'playing') return state;
-      if (action.color === state.grid[0][0]) return state; // same as current flood color
+      if (action.color === currentFloodColor(state)) return state; // same as current flood color
       let newGrid: number[][];
       let isWin: boolean;
       switch (state.shape) {

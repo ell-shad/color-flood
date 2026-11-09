@@ -7,14 +7,12 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useBoardFit } from './hooks/useBoardFit';
 import { loadBool, saveString } from './utils/storage';
-import { isWheel } from './utils/boardShape';
 
 // Boot-critical chrome: needed for the very first playable frame.
 import { Header } from './components/Header';
 import { SoloScoreboard } from './components/SoloScoreboard';
 import { TwoPlayerScoreboard } from './components/TwoPlayerScoreboard';
-import { GameGrid } from './components/GameGrid';
-import { WheelBoard } from './components/WheelBoard';
+import { BoardRenderer } from './components/BoardRenderer';
 import { ColorPalette } from './components/ColorPalette';
 
 /**
@@ -331,38 +329,24 @@ export default function App() {
               >
                 {boardPx > 0 && (
                   <div className="relative" style={{ width: boardPx, height: boardPx }}>
-                    {isWheel(session.boardShape) ? (
-                      <WheelBoard
-                        grid={session.gridView.grid}
-                        size={
-                          session.mode === 'solo'
-                            ? session.soloState.boardSize
-                            : session.gridView.gridSize
-                        }
-                        theme={session.currentTheme}
-                        showColorSymbols={session.showColorSymbols}
-                        boardPx={boardPx}
-                        mode={session.mode}
-                        opponent={session.opponent}
-                        p1Cells={session.gridView.p1Cells}
-                        p2Cells={session.gridView.p2Cells}
-                        showTerritoryOverlay={session.showTerritoryOverlay}
-                      />
-                    ) : (
-                      <GameGrid
-                        grid={session.gridView.grid}
-                        gridSize={session.gridView.gridSize}
-                        mode={session.mode}
-                        opponent={session.opponent}
-                        p1Cells={session.gridView.p1Cells}
-                        p2Cells={session.gridView.p2Cells}
-                        showTerritoryOverlay={session.showTerritoryOverlay}
-                        showColorSymbols={session.showColorSymbols}
-                        lastMovingPlayer={session.lastMovingPlayer}
-                        theme={session.currentTheme}
-                        boardPx={boardPx}
-                      />
-                    )}
+                    <BoardRenderer
+                      shape={session.boardShape}
+                      grid={session.gridView.grid}
+                      size={
+                        session.mode === 'solo'
+                          ? session.soloState.boardSize
+                          : session.gridView.gridSize
+                      }
+                      theme={session.currentTheme}
+                      showColorSymbols={session.showColorSymbols}
+                      boardPx={boardPx}
+                      mode={session.mode}
+                      opponent={session.opponent}
+                      p1Cells={session.gridView.p1Cells}
+                      p2Cells={session.gridView.p2Cells}
+                      showTerritoryOverlay={session.showTerritoryOverlay}
+                      lastMovingPlayer={session.lastMovingPlayer}
+                    />
 
                     {/* Game Over Modal Overlay — code-split: fetched only when a
                     round actually ends (its own render gate, mirrored here). */}
@@ -442,7 +426,7 @@ export default function App() {
                   disabled={session.paletteDisabled}
                   hint={session.hint}
                   hintGain={session.hintGain}
-                  soloCurrentColor={session.soloState.grid[0][0]}
+                  soloCurrentColor={session.soloCurrentColor}
                   p1Color={session.activeMatch?.p1Color ?? 0}
                   p2Color={session.activeMatch?.p2Color ?? 0}
                   opponent={session.opponent}

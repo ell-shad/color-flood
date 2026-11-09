@@ -23,6 +23,7 @@ import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
 import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
+import { bestCubeMoveWithGain, cubeSeedCell, getCubeSide } from '../utils/cubeEngine';
 import {
   playEmotePopSound,
   playLoseSound,
@@ -158,6 +159,7 @@ export interface GameSession {
 
   // --- Unified match state (P4.2) ---
   soloState: SoloGameState | null;
+  soloCurrentColor: number;
   localState: TwoPlayerGameState | null;
   /** The match actually on screen: coerced online room or the local machine. */
   activeMatch: TwoPlayerGameState | null;
@@ -847,6 +849,18 @@ export function useGameSession(): GameSession {
   } else {
     boardShape = localState?.shape ?? prefs.boardShape;
   }
+  // The solo flood color is the seed color: classic top-left, wheel seed
+  // ring, and the cube's center face cell.
+  const soloCurrentColor = (() => {
+    if (!soloState) return 0;
+    if (soloState.shape === 'cube') {
+      const side = getCubeSide(soloState.grid);
+      const [r, c] = cubeSeedCell(side);
+      return soloState.grid[r][c];
+    }
+    return soloState.grid[0][0];
+  })();
+
   // Cell count follows the board (classic/unified rows × cols, including the
   const totalCells = Math.max(
     1,
@@ -919,7 +933,7 @@ export function useGameSession(): GameSession {
       if (prefs.mode === 'solo') {
         const s = soloState;
         if (!s || s.status !== 'playing') return;
-        if (color === s.grid[0][0]) return;
+        if (color === soloCurrentColor) return;
         setLastMovingPlayer(1);
         playMoveSound(color);
         clearHint();
@@ -940,6 +954,7 @@ export function useGameSession(): GameSession {
       prefs.mode,
       prefs.opponent,
       soloState,
+      soloCurrentColor,
       makeSoloMove,
       makeLocalMove,
       myRole,
@@ -964,6 +979,12 @@ export function useGameSession(): GameSession {
           const wheelHint = bestWheelMoveWithGain(s.grid, s.boardColors);
           setHint(wheelHint?.color ?? null);
           setHintGain(wheelHint?.gain);
+          break;
+        }
+        case 'cube': {
+          const cubeHint = bestCubeMoveWithGain(s.grid, s.boardColors);
+          setHint(cubeHint?.color ?? null);
+          setHintGain(cubeHint?.gain);
           break;
         }
         case 'classic':
@@ -1348,6 +1369,7 @@ export function useGameSession(): GameSession {
     hostOnlineRematch,
     // Unified state
     soloState,
+    soloCurrentColor,
     localState,
     activeMatch,
     matchGridSize,
