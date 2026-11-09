@@ -4,10 +4,12 @@ import { assertNever } from '../utils/boardShape';
 import { GameGrid } from './GameGrid';
 import { WheelBoard } from './WheelBoard';
 import { CubeBoard } from './CubeBoard';
+import { MosaicBoard } from './MosaicBoard';
 
 /**
  * P11.4: one exhaustive board switch for App and ReplayModal.
- * Classic stays on GameGrid; wheel and cube keep their dedicated renderers.
+ * Classic stays on GameGrid; wheel, cube and mosaic keep their dedicated
+ * renderers.
  */
 export interface BoardRendererProps {
   shape: BoardShape;
@@ -73,6 +75,17 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
           frameWidth={frameWidth}
           boardPx={boardPx}
           lastMovingPlayer={lastMovingPlayer}
+        />
+      );
+    case 'mosaic':
+      return (
+        <MosaicBoard
+          grid={grid}
+          size={size}
+          theme={theme}
+          showColorSymbols={showColorSymbols}
+          frameWidth={frameWidth}
+          boardPx={boardPx}
         />
       );
     case 'classic':

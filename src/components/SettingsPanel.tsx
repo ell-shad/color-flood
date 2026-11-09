@@ -25,6 +25,7 @@ import {
   Square,
   Circle,
   Box,
+  Hexagon,
   X,
   Info,
 } from 'lucide-react';
@@ -58,6 +59,13 @@ const BOARD_SHAPE_OPTIONS: Array<{
     title: 'Cube surface: six faces, flood wraps across edges',
     Icon: Box,
     activeClass: 'bg-emerald-600 text-white shadow border border-emerald-400/50',
+  },
+  {
+    id: 'mosaic',
+    label: 'Mosaic',
+    title: 'Mosaic: an irregular polygonal tiling — flood spreads through the shards',
+    Icon: Hexagon,
+    activeClass: 'bg-amber-600 text-white shadow border border-amber-400/50',
   },
 ];
 
@@ -307,11 +315,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     : 'seeds both on the outer ring'}
                 </span>
               </div>
-              <div
-                className={`grid gap-1.5 ${
-                  shapeOptions.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
-                }`}
-              >
+              <div className={`grid grid-cols-2 gap-1.5`}>
                 {shapeOptions.map(({ id, label, title, Icon, activeClass }) => (
                   <button
                     key={id}

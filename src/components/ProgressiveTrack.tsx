@@ -97,6 +97,9 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                 sizeWords = `cube with ${side} cells per side`;
                 break;
               }
+              // Solo-only topologies never reach a multiplayer ladder; the
+              // case keeps the switch exhaustive.
+              case 'mosaic':
               case 'classic':
                 break;
               default:

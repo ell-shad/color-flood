@@ -20,6 +20,7 @@ export function isWheel(shape: BoardShape): boolean {
     case 'wheel':
       return true;
     case 'cube':
+    case 'mosaic':
       return false;
     default:
       return assertNever(shape);
@@ -34,6 +35,7 @@ export function isFlatShape(shape: BoardShape): boolean {
   switch (shape) {
     case 'classic':
     case 'wheel':
+    case 'mosaic':
       return true;
     case 'cube':
       return false;
@@ -50,6 +52,7 @@ export function isClassic(shape: BoardShape): boolean {
     case 'wheel':
       return false;
     case 'cube':
+    case 'mosaic':
       return false;
     default:
       return assertNever(shape);
@@ -61,8 +64,23 @@ export function isCube(shape: BoardShape): boolean {
   switch (shape) {
     case 'classic':
     case 'wheel':
+    case 'mosaic':
       return false;
     case 'cube':
+      return true;
+    default:
+      return assertNever(shape);
+  }
+}
+
+/** P13: irregular polygonal tiling (solo only, like the cube). */
+export function isMosaic(shape: BoardShape): boolean {
+  switch (shape) {
+    case 'classic':
+    case 'wheel':
+    case 'cube':
+      return false;
+    case 'mosaic':
       return true;
     default:
       return assertNever(shape);
@@ -75,7 +93,7 @@ export function isCube(shape: BoardShape): boolean {
  * two players on the same screen.
  */
 export function isSoloOnlyShape(shape: BoardShape): boolean {
-  return isCube(shape);
+  return isCube(shape) || isMosaic(shape);
 }
 
 /**
@@ -102,6 +120,8 @@ export function parseBoardShape(raw: unknown): BoardShape {
       return 'wheel';
     case 'cube':
       return 'cube';
+    case 'mosaic':
+      return 'mosaic';
     default:
       return 'classic';
   }

@@ -12,6 +12,7 @@ import {
   Circle,
   Square,
   Box,
+  Hexagon,
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import {
@@ -21,7 +22,7 @@ import {
   avgMovesFor,
 } from '../utils/soloStats';
 import { type DailyStreak } from '../utils/daily';
-import { isCube, isWheel } from '../utils/boardShape';
+import { isCube, isMosaic, isWheel } from '../utils/boardShape';
 import { type SoloStars } from '../utils/soloBalance';
 
 interface StatsModalProps {
@@ -198,7 +199,12 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                           <td className="py-1.5 px-2 text-left font-mono font-bold text-indigo-300">
                             {/* P7.3: rows are keyed by topology (classic ⊞ / wheel ◉) */}
                             <span className="inline-flex items-center gap-1">
-                              {isCube(entry.shape) ? (
+                              {isMosaic(entry.shape) ? (
+                                <Hexagon
+                                  className="w-3 h-3 text-amber-300 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              ) : isCube(entry.shape) ? (
                                 <Box
                                   className="w-3 h-3 text-emerald-300 shrink-0"
                                   aria-hidden="true"
@@ -216,15 +222,21 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                               )}
                               <span>
                                 {entry.size}
-                                {isWheel(entry.shape) || isCube(entry.shape) ? '' : '²'}·
-                                {entry.colors}
+                                {isWheel(entry.shape) ||
+                                isCube(entry.shape) ||
+                                isMosaic(entry.shape)
+                                  ? ''
+                                  : '²'}
+                                ·{entry.colors}
                               </span>
                               <span className="sr-only">
-                                {isWheel(entry.shape)
-                                  ? 'wheel board'
-                                  : isCube(entry.shape)
-                                    ? 'cube board'
-                                    : 'classic board'}
+                                {isMosaic(entry.shape)
+                                  ? 'mosaic board'
+                                  : isWheel(entry.shape)
+                                    ? 'wheel board'
+                                    : isCube(entry.shape)
+                                      ? 'cube board'
+                                      : 'classic board'}
                               </span>
                             </span>
                           </td>

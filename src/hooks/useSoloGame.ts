@@ -21,6 +21,13 @@ import {
   cubeSeedCell,
   getCubeSide,
 } from '../utils/cubeEngine';
+import {
+  generateMosaicBoard,
+  floodMosaic,
+  checkMosaicWin,
+  getMaxMosaicMoves,
+  mosaicSeedCell,
+} from '../utils/mosaicEngine';
 import { buildMoveDiff } from '../utils/replay';
 import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { mulberry32 } from '../utils/engine';
@@ -40,7 +47,8 @@ import { z } from 'zod';
 
 const HighScoreSchema = z.object({
   // P7.3/P11: rows written before shapes existed load as classic square records.
-  shape: z.enum(['classic', 'wheel', 'cube']).optional(),
+  // P13: mosaic records are keyed like every other solo topology.
+  shape: z.enum(['classic', 'wheel', 'cube', 'mosaic']).optional(),
   size: z.number().int().min(5).max(30),
   colors: z.number().int().min(2).max(12),
   moves: z.number().int().min(1).max(9999),
@@ -112,6 +120,10 @@ const currentFloodColor = (state: SoloGameState): number => {
     const [r, c] = cubeSeedCell(side);
     return state.grid[r][c];
   }
+  if (state.shape === 'mosaic') {
+    const [r, c] = mosaicSeedCell(state.grid.length);
+    return state.grid[r][c];
+  }
   return state.grid[0][0];
 };
 
@@ -139,6 +151,10 @@ const soloReducer = (
         case 'cube':
           grid = generateCubeBoard(action.size, action.colors, mulberry32(seed));
           maxMoves = getMaxCubeMoves(action.size, action.colors);
+          break;
+        case 'mosaic':
+          grid = generateMosaicBoard(action.size, action.colors, mulberry32(seed));
+          maxMoves = getMaxMosaicMoves(action.size, action.colors);
           break;
         case 'classic':
           grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
@@ -173,6 +189,10 @@ const soloReducer = (
         case 'cube':
           newGrid = floodCube(state.grid, action.color);
           isWin = checkCubeWin(newGrid);
+          break;
+        case 'mosaic':
+          newGrid = floodMosaic(state.grid, action.color);
+          isWin = checkMosaicWin(newGrid);
           break;
         case 'classic':
           newGrid = floodSolo(state.grid, action.color);

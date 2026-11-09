@@ -154,6 +154,12 @@ body {
   transform-origin: center;
 }
 
+/* P13: mosaic facets are SVG polygons too — same bbox-centred pop. */
+.mosaic-cell {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 /* P5.2: always-visible keyboard focus ring (brand indigo). */
 :focus-visible {
   outline: 2px solid #818cf8;

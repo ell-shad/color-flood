@@ -113,6 +113,15 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
+                  <strong>Mosaic boards (solo only):</strong> switch Board Shape to{' '}
+                  <em>Mosaic</em> — the board is an irregular tiling of polygonal shards
+                  and the flood starts in the shard nearest the middle, spreading shard by
+                  shard across shared edges.
+                </p>
+              </div>
+              <div className="flex gap-2.5 items-start">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p>
                   <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify
                   the color that claims the highest number of adjacent cells in one
                   stroke.

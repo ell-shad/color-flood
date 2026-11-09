@@ -9,6 +9,7 @@ import {
 import { rateSoloStars } from './soloBalance';
 import { rateWheelStars } from './circleEngine';
 import { rateCubeStars } from './cubeEngine';
+import { rateMosaicStars } from './mosaicEngine';
 
 describe('updateSoloStats', () => {
   it('records a first win: totals, streak, config entry with best', () => {
@@ -127,6 +128,24 @@ describe('updateSoloStats', () => {
       bestMoves: 13,
     });
     expect(statsStarsFor(s.byConfig[0])).toBe(rateCubeStars(13, 12, 5));
+  });
+
+  it('keeps mosaic records separate and rates mosaics on their own par', () => {
+    const s = updateSoloStats(EMPTY_SOLO_STATS, {
+      shape: 'mosaic',
+      size: 12,
+      colors: 5,
+      moves: 14,
+      won: true,
+    });
+    expect(s.byConfig).toHaveLength(1);
+    expect(s.byConfig[0]).toMatchObject({
+      shape: 'mosaic',
+      games: 1,
+      wins: 1,
+      bestMoves: 14,
+    });
+    expect(statsStarsFor(s.byConfig[0])).toBe(rateMosaicStars(14, 12, 5));
   });
 
   it('star rating is derived from the best win', () => {

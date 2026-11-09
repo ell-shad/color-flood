@@ -22,6 +22,7 @@ import type {
 import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
 import { assertNever, parseBoardShape, shapeForMode } from '../utils/boardShape';
+import { bestMosaicMoveWithGain, mosaicSeedCell } from '../utils/mosaicEngine';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import { bestCubeMoveWithGain, cubeSeedCell, getCubeSide } from '../utils/cubeEngine';
 import {
@@ -860,6 +861,10 @@ export function useGameSession(): GameSession {
       const [r, c] = cubeSeedCell(side);
       return soloState.grid[r][c];
     }
+    if (soloState.shape === 'mosaic') {
+      const [r, c] = mosaicSeedCell(soloState.grid.length);
+      return soloState.grid[r][c];
+    }
     return soloState.grid[0][0];
   })();
 
@@ -987,6 +992,12 @@ export function useGameSession(): GameSession {
           const cubeHint = bestCubeMoveWithGain(s.grid, s.boardColors);
           setHint(cubeHint?.color ?? null);
           setHintGain(cubeHint?.gain);
+          break;
+        }
+        case 'mosaic': {
+          const mosaicHint = bestMosaicMoveWithGain(s.grid, s.boardColors);
+          setHint(mosaicHint?.color ?? null);
+          setHintGain(mosaicHint?.gain);
           break;
         }
         case 'classic':

@@ -5,6 +5,7 @@ import { assertNever } from '../utils/boardShape';
 import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
 import { rateWheelStars } from '../utils/circleEngine';
 import { rateCubeStars } from '../utils/cubeEngine';
+import { rateMosaicStars } from '../utils/mosaicEngine';
 
 interface SoloScoreboardProps {
   gameState: SoloGameState;
@@ -62,6 +63,9 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
         break;
       case 'cube':
         stars = rateCubeStars(gameState.moves, ratingSize, colorCount);
+        break;
+      case 'mosaic':
+        stars = rateMosaicStars(gameState.moves, ratingSize, colorCount);
         break;
       case 'classic':
         stars = rateSoloStars(gameState.moves, ratingSize, colorCount);
