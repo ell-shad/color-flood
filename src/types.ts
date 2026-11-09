@@ -16,13 +16,19 @@ export type ThemeId =
   | 'frost'
   | 'botanical'
   | 'jewel'
-  | 'colorblind';
+  | 'colorblind'
+  | 'emoji';
 
 export interface GameTheme {
   id: ThemeId;
   name: string;
   colors: string[];
   colorNames: string[];
+  /**
+   * Optional per-slot emoji: when present, every cell shows its color as an
+   * emoji (red heart, ocean wave, …) instead of a palette digit.
+   */
+  emoji?: string[];
   boardBg: string;
   boardBorder: string;
   cellRadius: string;

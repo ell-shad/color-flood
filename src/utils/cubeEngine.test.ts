@@ -9,6 +9,8 @@ import {
   cubeAntipodeCell,
   cubeCellCenter,
   cubeCellCountForSize,
+  cubeFaceDisplay,
+  cubeFaceOrigin,
   cubeNeighbors,
   cubeSeedCell,
   cubeSideForSize,
@@ -335,5 +337,111 @@ describe('P11 two-player cube', () => {
       p2Cells: board.p2Cells,
     });
     expect(replay[replay.length - 1]).toEqual({ grid, p1Cells: p1, p2Cells: p2 });
+  });
+});
+
+describe('P11 cube render frames', () => {
+  const add = (a: number[], b: number[]): number[] => a.map((v, i) => v + b[i]);
+  const scale = (a: number[], k: number): number[] => a.map((v) => v * k);
+  const pointKey = (p: number[]): string => p.map((v) => v.toFixed(1)).join(',');
+
+  it('places each display cell exactly on its storage cell center', () => {
+    for (const side of [2, 3, 4, 5, 6, 7, 8]) {
+      const centers = new Set<string>();
+      for (let face = 0; face < 6; face++) {
+        const { colAxis, rowAxis, transpose } = cubeFaceDisplay(face);
+        const origin = cubeFaceOrigin(face, side);
+        for (let dr = 0; dr < side; dr++) {
+          for (let dc = 0; dc < side; dc++) {
+            const i = transpose ? dc : dr;
+            const j = transpose ? dr : dc;
+            const display = add(
+              origin,
+              add(scale(colAxis, dc + 0.5), scale(rowAxis, dr + 0.5)),
+            );
+            const storage = cubeCellCenter(face * side + i, j, side);
+            for (let axis = 0; axis < 3; axis++) {
+              expect(display[axis]).toBeCloseTo(storage[axis], 9);
+            }
+            centers.add(pointKey(display));
+          }
+        }
+      }
+      // No two cells may overlap: every surface cell has its own spot.
+      expect(centers.size).toBe(6 * side * side);
+    }
+  });
+
+  it('returns orthonormal, outward-facing, right-handed frames', () => {
+    for (let face = 0; face < 6; face++) {
+      const { colAxis, rowAxis, normal } = cubeFaceDisplay(face);
+      const length = (v: number[]) => Math.hypot(v[0], v[1], v[2]);
+      expect(length(colAxis)).toBeCloseTo(1, 9);
+      expect(length(rowAxis)).toBeCloseTo(1, 9);
+      expect(length(normal)).toBeCloseTo(1, 9);
+      const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      expect(dot(colAxis, rowAxis)).toBeCloseTo(0, 9);
+      expect(dot(colAxis, normal)).toBeCloseTo(0, 9);
+      expect(dot(rowAxis, normal)).toBeCloseTo(0, 9);
+
+      const cross = [
+        colAxis[1] * rowAxis[2] - colAxis[2] * rowAxis[1],
+        colAxis[2] * rowAxis[0] - colAxis[0] * rowAxis[2],
+        colAxis[0] * rowAxis[1] - colAxis[1] * rowAxis[0],
+      ];
+      // Right-handed: back-face culling and glyph orientation depend on it.
+      for (let axis = 0; axis < 3; axis++) {
+        expect(cross[axis]).toBeCloseTo(normal[axis], 12);
+      }
+    }
+  });
+
+  it('renders exactly the derived neighbour graph (no seams that teleport)', () => {
+    for (const side of [3, 4, 5, 6]) {
+      const { neighbors } = cubeTopology(side);
+      const edgeToCells = new Map<string, number[]>();
+
+      for (let face = 0; face < 6; face++) {
+        const { colAxis, rowAxis, transpose } = cubeFaceDisplay(face);
+        const origin = cubeFaceOrigin(face, side);
+        for (let dr = 0; dr < side; dr++) {
+          for (let dc = 0; dc < side; dc++) {
+            const i = transpose ? dc : dr;
+            const j = transpose ? dr : dc;
+            const index = (face * side + i) * side + j;
+            const center = add(
+              origin,
+              add(scale(colAxis, dc + 0.5), scale(rowAxis, dr + 0.5)),
+            );
+            const corners = [
+              add(center, add(scale(colAxis, -0.5), scale(rowAxis, -0.5))),
+              add(center, add(scale(colAxis, 0.5), scale(rowAxis, -0.5))),
+              add(center, add(scale(colAxis, 0.5), scale(rowAxis, 0.5))),
+              add(center, add(scale(colAxis, -0.5), scale(rowAxis, 0.5))),
+            ];
+            for (let edge = 0; edge < 4; edge++) {
+              const key = [pointKey(corners[edge]), pointKey(corners[(edge + 1) % 4])]
+                .sort()
+                .join('|');
+              const cells = edgeToCells.get(key) ?? [];
+              cells.push(index);
+              edgeToCells.set(key, cells);
+            }
+          }
+        }
+      }
+
+      const displayed = new Set<string>();
+      for (const cells of edgeToCells.values()) {
+        expect(cells).toHaveLength(2);
+        displayed.add([...cells].sort((a, b) => a - b).join('-'));
+      }
+      const expected = new Set(
+        neighbors.flatMap((list, index) =>
+          list.filter((next) => next > index).map((next) => `${index}-${next}`),
+        ),
+      );
+      expect(displayed).toEqual(expected);
+    }
   });
 });

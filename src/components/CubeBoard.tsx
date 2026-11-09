@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { RotateCcw } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Eye, EyeOff, RotateCcw } from 'lucide-react';
 import type { GameMode, GameTheme, MultiplayerOpponent } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
 import { prefersReducedMotionSnapshot } from '../utils/motionPreferences';
 import {
+  cubeFaceDisplay,
   cubeSeedCell,
   cubeSideForSize,
   cubeTopology,
@@ -18,8 +19,13 @@ import { BoardCell } from './BoardCell';
  * The board is display-only: players pick colors from the palette, never
  * cells. Six `N×N` faces live in a CSS `preserve-3d` scene; drag and arrow
  * keys rotate the scene through CSS variables kept in a ref (no React state
- * per pointer frame). A flat unfolded net is always visible because three
- * faces are hidden at any orientation.
+ * per pointer frame).
+ *
+ * The face placements are derived from the engine's own face frames
+ * (`cubeFaceDisplay`), so what the player rotates is exactly the surface graph
+ * the flood walks: neighbouring cells are always drawn on a shared cube edge,
+ * including across the twelve geometric seams. The unfolded net is a real cube
+ * net (faces drawn side by side really are adjacent) and can be hidden.
  */
 interface CubeBoardProps {
   grid: number[][];
@@ -37,36 +43,46 @@ interface CubeBoardProps {
   lastMovingPlayer?: 1 | 2;
 }
 
-const DEFAULT_ROTATION = { x: -18, y: 35 };
+/**
+ * Default view: turn the seed face (`x = 0` in cube coordinates) to the
+ * front-left so the flood origin is visible from the first move.
+ */
+const DEFAULT_ROTATION = { x: -26, y: 45 };
 const clampX = (value: number) => Math.max(-85, Math.min(85, value));
 
-/** Cross net: top face above the front, back face after the right face. */
+/**
+ * Cross net: `face 4` above the seed face, its three neighbours around it and
+ * the opposite face (`face 1`) folded off `face 3`. Every pair of faces that
+ * touches in this layout is adjacent on the cube — the previous net put the
+ * two opposite faces side by side.
+ */
 const NET_FACES: Array<{ face: number; col: number; row: number }> = [
   { face: 4, col: 1, row: 0 },
-  { face: 1, col: 0, row: 1 },
+  { face: 2, col: 0, row: 1 },
   { face: 0, col: 1, row: 1 },
   { face: 3, col: 2, row: 1 },
-  { face: 5, col: 3, row: 1 },
-  { face: 2, col: 1, row: 2 },
+  { face: 1, col: 3, row: 1 },
+  { face: 5, col: 1, row: 2 },
 ];
 
-const faceTransform = (face: number, halfPx: number): string => {
-  switch (face) {
-    case 0:
-      return `translateZ(${halfPx}px)`;
-    case 1:
-      return `rotateY(90deg) translateZ(${halfPx}px)`;
-    case 2:
-      return `rotateX(-90deg) translateZ(${halfPx}px)`;
-    case 3:
-      return `rotateY(-90deg) translateZ(${halfPx}px)`;
-    case 4:
-      return `rotateX(90deg) translateZ(${halfPx}px)`;
-    case 5:
-      return `rotateY(180deg) translateZ(${halfPx}px)`;
-    default:
-      return '';
-  }
+interface FacePlacement {
+  /** True when the storage grid has to be read transposed on screen. */
+  transpose: boolean;
+  transform: string;
+}
+
+/**
+ * CSS `matrix3d` placement of one face from its engine frame. Cube coordinates
+ * map straight onto CSS coordinates (x right, y down, z toward the viewer), so
+ * the local column/row/normal axes are simply the matrix columns.
+ */
+const facePlacement = (face: number, halfPx: number): FacePlacement => {
+  const { colAxis, rowAxis, normal, transpose } = cubeFaceDisplay(face);
+  const columns = [colAxis, rowAxis, normal]
+    .map((axis) => `${axis[0]},${axis[1]},${axis[2]},0`)
+    .join(',');
+  const translate = `${normal[0] * halfPx},${normal[1] * halfPx},${normal[2] * halfPx},1`;
+  return { transpose, transform: `matrix3d(${columns},${translate})` };
 };
 
 const parseCellKey = (key: string): [number, number] | null => {
@@ -140,6 +156,8 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
   const velocityRef = useRef({ x: 0, y: 0 });
   const dragRef = useRef<{ id: number; lastX: number; lastY: number } | null>(null);
   const inertiaRef = useRef<number | null>(null);
+  /** The unfolded net is an optional overview of the three hidden faces. */
+  const [showFaces, setShowFaces] = useState(true);
 
   const applyRotation = useCallback(() => {
     const el = cubeRef.current;
@@ -185,7 +203,11 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('button')) return;
     stopInertia();
-    dragRef.current = { id: event.pointerId, lastX: event.clientX, lastY: event.clientY };
+    dragRef.current = {
+      id: event.pointerId,
+      lastX: event.clientX,
+      lastY: event.clientY,
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -246,11 +268,19 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
   };
 
   const framePx = boardPx ?? 320;
-  const cubePx = Math.max(120, Math.floor(framePx * 0.46));
+  // Hiding the net gives the cube the room the panel occupied.
+  const cubePx = Math.max(120, Math.floor(framePx * (showFaces ? 0.46 : 0.52)));
   const halfPx = Math.floor(cubePx / 2);
   const netFacePx = Math.max(28, Math.floor(framePx * 0.082));
 
+  const placements = useMemo(
+    () => Array.from({ length: 6 }, (_, face) => facePlacement(face, halfPx)),
+    [halfPx],
+  );
   const faces = side > 0 ? Array.from({ length: 6 }, (_, face) => face) : [];
+  // The emoji skin is flat-board only, so 3D faces always show colour fills
+  // (and the optional colour-blind digits), never glyph-only cells.
+  const soloSeedKey = mode === 'solo' ? activeSeedKey : null;
 
   return (
     <div
@@ -294,66 +324,77 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
             transform: `rotateX(${DEFAULT_ROTATION.x}deg) rotateY(${DEFAULT_ROTATION.y}deg)`,
           }}
         >
-          {faces.map((face) => (
-            <div
-              key={face}
-              data-cube-face={face}
-              className="cube-face absolute inset-0"
-              style={{
-                transform: faceTransform(face, halfPx),
-                backfaceVisibility: 'hidden',
-                transformStyle: 'preserve-3d',
-                display: 'grid',
-                gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))`,
-                gridTemplateRows: `repeat(${side}, minmax(0, 1fr))`,
-                gap: 1,
-                padding: 3,
-                background: 'rgba(2,6,23,0.72)',
-                border: '1px solid rgba(148,163,184,0.28)',
-                borderRadius: 10,
-              }}
-            >
-              {Array.from({ length: side }, (_, i) =>
-                Array.from({ length: side }, (_, j) => {
-                  const r = face * side + i;
-                  const c = j;
-                  const key = `${r},${c}`;
-                  const colorIdx = grid[r]?.[c] ?? 0;
-                  const cellHex = theme.colors[colorIdx] || '#FF595E';
-                  const ink = showColorSymbols ? cellInkOn(cellHex) : null;
-                  const isP1Start = mode === 'multiplayer' && p1Cells[0] === key;
-                  const isP2Start = mode === 'multiplayer' && p2Cells[0] === key;
-                  const isP1Owned = mode === 'multiplayer' && p1Set.has(key);
-                  const isP2Owned = mode === 'multiplayer' && p2Set.has(key);
-                  const glowClass =
-                    showTerritoryOverlay && isP1Owned
-                      ? theme.glowP1
-                      : showTerritoryOverlay && isP2Owned
-                        ? theme.glowP2
-                        : '';
-                  const dist = distances[r * side + c] ?? 0;
-                  const waveDelay = Math.min(0.24, Math.max(0, dist) * 0.014);
-                  return (
-                    <BoardCell
-                      key={key}
-                      color={cellHex}
-                      radiusClass={theme.cellRadius}
-                      glowClass={glowClass}
-                      startMarker={isP1Start ? 'p1' : isP2Start ? 'p2' : 'none'}
-                      p2Label={p2Label}
-                      showOverlay={showTerritoryOverlay}
-                      ownedMarker={isP1Owned ? 'p1' : isP2Owned ? 'p2' : 'none'}
-                      waveDelay={waveDelay}
-                      colorIndex={colorIdx}
-                      symbolGlyph={ink ? String(colorIdx + 1) : ''}
-                      inkColor={ink ? ink.color : ''}
-                      inkShadow={ink ? ink.shadow : ''}
-                    />
-                  );
-                }),
-              )}
-            </div>
-          ))}
+          {faces.map((face) => {
+            const placement = placements[face];
+            return (
+              <div
+                key={face}
+                data-cube-face={face}
+                className="cube-face absolute inset-0"
+                style={{
+                  transform: placement.transform,
+                  backfaceVisibility: 'hidden',
+                  transformStyle: 'preserve-3d',
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${side}, minmax(0, 1fr))`,
+                  gap: 1,
+                  padding: 3,
+                  background: 'rgba(2,6,23,0.72)',
+                  border: '1px solid rgba(148,163,184,0.28)',
+                  borderRadius: 10,
+                }}
+              >
+                {Array.from({ length: side }, (_, dr) =>
+                  Array.from({ length: side }, (_, dc) => {
+                    // Display cell (dr, dc) shows storage cell (i, j); the
+                    // transposed faces keep every face right-handed on screen.
+                    const i = placement.transpose ? dc : dr;
+                    const j = placement.transpose ? dr : dc;
+                    const r = face * side + i;
+                    const c = j;
+                    const key = `${r},${c}`;
+                    const colorIdx = grid[r]?.[c] ?? 0;
+                    const cellHex = theme.colors[colorIdx] || '#FF595E';
+                    const isP1Start = mode === 'multiplayer' && p1Cells[0] === key;
+                    const isP2Start = mode === 'multiplayer' && p2Cells[0] === key;
+                    const isStart = soloSeedKey === key;
+                    const isP1Owned = mode === 'multiplayer' && p1Set.has(key);
+                    const isP2Owned = mode === 'multiplayer' && p2Set.has(key);
+                    const glowClass =
+                      showTerritoryOverlay && isP1Owned
+                        ? theme.glowP1
+                        : showTerritoryOverlay && isP2Owned
+                          ? theme.glowP2
+                          : '';
+                    const dist = distances[r * side + c] ?? 0;
+                    const waveDelay = Math.min(0.24, Math.max(0, dist) * 0.014);
+                    const glyph = showColorSymbols ? String(colorIdx + 1) : '';
+                    const ink = showColorSymbols ? cellInkOn(cellHex) : null;
+                    return (
+                      <BoardCell
+                        key={key}
+                        color={cellHex}
+                        radiusClass={theme.cellRadius}
+                        glowClass={glowClass}
+                        startMarker={
+                          isP1Start ? 'p1' : isP2Start ? 'p2' : isStart ? 'start' : 'none'
+                        }
+                        p2Label={p2Label}
+                        showOverlay={showTerritoryOverlay}
+                        ownedMarker={isP1Owned ? 'p1' : isP2Owned ? 'p2' : 'none'}
+                        waveDelay={waveDelay}
+                        colorIndex={colorIdx}
+                        symbolGlyph={glyph}
+                        inkColor={ink ? ink.color : ''}
+                        inkShadow={ink ? ink.shadow : ''}
+                      />
+                    );
+                  }),
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -361,79 +402,113 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
           Cube · {side}×{side}×6
         </span>
-        <button
-          type="button"
-          onClick={resetView}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 transition-colors hover:bg-slate-700 cursor-pointer"
-          title="Reset cube orientation"
-        >
-          <RotateCcw className="w-3 h-3" aria-hidden="true" />
-          Reset view
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowFaces((prev) => !prev)}
+            aria-pressed={showFaces}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 transition-colors hover:bg-slate-700 cursor-pointer"
+            title={
+              showFaces ? 'Hide the unfolded face panel' : 'Show the unfolded face panel'
+            }
+          >
+            {showFaces ? (
+              <EyeOff className="w-3 h-3" aria-hidden="true" />
+            ) : (
+              <Eye className="w-3 h-3" aria-hidden="true" />
+            )}
+            Faces
+          </button>
+          <button
+            type="button"
+            onClick={resetView}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 transition-colors hover:bg-slate-700 cursor-pointer"
+            title="Reset cube orientation"
+          >
+            <RotateCcw className="w-3 h-3" aria-hidden="true" />
+            Reset view
+          </button>
+        </div>
       </div>
 
       {/* The flat net is the always-readable overview of hidden faces. */}
-      <figure
-        aria-label="Unfolded cube net minimap showing all six faces"
-        className="rounded-xl border border-slate-700/60 bg-slate-950/55 p-1.5"
-      >
-        <div
-          className="grid gap-1"
-          style={{
-            gridTemplateColumns: `repeat(4, minmax(0, 1fr))`,
-          }}
+      {showFaces && (
+        <figure
+          aria-label="Unfolded cube net minimap showing all six faces"
+          className="rounded-xl border border-slate-700/60 bg-slate-950/55 p-1.5"
         >
-          {NET_FACES.map(({ face, col, row }) => (
-            <div
-              key={face}
-              data-cube-net-face={face}
-              className="relative overflow-hidden rounded-md border border-slate-700/60 mx-auto"
-              style={{
-                gridColumn: col + 1,
-                gridRow: row + 1,
-                width: netFacePx,
-                height: netFacePx,
-              }}
-              title={`Face ${face + 1}`}
-            >
+          <div
+            className="grid gap-1 justify-center"
+            style={{
+              // Fixed face-sized tracks keep the net folded together instead of
+              // stretching its four columns across the whole panel.
+              gridTemplateColumns: `repeat(4, ${netFacePx}px)`,
+              gridAutoRows: `${netFacePx}px`,
+            }}
+          >
+            {NET_FACES.map(({ face, col, row }) => (
               <div
-                className="grid w-full"
+                key={face}
+                data-cube-net-face={face}
+                className="relative overflow-hidden rounded-md border border-slate-700/60"
                 style={{
-                  gridTemplateColumns: `repeat(${Math.max(1, side)}, minmax(0, 1fr))`,
+                  gridColumn: col + 1,
+                  gridRow: row + 1,
+                  width: netFacePx,
+                  height: netFacePx,
                 }}
+                title={`Face ${face + 1}`}
               >
-                {Array.from({ length: Math.max(0, side) }, (_, i) =>
-                  Array.from({ length: Math.max(0, side) }, (_, j) => {
-                    const r = face * side + i;
-                    const c = j;
-                    const key = `${r},${c}`;
-                    const colorIdx = grid[r]?.[c] ?? 0;
-                    const owned = p1Set.has(key) ? 1 : p2Set.has(key) ? 2 : 0;
-                    return (
-                      <span
-                        key={key}
-                        style={{
-                          backgroundColor: theme.colors[colorIdx] || '#FF595E',
-                          boxShadow:
-                            showTerritoryOverlay && owned === 1
-                              ? 'inset 0 0 0 1px #22D3EE'
-                              : showTerritoryOverlay && owned === 2
-                                ? 'inset 0 0 0 1px #FB7185'
-                                : undefined,
-                          aspectRatio: '1/1',
-                        }}
-                      />
-                    );
-                  }),
-                )}
+                <div
+                  className="grid w-full"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.max(1, side)}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {Array.from({ length: Math.max(0, side) }, (_, dr) =>
+                    Array.from({ length: Math.max(0, side) }, (_, dc) => {
+                      const { transpose } = cubeFaceDisplay(face);
+                      const i = transpose ? dc : dr;
+                      const j = transpose ? dr : dc;
+                      const r = face * side + i;
+                      const c = j;
+                      const key = `${r},${c}`;
+                      const colorIdx = grid[r]?.[c] ?? 0;
+                      const owned = p1Set.has(key) ? 1 : p2Set.has(key) ? 2 : 0;
+                      const isStart = soloSeedKey === key;
+                      return (
+                        <span
+                          key={key}
+                          style={{
+                            backgroundColor: theme.colors[colorIdx] || '#FF595E',
+                            boxShadow:
+                              showTerritoryOverlay && owned === 1
+                                ? 'inset 0 0 0 1.5px #22D3EE'
+                                : showTerritoryOverlay && owned === 2
+                                  ? 'inset 0 0 0 1.5px #FB7185'
+                                  : isStart
+                                    ? 'inset 0 0 0 1.5px #FFFFFF'
+                                    : undefined,
+                            aspectRatio: '1/1',
+                          }}
+                        />
+                      );
+                    }),
+                  )}
+                </div>
+                <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-slate-950/70 px-1 text-[8px] font-black text-slate-200">
+                  F{face + 1}
+                </span>
               </div>
-              <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-slate-950/70 px-1 text-[8px] font-black text-slate-200">
-                F{face + 1}
-              </span>
-            </div>
-          ))}
-        </div>
-      </figure>
+            ))}
+          </div>
+          {soloSeedKey && (
+            <figcaption className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              White ring = flood origin
+            </figcaption>
+          )}
+        </figure>
+      )}
     </div>
   );
 };

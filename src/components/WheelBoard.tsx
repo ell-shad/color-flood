@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { GameMode, GameTheme, MultiplayerOpponent } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
+import { GHOST_ALPHA } from './BoardCell';
 import { wheelGeometry } from '../utils/circleEngine';
 
 /**
@@ -58,6 +59,8 @@ interface WheelCellProps {
   glyph: string;
   inkColor: string;
   inkShadow: string;
+  /** Emoji skin: transparent sector fill, hairline outline only. */
+  ghost: boolean;
 }
 
 const WheelCell = React.memo(function WheelCell({
@@ -72,15 +75,27 @@ const WheelCell = React.memo(function WheelCell({
   glyph,
   inkColor,
   inkShadow,
+  ghost,
 }: WheelCellProps) {
   return (
     <>
       <path
         className="wheel-cell"
         d={d}
+        // Ghost sectors keep a shade of their colour instead of the full fill
+        // (see BoardCell.GHOST_ALPHA) so the emoji reads over a calm tint.
         fill={color}
-        stroke={owner === 1 ? '#22D3EE' : owner === 2 ? '#FB7185' : 'none'}
-        strokeWidth={owner === 0 ? 0 : 0.55}
+        fillOpacity={ghost ? GHOST_ALPHA : 1}
+        stroke={
+          owner === 1
+            ? '#22D3EE'
+            : owner === 2
+              ? '#FB7185'
+              : ghost
+                ? 'rgba(148,163,184,0.18)'
+                : 'none'
+        }
+        strokeWidth={owner === 0 ? (ghost ? 0.16 : 0) : 0.55}
         style={{
           transition: 'fill 0.26s ease-out',
           transitionDelay: `${waveDelay}s`,
@@ -213,6 +228,9 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
 
   // The core disc always mirrors ring 0's uniform color — the flood source.
   const seedHex = theme.colors[grid[0]?.[0] ?? 0] || '#FF595E';
+  // Emoji themes always label cells; digit overlays stay opt-in (P5.4 aid).
+  const glyphs = theme.emoji;
+  const showGlyphs = showColorSymbols || !!glyphs;
 
   return (
     <div
@@ -238,10 +256,23 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
           cy={50}
           r={7}
           fill={seedHex}
-          stroke="rgba(255,255,255,0.25)"
+          fillOpacity={glyphs ? GHOST_ALPHA : 1}
+          stroke={glyphs ? 'rgba(148,163,184,0.25)' : 'rgba(255,255,255,0.25)'}
           strokeWidth={0.8}
           style={{ transition: 'fill 0.26s ease-out' }}
         />
+        {glyphs && (
+          <text
+            x={50}
+            y={50}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="pointer-events-none select-none"
+            style={{ fontSize: 7.5 }}
+          >
+            {glyphs[grid[0]?.[0] ?? 0] ?? ''}
+          </text>
+        )}
         {cells.map(({ d, cx, cy, fontSize }, i) => {
           const rr = Math.floor(i / shape.sectors) + 1; // board ring index
           const c = i % shape.sectors;
@@ -256,21 +287,22 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
               : p2Set.has(k)
                 ? 2
                 : 0;
-          const ink = showColorSymbols ? cellInkOn(hex) : null;
+          const ink = showGlyphs && !glyphs ? cellInkOn(hex) : null;
           return (
             <WheelCell
               key={`${rr}-${c}`}
               d={d}
               cx={cx}
               cy={cy}
-              fontSize={fontSize}
+              fontSize={glyphs ? fontSize * 1.25 : fontSize}
               color={hex}
               waveDelay={waveDelay}
               colorIndex={cell}
               owner={owner}
-              glyph={ink ? String(cell + 1) : ''}
+              glyph={showGlyphs ? (glyphs?.[cell] ?? String(cell + 1)) : ''}
               inkColor={ink ? ink.color : ''}
               inkShadow={ink ? ink.shadow : ''}
+              ghost={!!glyphs}
             />
           );
         })}

@@ -431,6 +431,7 @@ export default function App() {
                   p2Color={session.activeMatch?.p2Color ?? 0}
                   opponent={session.opponent}
                   theme={session.currentTheme}
+                  boardShape={session.boardShape}
                   turnStatus={turnStatus}
                 />
               )}

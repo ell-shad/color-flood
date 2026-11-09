@@ -26,6 +26,22 @@ export function isWheel(shape: BoardShape): boolean {
   }
 }
 
+/**
+ * True for the planar topologies. The emoji skin is flat-board only: the 3D
+ * cube keeps its colour fills so the flood reads on a projected surface.
+ */
+export function isFlatShape(shape: BoardShape): boolean {
+  switch (shape) {
+    case 'classic':
+    case 'wheel':
+      return true;
+    case 'cube':
+      return false;
+    default:
+      return assertNever(shape);
+  }
+}
+
 /** True for the classic square topology. */
 export function isClassic(shape: BoardShape): boolean {
   switch (shape) {

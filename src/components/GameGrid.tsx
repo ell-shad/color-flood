@@ -54,6 +54,13 @@ export const GameGrid: React.FC<GameGridProps> = ({
   const glowP2 = theme.glowP2;
   const radius = theme.cellRadius;
   const p2Label = opponent === 'bot' ? 'BOT' : 'P2';
+  // Emoji themes always label cells; digit overlays stay opt-in (P5.4 aid).
+  const glyphs = theme.emoji;
+  const showGlyphs = showColorSymbols || !!glyphs;
+  const glyphFontSize =
+    glyphs && boardPx
+      ? Math.max(8, Math.round(((boardPx - 12) / Math.max(1, gridSize)) * 0.62))
+      : undefined;
 
   return (
     <div
@@ -97,7 +104,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
             // P5.4: pick ink ≥ 4.5:1 on this cell's fill for the digit overlay.
             const cellHex = activeColors[colorIdx] || '#FF595E';
-            const ink = showColorSymbols ? cellInkOn(cellHex) : null;
+            const ink = showGlyphs && !glyphs ? cellInkOn(cellHex) : null;
+            const glyph = showGlyphs ? (glyphs?.[colorIdx] ?? String(colorIdx + 1)) : '';
 
             return (
               <BoardCell
@@ -111,9 +119,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 ownedMarker={ownedMarker}
                 waveDelay={waveDelay}
                 colorIndex={colorIdx}
-                symbolGlyph={ink ? String(colorIdx + 1) : ''}
+                symbolGlyph={glyph}
                 inkColor={ink ? ink.color : ''}
                 inkShadow={ink ? ink.shadow : ''}
+                glyphFontSize={glyphFontSize}
+                ghost={!!glyphs}
               />
             );
           }),

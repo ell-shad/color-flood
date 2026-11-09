@@ -91,6 +91,11 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
                           Classic
                         </span>
                       )}
+                      {id === 'emoji' && (
+                        <span className="text-[9px] font-mono text-slate-400 bg-slate-800 px-1 rounded">
+                          Flat boards
+                        </span>
+                      )}
                     </span>
                     {isSelected && (
                       <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center">
@@ -104,10 +109,16 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
                     {theme.colors.map((color, idx) => (
                       <div
                         key={idx}
-                        className="h-4 flex-1 rounded-sm shadow-inner transition-transform hover:scale-110"
+                        className="h-4 flex-1 rounded-sm shadow-inner transition-transform hover:scale-110 flex items-center justify-center"
                         style={{ backgroundColor: color }}
                         title={theme.colorNames[idx]}
-                      />
+                      >
+                        {theme.emoji?.[idx] && (
+                          <span aria-hidden="true" className="text-[9px] leading-none">
+                            {theme.emoji[idx]}
+                          </span>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </button>

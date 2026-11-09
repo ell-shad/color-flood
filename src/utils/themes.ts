@@ -208,6 +208,40 @@ export const THEMES: Record<ThemeId, GameTheme> = {
     glowP2:
       'ring-1 sm:ring-[1.5px] ring-purple-300 shadow-[0_0_8px_rgba(216,180,254,0.4)]',
   },
+  emoji: {
+    id: 'emoji',
+    name: 'Emoji Party',
+    // Every palette slot carries an emoji, so a flat board can be read by
+    // picture alone (red heart, ocean wave, lemon, leaf, grapes, fire,
+    // diamond, blossom). Flat boards draw the glyphs with no colour fill; the
+    // 3D cube ignores `emoji` and keeps these colours as its fills.
+    colors: [
+      '#E11D48', // Red Heart
+      '#1D4ED8', // Ocean Wave
+      '#FACC15', // Lemon
+      '#16A34A', // Leaf
+      '#7C3AED', // Grapes
+      '#F97316', // Fire
+      '#06B6D4', // Diamond
+      '#EC4899', // Blossom
+    ],
+    colorNames: [
+      'Red Heart',
+      'Ocean Wave',
+      'Lemon',
+      'Leaf',
+      'Grapes',
+      'Fire',
+      'Diamond',
+      'Blossom',
+    ],
+    emoji: ['❤️', '🌊', '🍋', '🌿', '🍇', '🔥', '💎', '🌸'],
+    boardBg: 'bg-slate-900/95',
+    boardBorder: 'border-fuchsia-500/30',
+    cellRadius: 'rounded-md',
+    glowP1: 'ring-1 sm:ring-[1.5px] ring-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.45)]',
+    glowP2: 'ring-1 sm:ring-[1.5px] ring-pink-300 shadow-[0_0_8px_rgba(236,72,153,0.45)]',
+  },
   colorblind: {
     id: 'colorblind',
     name: 'Color Safe',

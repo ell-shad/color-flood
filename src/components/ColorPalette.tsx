@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { GameMode, MultiplayerOpponent, PlayerId, GameTheme } from '../types';
+import { BoardShape, GameMode, MultiplayerOpponent, PlayerId, GameTheme } from '../types';
 import { THEMES } from '../utils/themes';
+import { isFlatShape } from '../utils/boardShape';
 
 interface ColorPaletteProps {
   colorCount: number;
@@ -15,6 +16,8 @@ interface ColorPaletteProps {
   p2Color?: number;
   opponent?: MultiplayerOpponent;
   theme?: GameTheme;
+  /** P11: 3D boards play colour-only, so emoji swatches are flat-board only. */
+  boardShape?: BoardShape;
   /** P5.7: prominent turn chip — who moves (or who you wait for). */
   turnStatus?: { label: string; turn: PlayerId | null } | null;
 }
@@ -31,10 +34,13 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
   p2Color,
   opponent,
   theme = THEMES.arcade,
+  boardShape,
   turnStatus = null,
 }) => {
   const activeColors = theme.colors.slice(0, colorCount);
   const activeNames = theme.colorNames;
+  // The emoji skin is flat-board only; 3D boards keep plain colour swatches.
+  const emoji = boardShape && !isFlatShape(boardShape) ? undefined : theme.emoji;
 
   return (
     <div className="w-full max-w-xl mx-auto mt-0 px-1 select-none">
@@ -112,7 +118,7 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
                 // Only transform/shadow animate: the current-color dimming used
                 // to cross-fade opacity+grayscale on every move, which read as
                 // the palette flashing while playing.
-                className={`w-10 h-10 sm:w-12 sm:h-12 min-w-[38px] min-h-[38px] rounded-xl sm:rounded-2xl shadow-md transition-[transform,box-shadow] duration-150 relative cursor-pointer disabled:cursor-not-allowed ${
+                className={`w-10 h-10 sm:w-12 sm:h-12 min-w-[38px] min-h-[38px] rounded-xl sm:rounded-2xl shadow-md transition-[transform,box-shadow] duration-150 relative flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
                   isColorDisabled
                     ? 'opacity-35 grayscale-[0.5] scale-95 shadow-none'
                     : 'hover:shadow-indigo-500/20 active:scale-95'
@@ -127,6 +133,16 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
                 }`}
                 aria-label={`${activeNames[idx]}${badgeLabel ? ` - ${badgeLabel}` : ''}`}
               >
+                {/* Emoji themes put the picture right on the palette button. */}
+                {emoji?.[idx] && (
+                  <span
+                    aria-hidden="true"
+                    className="text-lg sm:text-2xl leading-none select-none drop-shadow-sm"
+                  >
+                    {emoji[idx]}
+                  </span>
+                )}
+
                 {/* Overlay badge for owned color */}
                 {badgeLabel && (
                   <span

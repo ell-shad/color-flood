@@ -39,6 +39,19 @@ export const relativeLuminance = (hex: string): number => {
   );
 };
 
+/**
+ * `rgba()` for a theme hex at the given alpha. Used by the emoji skin: cells
+ * keep a shade of their colour (so hue and flood connectivity stay readable)
+ * without the full saturated fill that would fight the glyph.
+ */
+export const withAlpha = (hex: string, alpha: number): string => {
+  const s = parseHex(hex);
+  const r = parseInt(s.slice(0, 2), 16);
+  const g = parseInt(s.slice(2, 4), 16);
+  const b = parseInt(s.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 /** WCAG contrast ratio (1..21) between two hex colors. */
 export const contrastRatio = (a: string, b: string): number => {
   const la = relativeLuminance(a);

@@ -196,6 +196,81 @@ export const cubeNeighbors = (
 export const cubeCellCenter = (r: number, c: number, side: number): CubePoint =>
   cubeTopology(side).centers[cubeIndex(r, c, side)];
 
+/** Rendering frame of one cube face (see `cubeFaceDisplay`). */
+export interface CubeFaceDisplay {
+  /** Cube-space direction of one display column (unit length). */
+  colAxis: CubePoint;
+  /** Cube-space direction of one display row (unit length). */
+  rowAxis: CubePoint;
+  /** Outward unit normal of the face. */
+  normal: CubePoint;
+  /**
+   * True when the display grid is the transpose of the storage grid: display
+   * cell (row `dr`, column `dc`) holds storage cell `(i = dc, j = dr)`.
+   */
+  transpose: boolean;
+}
+
+const faceDisplayCache = new Map<number, CubeFaceDisplay>();
+
+/**
+ * Corner shared by display cell (row 0, column 0) of one face — the anchor
+ * for `cubeFaceDisplay`'s axes at a given side length.
+ */
+export const cubeFaceOrigin = (face: number, side: number): CubePoint =>
+  cubeFacePoint(face, 0, 0, side);
+
+/**
+ * Rendering frame for one face, derived from `cubeFacePoint` so the 3D view
+ * can never drift from the adjacency table: display cell (row `dr`, column
+ * `dc`) sits at `cubeFaceOrigin(face, side) + (dc + .5) colAxis +
+ * (dr + .5) rowAxis`, which is exactly the center of the storage cell it
+ * shows.
+ *
+ * The storage parameterization mirrors four of the six faces relative to
+ * their outward view, so `transpose` reports when the grid has to be laid out
+ * transposed. That keeps every face right-handed, which the renderer needs for
+ * correct back-face culling and upright glyphs, without moving any cell.
+ */
+export const cubeFaceDisplay = (face: number): CubeFaceDisplay => {
+  const cached = faceDisplayCache.get(face);
+  if (cached) return cached;
+
+  // One parameter step is one cube unit, so any side length works here.
+  const s = 2;
+  const origin = cubeFacePoint(face, 0, 0, s);
+  const colStep = cubeFacePoint(face, 0, 1, s);
+  const rowStep = cubeFacePoint(face, 1, 0, s);
+  const center = cubeFacePoint(face, s / 2, s / 2, s);
+  const normal: CubePoint = [
+    Math.sign(center[0] - s / 2),
+    Math.sign(center[1] - s / 2),
+    Math.sign(center[2] - s / 2),
+  ];
+  const colAxis: CubePoint = [
+    colStep[0] - origin[0],
+    colStep[1] - origin[1],
+    colStep[2] - origin[2],
+  ];
+  const rowAxis: CubePoint = [
+    rowStep[0] - origin[0],
+    rowStep[1] - origin[1],
+    rowStep[2] - origin[2],
+  ];
+
+  // cross(colAxis, rowAxis) points inward on the mirrored faces.
+  const crossX = colAxis[1] * rowAxis[2] - colAxis[2] * rowAxis[1];
+  const crossY = colAxis[2] * rowAxis[0] - colAxis[0] * rowAxis[2];
+  const crossZ = colAxis[0] * rowAxis[1] - colAxis[1] * rowAxis[0];
+  const transpose = crossX * normal[0] + crossY * normal[1] + crossZ * normal[2] < 0;
+
+  const display: CubeFaceDisplay = transpose
+    ? { colAxis: rowAxis, rowAxis: colAxis, normal, transpose }
+    : { colAxis, rowAxis, normal, transpose };
+  faceDisplayCache.set(face, display);
+  return display;
+};
+
 /** Cell whose center is the reflection of the given cell's center. */
 export const cubeAntipodeCell = (
   r: number,

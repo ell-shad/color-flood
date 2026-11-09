@@ -63,6 +63,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
 | 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. Gates green. |
+| 12 — Sphere mode | ⏸ research | — | RESEARCH DONE (no code): `docs/sphere-mode-research.md` compares lat/long, cube-sphere and icosphere/Goldberg topologies. Recommendation: `shape: 'sphere'` as a cube-sphere projection that reuses `cubeEngine` unchanged (4-neighbour graph, existing calibration, antipodal 2P start). |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -374,6 +375,22 @@ Budget = 1.05× the same ladder/color classic solo limit; `CUBE_LIMIT_FACTOR=1.0
 | 18·6 | 25.4 | 36 | 0.70 | 100% |
 | 18·7 | 30.1 | 41 | 0.73 | 100% |
 | 18·8 | 34.5 | 46 | 0.75 | 100% |
+
+---
+
+## Phase 12 — Sphere Board Mode ⏸ (research only)
+
+**Goal:** a fourth display topology, `'sphere'`, on a closed spherical surface.
+
+A sphere cannot be covered by a regular quad mesh (Euler characteristic), so every spherical
+grid carries defects: lat/long puts them on two poles, a cube-sphere keeps a perfect
+4-neighbour graph and hides its 8 pinches at the cube corners, and an icosphere/Goldberg grid
+has exactly 12 pentagons. The recommendation is the **cube-sphere**: the graph stays
+graph-for-graph the cube (so flood/hint/2P/bot/replay and the calibrated budget all carry
+over) and only the projection changes.
+
+Full comparison, design, task breakdown (P12.1–P12.4) and risks:
+[`docs/sphere-mode-research.md`](docs/sphere-mode-research.md).
 
 ---
 
