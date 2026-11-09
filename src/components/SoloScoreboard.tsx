@@ -6,6 +6,8 @@ import { type SoloStars, rateSoloStars } from '../utils/soloBalance';
 import { rateWheelStars } from '../utils/circleEngine';
 import { rateCubeStars } from '../utils/cubeEngine';
 import { rateMosaicStars } from '../utils/mosaicEngine';
+import { rateTriangleStars } from '../utils/triangleEngine';
+import { rateHiveStars } from '../utils/hiveEngine';
 
 interface SoloScoreboardProps {
   gameState: SoloGameState;
@@ -66,6 +68,12 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
         break;
       case 'mosaic':
         stars = rateMosaicStars(gameState.moves, ratingSize, colorCount);
+        break;
+      case 'triangle':
+        stars = rateTriangleStars(gameState.moves, ratingSize, colorCount);
+        break;
+      case 'hive':
+        stars = rateHiveStars(gameState.moves, ratingSize, colorCount);
         break;
       case 'classic':
         stars = rateSoloStars(gameState.moves, ratingSize, colorCount);

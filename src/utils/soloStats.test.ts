@@ -10,6 +10,8 @@ import { rateSoloStars } from './soloBalance';
 import { rateWheelStars } from './circleEngine';
 import { rateCubeStars } from './cubeEngine';
 import { rateMosaicStars } from './mosaicEngine';
+import { rateTriangleStars } from './triangleEngine';
+import { rateHiveStars } from './hiveEngine';
 
 describe('updateSoloStats', () => {
   it('records a first win: totals, streak, config entry with best', () => {
@@ -146,6 +148,30 @@ describe('updateSoloStats', () => {
       bestMoves: 14,
     });
     expect(statsStarsFor(s.byConfig[0])).toBe(rateMosaicStars(14, 12, 5));
+  });
+
+  it('keeps triangle and hive records separate and rates them on their own pars', () => {
+    let s = updateSoloStats(EMPTY_SOLO_STATS, {
+      shape: 'triangle',
+      size: 12,
+      colors: 5,
+      moves: 16,
+      won: true,
+    });
+    s = updateSoloStats(s, {
+      shape: 'hive',
+      size: 12,
+      colors: 5,
+      moves: 15,
+      won: true,
+    });
+    expect(s.byConfig.map((c) => c.shape)).toEqual(['hive', 'triangle']);
+    expect(statsStarsFor(s.byConfig.find((c) => c.shape === 'triangle')!)).toBe(
+      rateTriangleStars(16, 12, 5),
+    );
+    expect(statsStarsFor(s.byConfig.find((c) => c.shape === 'hive')!)).toBe(
+      rateHiveStars(15, 12, 5),
+    );
   });
 
   it('star rating is derived from the best win', () => {

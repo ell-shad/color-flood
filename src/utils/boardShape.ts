@@ -21,6 +21,8 @@ export function isWheel(shape: BoardShape): boolean {
       return true;
     case 'cube':
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
       return false;
     default:
       return assertNever(shape);
@@ -36,6 +38,8 @@ export function isFlatShape(shape: BoardShape): boolean {
     case 'classic':
     case 'wheel':
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
       return true;
     case 'cube':
       return false;
@@ -53,6 +57,8 @@ export function isClassic(shape: BoardShape): boolean {
       return false;
     case 'cube':
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
       return false;
     default:
       return assertNever(shape);
@@ -65,6 +71,8 @@ export function isCube(shape: BoardShape): boolean {
     case 'classic':
     case 'wheel':
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
       return false;
     case 'cube':
       return true;
@@ -79,8 +87,42 @@ export function isMosaic(shape: BoardShape): boolean {
     case 'classic':
     case 'wheel':
     case 'cube':
+    case 'triangle':
+    case 'hive':
       return false;
     case 'mosaic':
+      return true;
+    default:
+      return assertNever(shape);
+  }
+}
+
+/** P14: triangular tiling (solo only, like the cube and mosaic). */
+export function isTriangle(shape: BoardShape): boolean {
+  switch (shape) {
+    case 'classic':
+    case 'wheel':
+    case 'cube':
+    case 'mosaic':
+    case 'hive':
+      return false;
+    case 'triangle':
+      return true;
+    default:
+      return assertNever(shape);
+  }
+}
+
+/** P14: regular hexagonal hive (solo only, like the cube and mosaic). */
+export function isHive(shape: BoardShape): boolean {
+  switch (shape) {
+    case 'classic':
+    case 'wheel':
+    case 'cube':
+    case 'mosaic':
+    case 'triangle':
+      return false;
+    case 'hive':
       return true;
     default:
       return assertNever(shape);
@@ -93,7 +135,7 @@ export function isMosaic(shape: BoardShape): boolean {
  * two players on the same screen.
  */
 export function isSoloOnlyShape(shape: BoardShape): boolean {
-  return isCube(shape) || isMosaic(shape);
+  return isCube(shape) || isMosaic(shape) || isTriangle(shape) || isHive(shape);
 }
 
 /**
@@ -122,6 +164,10 @@ export function parseBoardShape(raw: unknown): BoardShape {
       return 'cube';
     case 'mosaic':
       return 'mosaic';
+    case 'triangle':
+      return 'triangle';
+    case 'hive':
+      return 'hive';
     default:
       return 'classic';
   }

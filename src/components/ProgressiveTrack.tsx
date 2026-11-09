@@ -98,8 +98,10 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                 break;
               }
               // Solo-only topologies never reach a multiplayer ladder; the
-              // case keeps the switch exhaustive.
+              // cases keep the switch exhaustive.
               case 'mosaic':
+              case 'triangle':
+              case 'hive':
               case 'classic':
                 break;
               default:

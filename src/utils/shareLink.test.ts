@@ -7,6 +7,8 @@ import {
 import { WHEEL_GEOMETRY, generateSeededWheelBoard } from './circleEngine';
 import { generateSeededCubeBoard, getCubeSide } from './cubeEngine';
 import { generateMosaicBoard } from './mosaicEngine';
+import { generateTriangleBoard } from './triangleEngine';
+import { generateHiveBoard } from './hiveEngine';
 import { mulberry32 } from './engine';
 
 describe('parseSoloShareParams', () => {
@@ -180,5 +182,60 @@ describe('P13 mosaic share round-trip', () => {
     );
     const original = generateMosaicBoard(12, 6, mulberry32(987654321));
     expect(fromLink).toEqual(original);
+  });
+});
+
+describe('P14 triangle and hive share round-trips', () => {
+  it('parses and builds both solo tilings', () => {
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=triangle')).toEqual({
+      seed: 7,
+      size: 10,
+      colors: 4,
+      shape: 'triangle',
+    });
+    expect(parseSoloShareParams('?seed=7&size=10&colors=4&shape=hive')).toEqual({
+      seed: 7,
+      size: 10,
+      colors: 4,
+      shape: 'hive',
+    });
+    const triangleLink = buildSoloShareLink(
+      { seed: 42, size: 14, colors: 6, shape: 'triangle' },
+      'https://example.com/',
+    );
+    const hiveLink = buildSoloShareLink(
+      { seed: 42, size: 14, colors: 6, shape: 'hive' },
+      'https://example.com/',
+    );
+    expect(new URL(triangleLink).searchParams.get('shape')).toBe('triangle');
+    expect(new URL(hiveLink).searchParams.get('shape')).toBe('hive');
+  });
+
+  it('rebuilds identical triangle and hive boards from their link params', () => {
+    const triangle = soloShareParamsFromSearch(
+      new URL(
+        buildSoloShareLink(
+          { seed: 987, size: 12, colors: 5, shape: 'triangle' },
+          'https://example.com/',
+        ),
+      ).search,
+    );
+    const hive = soloShareParamsFromSearch(
+      new URL(
+        buildSoloShareLink(
+          { seed: 987, size: 12, colors: 5, shape: 'hive' },
+          'https://example.com/',
+        ),
+      ).search,
+    );
+    expect(triangle).not.toBeNull();
+    expect(hive).not.toBeNull();
+    if (!triangle || !hive) return;
+    expect(
+      generateTriangleBoard(triangle.size, triangle.colors, mulberry32(triangle.seed)),
+    ).toEqual(generateTriangleBoard(12, 5, mulberry32(987)));
+    expect(generateHiveBoard(hive.size, hive.colors, mulberry32(hive.seed))).toEqual(
+      generateHiveBoard(12, 5, mulberry32(987)),
+    );
   });
 });

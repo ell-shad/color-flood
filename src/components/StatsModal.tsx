@@ -13,6 +13,7 @@ import {
   Square,
   Box,
   Hexagon,
+  Triangle,
 } from 'lucide-react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import {
@@ -22,7 +23,7 @@ import {
   avgMovesFor,
 } from '../utils/soloStats';
 import { type DailyStreak } from '../utils/daily';
-import { isCube, isMosaic, isWheel } from '../utils/boardShape';
+import { isCube, isHive, isMosaic, isTriangle, isWheel } from '../utils/boardShape';
 import { type SoloStars } from '../utils/soloBalance';
 
 interface StatsModalProps {
@@ -199,7 +200,17 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                           <td className="py-1.5 px-2 text-left font-mono font-bold text-indigo-300">
                             {/* P7.3: rows are keyed by topology (classic ⊞ / wheel ◉) */}
                             <span className="inline-flex items-center gap-1">
-                              {isMosaic(entry.shape) ? (
+                              {isTriangle(entry.shape) ? (
+                                <Triangle
+                                  className="w-3 h-3 text-cyan-300 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              ) : isHive(entry.shape) ? (
+                                <Hexagon
+                                  className="w-3 h-3 text-lime-300 shrink-0"
+                                  aria-hidden="true"
+                                />
+                              ) : isMosaic(entry.shape) ? (
                                 <Hexagon
                                   className="w-3 h-3 text-amber-300 shrink-0"
                                   aria-hidden="true"
@@ -224,19 +235,25 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                                 {entry.size}
                                 {isWheel(entry.shape) ||
                                 isCube(entry.shape) ||
-                                isMosaic(entry.shape)
+                                isMosaic(entry.shape) ||
+                                isTriangle(entry.shape) ||
+                                isHive(entry.shape)
                                   ? ''
                                   : '²'}
                                 ·{entry.colors}
                               </span>
                               <span className="sr-only">
-                                {isMosaic(entry.shape)
-                                  ? 'mosaic board'
-                                  : isWheel(entry.shape)
-                                    ? 'wheel board'
-                                    : isCube(entry.shape)
-                                      ? 'cube board'
-                                      : 'classic board'}
+                                {isTriangle(entry.shape)
+                                  ? 'triangle board'
+                                  : isHive(entry.shape)
+                                    ? 'hexagon hive board'
+                                    : isMosaic(entry.shape)
+                                      ? 'mosaic board'
+                                      : isWheel(entry.shape)
+                                        ? 'wheel board'
+                                        : isCube(entry.shape)
+                                          ? 'cube board'
+                                          : 'classic board'}
                               </span>
                             </span>
                           </td>

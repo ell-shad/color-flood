@@ -23,6 +23,8 @@ import { THEMES, PROGRESSIVE_STAGES } from '../utils/themes';
 import { cellCountOf, getBestMoveForShape, getBestSoloMove } from '../utils/floodLogic';
 import { assertNever, parseBoardShape, shapeForMode } from '../utils/boardShape';
 import { bestMosaicMoveWithGain, mosaicSeedCell } from '../utils/mosaicEngine';
+import { bestTriangleMoveWithGain, triangleSeedCell } from '../utils/triangleEngine';
+import { bestHiveMoveWithGain, hiveSeedCell } from '../utils/hiveEngine';
 import { bestWheelMoveWithGain } from '../utils/circleEngine';
 import { bestCubeMoveWithGain, cubeSeedCell, getCubeSide } from '../utils/cubeEngine';
 import {
@@ -865,6 +867,17 @@ export function useGameSession(): GameSession {
       const [r, c] = mosaicSeedCell(soloState.grid.length);
       return soloState.grid[r][c];
     }
+    if (soloState.shape === 'triangle') {
+      const [r, c] = triangleSeedCell(
+        soloState.grid.length,
+        soloState.grid[0]?.length ?? 0,
+      );
+      return soloState.grid[r][c];
+    }
+    if (soloState.shape === 'hive') {
+      const [r, c] = hiveSeedCell(soloState.grid.length, soloState.grid[0]?.length ?? 0);
+      return soloState.grid[r][c];
+    }
     return soloState.grid[0][0];
   })();
 
@@ -998,6 +1011,18 @@ export function useGameSession(): GameSession {
           const mosaicHint = bestMosaicMoveWithGain(s.grid, s.boardColors);
           setHint(mosaicHint?.color ?? null);
           setHintGain(mosaicHint?.gain);
+          break;
+        }
+        case 'triangle': {
+          const triangleHint = bestTriangleMoveWithGain(s.grid, s.boardColors);
+          setHint(triangleHint?.color ?? null);
+          setHintGain(triangleHint?.gain);
+          break;
+        }
+        case 'hive': {
+          const hiveHint = bestHiveMoveWithGain(s.grid, s.boardColors);
+          setHint(hiveHint?.color ?? null);
+          setHintGain(hiveHint?.gain);
           break;
         }
         case 'classic':

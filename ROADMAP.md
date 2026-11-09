@@ -64,6 +64,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
 | 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. P11.7 follow-up: cube is now solo-only (multiplayer is flat-board only). Gates green. |
 | 13 — Mosaic board mode | ✅ | — | DONE. Voronoi/polygonal tiling solo mode: `mosaicEngine`, SVG MosaicBoard, exhaustive shape plumbing, share links, stats/records, replay-compatible storage; fixed-seed layout shared by engine and UI. Calibration: 500 seeds/config, greedy 99.4–100% at 0.95× budget with 0.63–0.75 need/budget. Browser smoke verified a 100-cell mosaic from `?shape=mosaic`; visual follow-up increases cell-shape variety, thins the borders, hides the white seed treatment, and moves the start marker to the bottom centre. |
+| 14 — Triangle and hive board modes | ✅ | — | DONE. Solo-only triangular tiling and regular hexagon-hive topologies with edge-derived engines, SVG boards, exhaustive shape plumbing, share links, stats/records, and bottom-centre start markers. Calibration (500 seeds/config): triangle 98.4–100% at 1.6× (0.73–0.82 need/budget), hive 99.4–100% at 0.9× (0.64–0.77). Browser smoke verified both 100-cell boards from settings/share URLs. Gates green. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -431,6 +432,35 @@ Budget = 0.95× the same ladder/color classic solo limit; `MOSAIC_LIMIT_FACTOR=0
 | 18·6 | 324 | 22.8 | 32 | 0.71 | 100% |
 | 18·7 | 324 | 26.8 | 37 | 0.73 | 100% |
 | 18·8 | 324 | 30.7 | 42 | 0.73 | 100% |
+
+---
+
+## Phase 14 — Triangle and Hexagon-Hive Board Modes ✅
+
+**Goal:** add two solo topologies: a square tiled by triangular cells and a regular pointy-top
+honeycomb of hexagonal cells. The engines derive adjacency from the same edges used to draw the
+boards, and the flood starts from a marked bottom-centre cell. Multiplayer remains flat-board
+only, following the cube/mosaic solo-only convention.
+
+| ID | Task | Status |
+| -- | ---- | ------ |
+| P14.1 | Triangle engine: right-triangle tiling of the square, edge-derived adjacency, center-bottom flood, hint/win/count, budget/stars, engine tests | ✅ |
+| P14.2 | Hexagon-hive engine: regular pointy-top hexagons, edge-derived adjacency, bottom-centre flood, hint/win/count, budget/stars, engine tests | ✅ |
+| P14.3 | Triangle/hive boards, exhaustive renderer, solo current-color/hint dispatch, share links, records/stats, selector and copy plumbing | ✅ |
+| P14.4 | Calibration, browser smoke tests, ROADMAP calibration notes, final gates | ✅ |
+
+**Phase 14 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
+and `npm run build` green; daily challenge remains classic.
+
+---
+
+### Phase 14 calibration ledger
+
+Source: `npx tsx scripts/triangleHiveSim.ts --boards=500`.
+Selected factors are `TRIANGLE_LIMIT_FACTOR=1.6` and `HIVE_LIMIT_FACTOR=0.9` (par `0.85×` for both).
+Across all 25 size/color configs, the greedy hint reached **98.4–100%** with average need/budget
+**0.73–0.82** on triangle boards and **99.4–100%** with average need/budget **0.64–0.77** on
+hexagon-hive boards.
 
 ---
 

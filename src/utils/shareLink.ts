@@ -41,6 +41,10 @@ const parseShape = (raw: string | null): BoardShape | null => {
       return 'cube';
     case 'mosaic':
       return 'mosaic';
+    case 'triangle':
+      return 'triangle';
+    case 'hive':
+      return 'hive';
     default:
       return null;
   }
@@ -88,6 +92,12 @@ export const buildSoloShareLink = (
       break;
     case 'mosaic':
       shape = '&shape=mosaic';
+      break;
+    case 'triangle':
+      shape = '&shape=triangle';
+      break;
+    case 'hive':
+      shape = '&shape=hive';
       break;
     default:
       assertNever(params.shape);

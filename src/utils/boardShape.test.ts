@@ -2,11 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { isSoloOnlyShape, shapeForMode } from './boardShape';
 import type { BoardShape, GameMode } from '../types';
 
-const ALL_SHAPES: BoardShape[] = ['classic', 'wheel', 'cube', 'mosaic'];
+const ALL_SHAPES: BoardShape[] = [
+  'classic',
+  'wheel',
+  'cube',
+  'mosaic',
+  'triangle',
+  'hive',
+];
 
 describe('isSoloOnlyShape', () => {
-  it('marks the cube and mosaic surfaces as solo-only and the flat boards as shared', () => {
-    expect(ALL_SHAPES.filter(isSoloOnlyShape)).toEqual(['cube', 'mosaic']);
+  it('marks the cube, mosaic, triangle and hive surfaces as solo-only and the flat boards as shared', () => {
+    expect(ALL_SHAPES.filter(isSoloOnlyShape)).toEqual([
+      'cube',
+      'mosaic',
+      'triangle',
+      'hive',
+    ]);
   });
 });
 
@@ -20,6 +32,8 @@ describe('shapeForMode', () => {
     for (const mode of modes) {
       expect(shapeForMode('cube', mode)).toBe('classic');
       expect(shapeForMode('mosaic', mode)).toBe('classic');
+      expect(shapeForMode('triangle', mode)).toBe('classic');
+      expect(shapeForMode('hive', mode)).toBe('classic');
       expect(shapeForMode('wheel', mode)).toBe('wheel');
       expect(shapeForMode('classic', mode)).toBe('classic');
     }

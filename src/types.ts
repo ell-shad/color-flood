@@ -1,7 +1,7 @@
 export type GridSize = 10 | 12 | 14 | 16 | 18;
 export type ColorCount = 4 | 5 | 6 | 7 | 8;
-/** P7/P11/P13: solo board topology — square, polar wheel, cube surface or mosaic. */
-export type BoardShape = 'classic' | 'wheel' | 'cube' | 'mosaic';
+/** P7/P11/P13/P14: solo board topology — square, polar wheel, cube surface, mosaic, triangles or hive. */
+export type BoardShape = 'classic' | 'wheel' | 'cube' | 'mosaic' | 'triangle' | 'hive';
 export type GameMode = 'solo' | 'multiplayer';
 export type MultiplayerOpponent = 'local' | 'bot' | 'online';
 export type BotDifficulty = 'easy' | 'medium' | 'master';

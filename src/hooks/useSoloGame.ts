@@ -28,6 +28,20 @@ import {
   getMaxMosaicMoves,
   mosaicSeedCell,
 } from '../utils/mosaicEngine';
+import {
+  generateTriangleBoard,
+  floodTriangle,
+  checkTriangleWin,
+  getMaxTriangleMoves,
+  triangleSeedCell,
+} from '../utils/triangleEngine';
+import {
+  generateHiveBoard,
+  floodHive,
+  checkHiveWin,
+  getMaxHiveMoves,
+  hiveSeedCell,
+} from '../utils/hiveEngine';
 import { buildMoveDiff } from '../utils/replay';
 import { assertNever, parseBoardShape } from '../utils/boardShape';
 import { mulberry32 } from '../utils/engine';
@@ -48,7 +62,7 @@ import { z } from 'zod';
 const HighScoreSchema = z.object({
   // P7.3/P11: rows written before shapes existed load as classic square records.
   // P13: mosaic records are keyed like every other solo topology.
-  shape: z.enum(['classic', 'wheel', 'cube', 'mosaic']).optional(),
+  shape: z.enum(['classic', 'wheel', 'cube', 'mosaic', 'triangle', 'hive']).optional(),
   size: z.number().int().min(5).max(30),
   colors: z.number().int().min(2).max(12),
   moves: z.number().int().min(1).max(9999),
@@ -124,6 +138,14 @@ const currentFloodColor = (state: SoloGameState): number => {
     const [r, c] = mosaicSeedCell(state.grid.length);
     return state.grid[r][c];
   }
+  if (state.shape === 'triangle') {
+    const [r, c] = triangleSeedCell(state.grid.length, state.grid[0]?.length ?? 0);
+    return state.grid[r][c];
+  }
+  if (state.shape === 'hive') {
+    const [r, c] = hiveSeedCell(state.grid.length, state.grid[0]?.length ?? 0);
+    return state.grid[r][c];
+  }
   return state.grid[0][0];
 };
 
@@ -155,6 +177,14 @@ const soloReducer = (
         case 'mosaic':
           grid = generateMosaicBoard(action.size, action.colors, mulberry32(seed));
           maxMoves = getMaxMosaicMoves(action.size, action.colors);
+          break;
+        case 'triangle':
+          grid = generateTriangleBoard(action.size, action.colors, mulberry32(seed));
+          maxMoves = getMaxTriangleMoves(action.size, action.colors);
+          break;
+        case 'hive':
+          grid = generateHiveBoard(action.size, action.colors, mulberry32(seed));
+          maxMoves = getMaxHiveMoves(action.size, action.colors);
           break;
         case 'classic':
           grid = generateSoloGrid(action.size, action.colors, mulberry32(seed));
@@ -193,6 +223,14 @@ const soloReducer = (
         case 'mosaic':
           newGrid = floodMosaic(state.grid, action.color);
           isWin = checkMosaicWin(newGrid);
+          break;
+        case 'triangle':
+          newGrid = floodTriangle(state.grid, action.color);
+          isWin = checkTriangleWin(newGrid);
+          break;
+        case 'hive':
+          newGrid = floodHive(state.grid, action.color);
+          isWin = checkHiveWin(newGrid);
           break;
         case 'classic':
           newGrid = floodSolo(state.grid, action.color);

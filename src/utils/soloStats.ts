@@ -6,6 +6,8 @@ import { type SoloStars, rateSoloStars } from './soloBalance';
 import { rateCubeStars } from './cubeEngine';
 import { rateWheelStars } from './circleEngine';
 import { rateMosaicStars } from './mosaicEngine';
+import { rateTriangleStars } from './triangleEngine';
+import { rateHiveStars } from './hiveEngine';
 
 /**
  * P6.2: per-device solo statistics, persisted alongside the other versioned
@@ -44,7 +46,7 @@ export const EMPTY_SOLO_STATS: SoloStats = {
 
 const ConfigStatsSchema = z.object({
   // P7.3/P11: rows recorded before shapes existed are classic squares.
-  shape: z.enum(['classic', 'wheel', 'cube', 'mosaic']).optional(),
+  shape: z.enum(['classic', 'wheel', 'cube', 'mosaic', 'triangle', 'hive']).optional(),
   size: z.number().int().min(4).max(32),
   colors: z.number().int().min(2).max(12),
   games: z.number().int().min(0).max(9_999),
@@ -152,6 +154,10 @@ export const statsStarsFor = (entry: SoloConfigStats): SoloStars | null => {
       return rateCubeStars(entry.bestMoves, entry.size, entry.colors);
     case 'mosaic':
       return rateMosaicStars(entry.bestMoves, entry.size, entry.colors);
+    case 'triangle':
+      return rateTriangleStars(entry.bestMoves, entry.size, entry.colors);
+    case 'hive':
+      return rateHiveStars(entry.bestMoves, entry.size, entry.colors);
     case 'classic':
       return rateSoloStars(entry.bestMoves, entry.size, entry.colors);
     default:

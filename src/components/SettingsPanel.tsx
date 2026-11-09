@@ -26,6 +26,7 @@ import {
   Circle,
   Box,
   Hexagon,
+  Triangle,
   X,
   Info,
 } from 'lucide-react';
@@ -66,6 +67,20 @@ const BOARD_SHAPE_OPTIONS: Array<{
     title: 'Mosaic: an irregular polygonal tiling — flood spreads through the shards',
     Icon: Hexagon,
     activeClass: 'bg-amber-600 text-white shadow border border-amber-400/50',
+  },
+  {
+    id: 'triangle',
+    label: 'Triangle',
+    title: 'Triangle: every cell is a triangle — flood spreads along shared edges',
+    Icon: Triangle,
+    activeClass: 'bg-cyan-600 text-white shadow border border-cyan-400/50',
+  },
+  {
+    id: 'hive',
+    label: 'Hive',
+    title: 'Hive: a regular hexagonal honeycomb — flood spreads through the cells',
+    Icon: Hexagon,
+    activeClass: 'bg-lime-600 text-white shadow border border-lime-400/50',
   },
 ];
 
@@ -335,7 +350,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
               {mode !== 'solo' && (
                 <p className="text-[9px] text-slate-500 leading-tight">
-                  Cube is a solo mode — multiplayer stays on the flat boards.
+                  Cube, mosaic, triangle and hive are solo modes — multiplayer stays on
+                  the flat boards.
                 </p>
               )}
             </div>

@@ -122,6 +122,23 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
+                  <strong>Triangle boards (solo only):</strong> switch Board Shape to{' '}
+                  <em>Triangle</em> — every cell is a triangle, and the flood starts in
+                  the marked triangle at the bottom centre, spreading along shared
+                  triangle edges.
+                </p>
+              </div>
+              <div className="flex gap-2.5 items-start">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Hexagon hive boards (solo only):</strong> switch Board Shape to{' '}
+                  <em>Hive</em> — every cell is a hexagon, and the flood starts in the
+                  marked hexagon at the bottom centre, spreading through the honeycomb.
+                </p>
+              </div>
+              <div className="flex gap-2.5 items-start">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p>
                   <strong>Smart Hint:</strong> Tap the <em>Hint</em> lightbulb to identify
                   the color that claims the highest number of adjacent cells in one
                   stroke.

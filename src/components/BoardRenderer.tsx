@@ -5,6 +5,8 @@ import { GameGrid } from './GameGrid';
 import { WheelBoard } from './WheelBoard';
 import { CubeBoard } from './CubeBoard';
 import { MosaicBoard } from './MosaicBoard';
+import { TriangleBoard } from './TriangleBoard';
+import { HiveBoard } from './HiveBoard';
 
 /**
  * P11.4: one exhaustive board switch for App and ReplayModal.
@@ -80,6 +82,28 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
     case 'mosaic':
       return (
         <MosaicBoard
+          grid={grid}
+          size={size}
+          theme={theme}
+          showColorSymbols={showColorSymbols}
+          frameWidth={frameWidth}
+          boardPx={boardPx}
+        />
+      );
+    case 'triangle':
+      return (
+        <TriangleBoard
+          grid={grid}
+          size={size}
+          theme={theme}
+          showColorSymbols={showColorSymbols}
+          frameWidth={frameWidth}
+          boardPx={boardPx}
+        />
+      );
+    case 'hive':
+      return (
+        <HiveBoard
           grid={grid}
           size={size}
           theme={theme}

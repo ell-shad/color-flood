@@ -57,9 +57,11 @@ export const generateBoardForShape = (
       return generateTwoPlayerWheel(size, colorCount, rng);
     case 'cube':
       return generateTwoPlayerCube(size, colorCount, rng);
-    // Multiplayer is flat-board only (P11.7/P13): a solo shape that reaches
+    // Multiplayer is flat-board only (P11.7/P13/P14): a solo shape that reaches
     // this path builds the square board rather than crashing a room.
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
     case 'classic':
       return generateTwoPlayerGrid(size, colorCount, rng);
     default:
@@ -80,6 +82,8 @@ export const expandTerritoryForShape = (
     case 'cube':
       return expandCubeTerritory(grid, currentCells, opponentCells, targetColor);
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
     case 'classic':
       return expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
     default:
@@ -123,6 +127,8 @@ export const checkGameOverForShape = (
         p2Cells,
       );
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
     case 'classic':
       return checkMultiplayerGameOver(
         totalCells,
@@ -177,6 +183,8 @@ export const getBestMoveForShape = (
         difficulty,
       );
     case 'mosaic':
+    case 'triangle':
+    case 'hive':
     case 'classic':
       return getBestMultiplayerMove(
         grid,
