@@ -35,7 +35,13 @@ const OPPONENT_OPTIONS: {
   Icon: typeof Globe;
   tone: string;
 }[] = [
-  { id: 'online', label: 'Online Match', short: 'Online', Icon: Globe, tone: 'text-emerald-300' },
+  {
+    id: 'online',
+    label: 'Online Match',
+    short: 'Online',
+    Icon: Globe,
+    tone: 'text-emerald-300',
+  },
   {
     id: 'local',
     label: 'Pass & Play',

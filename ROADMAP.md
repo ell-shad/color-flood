@@ -62,7 +62,7 @@ The plan is therefore designed around **small, independently committed units of 
 | 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
-| 11 — Cube board mode | 🟡 | — | WIP. NEXT: P11.5 — cube verification + calibration notes + final gates. |
+| 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. Gates green. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -315,7 +315,7 @@ seat. P6.5 i18n stays skipped (user decision).
 
 ---
 
-## Phase 11 — Cube Board Mode 🟡
+## Phase 11 — Cube Board Mode ✅
 
 **Goal:** add a third display topology, `'cube'`: the six N×N faces of a cube rendered with CSS
 3D transforms in solo and 2-player modes. The wheel implementation is the architectural
@@ -333,11 +333,47 @@ integer 3D edge coordinates rather than hand-written edge tables.
 | P11.2 | Pure TypeScript cube engine (`cubeEngine.ts`): derived surface geometry/adjacency, solo flood/hint/win, 2P generation/expansion/game-over/bot moves, dispatchers, calibration constants, and engine tests | ✅ |
 | P11.3 | Cube shape plumbing: `BoardShape`, protocol/server, share links, records/stats, prefs, selectors, tutorial/help copy, scoreboards and ProgressiveTrack | ✅ |
 | P11.4 | CSS-3D `CubeBoard` with memoized cells, drag/key rotation, reduced-motion support, unfolded-net minimap, and exhaustive `BoardRenderer` integration | ✅ |
-| P11.5 | Cube verification: replay/records/server plumbing tests, browser smoke tests for solo/2P/online/share/replay/mobile, calibration notes, and final green gates | ⬜ |
+| P11.5 | Cube verification: replay/records/server plumbing tests, browser smoke tests for solo/2P/online/share/replay/mobile, calibration notes, and final green gates | ✅ |
 
 **Phase 11 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
 and `npm run build` are all green; calibration numbers (win rate and need/budget per config) are
 recorded; the status ledger is updated. Daily challenge remains classic.
+
+---
+
+### Phase 11 calibration ledger (greedy cube hint, 500 seeds/config)
+
+Source: `npx tsx scripts/cubeSim.ts --boards=500 --factors=1.05`.
+Budget = 1.05× the same ladder/color classic solo limit; `CUBE_LIMIT_FACTOR=1.05`,
+`CUBE_PAR_FACTOR=0.85`. Every sampled board was solvable by the greedy hint within budget.
+
+| Config | Avg need | Budget | Need/budget | Greedy win |
+| --- | ---: | ---: | ---: | ---: |
+| 10·4 | 8.7 | 15 | 0.58 | 100% |
+| 10·5 | 11.2 | 18 | 0.62 | 100% |
+| 10·6 | 13.5 | 21 | 0.64 | 100% |
+| 10·7 | 15.8 | 23 | 0.69 | 100% |
+| 10·8 | 17.7 | 26 | 0.68 | 100% |
+| 12·4 | 10.4 | 17 | 0.61 | 100% |
+| 12·5 | 13.6 | 21 | 0.65 | 100% |
+| 12·6 | 16.5 | 24 | 0.69 | 100% |
+| 12·7 | 19.3 | 27 | 0.71 | 100% |
+| 12·8 | 21.9 | 30 | 0.73 | 100% |
+| 14·4 | 12.0 | 19 | 0.63 | 100% |
+| 14·5 | 16.0 | 24 | 0.67 | 100% |
+| 14·6 | 19.4 | 28 | 0.69 | 100% |
+| 14·7 | 23.0 | 33 | 0.70 | 100% |
+| 14·8 | 25.9 | 36 | 0.72 | 100% |
+| 16·4 | 13.9 | 21 | 0.66 | 100% |
+| 16·5 | 18.3 | 26 | 0.70 | 100% |
+| 16·6 | 22.6 | 32 | 0.70 | 100% |
+| 16·7 | 26.6 | 37 | 0.72 | 100% |
+| 16·8 | 30.2 | 41 | 0.74 | 100% |
+| 18·4 | 15.4 | 24 | 0.64 | 100% |
+| 18·5 | 20.6 | 29 | 0.71 | 100% |
+| 18·6 | 25.4 | 36 | 0.70 | 100% |
+| 18·7 | 30.1 | 41 | 0.73 | 100% |
+| 18·8 | 34.5 | 46 | 0.75 | 100% |
 
 ---
 

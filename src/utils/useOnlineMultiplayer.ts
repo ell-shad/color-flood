@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { OnlineRoomState, ChallengeType, ResetProposal, ThemeId, BoardShape } from '../types';
+import {
+  OnlineRoomState,
+  ChallengeType,
+  ResetProposal,
+  ThemeId,
+  BoardShape,
+} from '../types';
 import {
   checkGameOverForShape,
   expandTerritoryForShape,

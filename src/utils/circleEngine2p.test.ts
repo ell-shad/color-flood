@@ -84,8 +84,12 @@ describe('P9 two-player wheel — outcome and bot', () => {
       [0, 1, 0, 1],
     ];
     // 13 of 24 is a majority (8-cell wheel below is the blocked case).
-    expect(checkWheelMultiplayerGameOver(24, 13, 11, 4, 0, 1, grid, [], [])).toBe('p1_won');
-    expect(checkWheelMultiplayerGameOver(24, 11, 13, 4, 0, 1, grid, [], [])).toBe('p2_won');
+    expect(checkWheelMultiplayerGameOver(24, 13, 11, 4, 0, 1, grid, [], [])).toBe(
+      'p1_won',
+    );
+    expect(checkWheelMultiplayerGameOver(24, 11, 13, 4, 0, 1, grid, [], [])).toBe(
+      'p2_won',
+    );
     // No legal color for either side and equal counts → draw.
     expect(checkWheelMultiplayerGameOver(8, 1, 1, 2, 0, 1, grid, ['1,0'], ['1,2'])).toBe(
       'draw',

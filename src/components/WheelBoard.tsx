@@ -149,7 +149,6 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
   p2Cells = [],
   showTerritoryOverlay = true,
 }) => {
-
   const shape = useMemo(() => wheelGeometry(size), [size]);
   const cells = useMemo(() => {
     const { rings, sectors } = shape;
@@ -285,7 +284,11 @@ export const WheelBoard: React.FC<WheelBoardProps> = ({
               y={cy}
               textAnchor="middle"
               dominantBaseline="central"
-              style={{ fill: tint, fontSize: label.length > 2 ? 2 : 2.6, fontWeight: 900 }}
+              style={{
+                fill: tint,
+                fontSize: label.length > 2 ? 2 : 2.6,
+                fontWeight: 900,
+              }}
             >
               {label}
             </text>

@@ -386,7 +386,12 @@ export const checkWheelMultiplayerGameOver = (
     for (let i = 0; i < colorCount; i++) if (i !== own && i !== other) list.push(i);
     return list;
   };
-  const canGain = (own: string[], other: string[], ownColor: number, otherColor: number) =>
+  const canGain = (
+    own: string[],
+    other: string[],
+    ownColor: number,
+    otherColor: number,
+  ) =>
     legal(ownColor, otherColor).some(
       (c) => expandWheelTerritory(grid, own, other, c).gain > 0,
     );
