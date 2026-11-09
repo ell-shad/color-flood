@@ -1,6 +1,23 @@
 import type { SoloMoveDiff } from '../types';
 
 /**
+ * P5.6 (moved here in P10.1 so the two-player machines record with the exact
+ * same format): per-move repaint entries ({cell, previous color}) recomputed
+ * from the boards before and after the move. The walk is per-ROW because
+ * wheels (P7) are rings × sectors where sectors ≠ row count — the column
+ * bound must come from each row's own length.
+ */
+export const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] => {
+  const diff: SoloMoveDiff[] = [];
+  for (let r = 0; r < before.length; r++) {
+    for (let c = 0; c < before[r].length; c++) {
+      if (before[r][c] !== after[r][c]) diff.push({ r, c, prev: before[r][c] });
+    }
+  }
+  return diff;
+};
+
+/**
  * P6.3: reconstructs the board state after every move of a finished game,
  * using the per-move repaint DIFF history recorded by the solo machine
  * (P5.6). Pure — the live game state is never touched by a replay.

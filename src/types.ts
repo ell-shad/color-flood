@@ -46,6 +46,23 @@ export interface SoloMoveDiff {
   prev: number;
 }
 
+/**
+ * P10.1: one recorded two-player move — enough to replay the round exactly
+ * from the final board alone. `diff` repaints hold the previous grid colors
+ * and `gained` holds the territory keys this move added to the mover's land
+ * (territory only ever grows, so ownership also rebuilds backward).
+ */
+export interface TwoPlayerMoveRecord {
+  /** Who played it (the local reducer's turn order; the server's role). */
+  player: PlayerId;
+  /** Palette index the mover played. */
+  color: number;
+  /** Cells the move repainted (cell + previous color), the P5.6 format. */
+  diff: SoloMoveDiff[];
+  /** Territory keys that joined the mover's land with this move, in order. */
+  gained: string[];
+}
+
 export interface SoloGameState {
   grid: number[][];
   moves: number;
@@ -71,6 +88,8 @@ export interface TwoPlayerGameState {
   grid: number[][];
   /** P9: board topology — classic square or the polar wheel (2P too). */
   shape: BoardShape;
+  /** P10.1: ladder size the round was generated from (wheel geometry reads it). */
+  boardSize: GridSize;
   turn: PlayerId;
   p1Cells: string[];
   p2Cells: string[];
@@ -81,6 +100,11 @@ export interface TwoPlayerGameState {
   p1Moves: number;
   p2Moves: number;
   lastGains: { 1: number; 2: number };
+  /**
+   * P10.1: one `TwoPlayerMoveRecord` per played move. Unlike the solo machine
+   * there is no padding entry at index 0 — index i is the i-th physical move.
+   */
+  history: TwoPlayerMoveRecord[];
   roundNumber: number;
   firstTurnPlayer: 1 | 2;
   challengeType: ChallengeType;
@@ -124,6 +148,12 @@ export interface OnlineRoomState {
   themeId?: ThemeId;
   /** Optional per-turn move timer in seconds (0 = off). Host-configurable. */
   turnTimerSec?: 0 | 30 | 60;
+  /**
+   * P10.4: one `TwoPlayerMoveRecord` per move of the finished round. The
+   * server attaches it to a snapshot only once the round has actually ended,
+   * so mid-game payloads stay lean; absent while a round is running.
+   */
+  roundHistory?: TwoPlayerMoveRecord[];
 }
 
 export interface ActiveEmote {

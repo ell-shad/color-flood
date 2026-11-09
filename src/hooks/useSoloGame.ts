@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef, useState, useCallback } from 'react';
 import type {
   SoloGameState,
-  SoloMoveDiff,
   HighScore,
   GridSize,
   ColorCount,
@@ -14,6 +13,7 @@ import {
   checkWheelWin,
   getMaxWheelMoves,
 } from '../utils/circleEngine';
+import { buildMoveDiff } from '../utils/replay';
 import { mulberry32 } from '../utils/engine';
 import { maxSoloMovesLimit } from '../utils/soloBalance';
 import { loadJson, saveJson } from '../utils/storage';
@@ -79,19 +79,9 @@ export const upsertHighScore = (
  * instead of a full grid snapshot — 18x18 grids no longer snapshot 324 rows
  * per move and undo restores exactly the cells the flood recolored
  * (absorbed cells already had the move color, so they need no entry).
+ * P10.1: the diff builder itself now lives in `utils/replay.ts` so the
+ * two-player machines record with the exact same format.
  */
-const buildMoveDiff = (before: number[][], after: number[][]): SoloMoveDiff[] => {
-  const diff: SoloMoveDiff[] = [];
-  // Row/column indices come from the BOARD ITSELF: wheels (P7) are
-  // rings×sectors where sectors ≠ row count, so the column bound must be
-  // each row's own length, not `before.length`.
-  for (let r = 0; r < before.length; r++) {
-    for (let c = 0; c < before[r].length; c++) {
-      if (before[r][c] !== after[r][c]) diff.push({ r, c, prev: before[r][c] });
-    }
-  }
-  return diff;
-};
 
 type SoloAction =
   | {
@@ -255,9 +245,8 @@ export function useSoloGame(
 
   const currentBest = useCallback(
     (shape: BoardShape, size: GridSize, colors: ColorCount): number | null =>
-      highScores.find(
-        (s) => s.shape === shape && s.size === size && s.colors === colors,
-      )?.moves ?? null,
+      highScores.find((s) => s.shape === shape && s.size === size && s.colors === colors)
+        ?.moves ?? null,
     [highScores],
   );
 

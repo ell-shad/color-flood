@@ -17,6 +17,7 @@ import {
 } from '../utils/floodLogic';
 import { PROGRESSIVE_STAGES } from '../utils/themes';
 import { requestBotMove } from '../utils/botWorkerClient';
+import { buildMoveDiff } from '../utils/replay';
 import { loadJson, saveJson } from '../utils/storage';
 import { z } from 'zod';
 
@@ -102,6 +103,7 @@ const buildFreshRound = (action: {
   return {
     grid,
     shape: action.shape,
+    boardSize: action.size as GridSize,
     turn: action.startTurn,
     p1Cells,
     p2Cells,
@@ -112,6 +114,8 @@ const buildFreshRound = (action: {
     p1Moves: 0,
     p2Moves: 0,
     lastGains: { 1: 0, 2: 0 },
+    // P10.1: a fresh round replays nothing — records are appended per move.
+    history: [],
     roundNumber: action.round,
     firstTurnPlayer: action.startTurn,
     challengeType: action.challengeType,
@@ -186,6 +190,18 @@ const localReducer = (
         status: outcome,
         stageWins: nextStageWins,
         lastGains: { ...state.lastGains, [turn]: gain },
+        // P10.1: the replay recording. `expandTerritoryForShape` preserves
+        // insertion order (owned cells first, BFS discoveries after), so
+        // slicing off the previous territory is exactly the gained set.
+        history: [
+          ...state.history,
+          {
+            player: turn,
+            color: action.color,
+            diff: buildMoveDiff(state.grid, newGrid),
+            gained: newCells.slice(currentCells.length),
+          },
+        ],
       };
     }
 

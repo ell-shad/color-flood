@@ -75,6 +75,11 @@ const coerceRoom = (room: OnlineRoomState): TwoPlayerGameState | null => {
     ...room,
     // P9: older snapshots predate the wheel, so default to the square.
     shape: room.shape ?? 'classic',
+    // P10.1: the two new local-machine fields map onto the room's own state —
+    // the room's gridSize IS the round's ladder size, and a room only carries
+    // recorded moves once its round has ended (P10.4).
+    boardSize: (room.gridSize || 10) as GridSize,
+    history: room.roundHistory ?? [],
     // The spread keeps the declared (un-narrowed) status union; re-assign the
     // narrowed property so 'waiting' cannot leak into a live match.
     status: room.status,
@@ -795,7 +800,9 @@ export function useGameSession(): GameSession {
   // Cell count follows the board (square side² or wheel rings × sectors).
   const totalCells = Math.max(
     1,
-    cellCountOf(prefs.mode === 'solo' ? (soloState?.grid ?? []) : (activeMatch?.grid ?? [])),
+    cellCountOf(
+      prefs.mode === 'solo' ? (soloState?.grid ?? []) : (activeMatch?.grid ?? []),
+    ),
   );
   const gridView = {
     grid: prefs.mode === 'solo' && soloState ? soloState.grid : (activeMatch?.grid ?? []),
