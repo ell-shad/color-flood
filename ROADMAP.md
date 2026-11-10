@@ -62,9 +62,10 @@ The plan is therefore designed around **small, independently committed units of 
 | 7 — Circle mode | ✅ | e4f9932 (P7.3) | DONE. P7.1 wheel engine (`41a7179`), P7.2 SVG wheel board + board-shape pref (`b1e572a`, `ec14da3`, `095a10b`), P7.3 shape-aware records/share/replay (`e4f9932`). Browser E2E: greedy UI win in 7 moves, wheel replay (96 sectors), stats row `10·4` wheel, `?shape=wheel` reopens an 8×20 wheel while a classic link stays 14×14 square |
 | 8/9+ — Post-roadmap polish | ✅ | 84cc1e1 | DONE. UI: play shell/settings sheet/multiplayer HUD rebuild (`e23fd72`), render perf: animate only recolored cells + measured board fit (`ad515f3`), P9 circle mode for multiplayer (pass & play, bot, online; `f7500c9` — note: no Phase 8 rows were planned, numbering followed the commit), boot-bundle code split (`84cc1e1`: initial chunk 619→533 kB, 61→48 dev modules, DCL 3.5s→~0.2s). Verified: gates + 172 tests + on-demand chunk E2E |
 | 10 — Two-player replay | ✅ | — | DONE. Replay viewer extended to multiplayer rounds (pass & play, vs bot, online; classic + wheel shapes). P10.1 local move recording → P10.2 backward reconstruction → P10.3 modal + local wiring → P10.4 online server history + spectator replay. Gates + 187 tests green. |
-| 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. P11.7 follow-up: cube is now solo-only (multiplayer is flat-board only). Gates green. |
-| 13 — Mosaic board mode | ✅ | — | DONE. Voronoi/polygonal tiling solo mode: `mosaicEngine`, SVG MosaicBoard, exhaustive shape plumbing, share links, stats/records, replay-compatible storage; fixed-seed layout shared by engine and UI. Calibration: 500 seeds/config, greedy 99.4–100% at 0.95× budget with 0.63–0.75 need/budget. Browser smoke verified a 100-cell mosaic from `?shape=mosaic`; visual follow-up increases cell-shape variety, thins the borders, hides the white seed treatment, and moves the start marker to the bottom centre. |
-| 14 — Triangle and hive board modes | ✅ | — | DONE. Solo-only triangular tiling and regular hexagon-hive topologies with edge-derived engines, SVG boards, exhaustive shape plumbing, share links, stats/records, and bottom-centre start markers. Calibration (500 seeds/config): triangle 98.4–100% at 1.6× (0.73–0.82 need/budget), hive 99.4–100% at 0.9× (0.64–0.77). Browser smoke verified both 100-cell boards from settings/share URLs. Gates green. |
+| 11 — Cube board mode | ✅ | — | DONE. Cube topology, parity-safe exhaustive shape dispatch, server/share/records plumbing, CSS-3D CubeBoard, minimap, BoardRenderer, replay; browser E2E (solo win, 2P bot, share/replay, CPU profile). Calibration: 500 seeds/config, greedy 100% at 1.05× budget with 0.58–0.75 need/budget. P11.7 follow-up: cube is now solo-only (multiplayer excludes the 3D surface). Gates green. |
+| 13 — Mosaic board mode | ✅ | — | DONE. Voronoi/polygonal tiling mode: `mosaicEngine`, SVG MosaicBoard, exhaustive shape plumbing, share links, stats/records, replay-compatible storage; the layout is derived from the board seed so every new game gets a different shard pattern. Calibration: 500 seeds/config, greedy 99.4–100% at 0.95× budget with 0.63–0.75 need/budget. Browser smoke verified a 100-cell mosaic from `?shape=mosaic`; visual follow-up increases cell-shape variety, thins the borders, hides the white seed treatment, and moves the start marker to the bottom centre. P15 adds shared multiplayer support. |
+| 14 — Triangle and hive board modes | ✅ | — | DONE. Triangular tiling and regular hexagon-hive topologies with edge-derived engines, SVG boards, exhaustive shape plumbing, share links, stats/records, and bottom-centre start highlights. Calibration (500 seeds/config): triangle 98.4–100% at 1.6× (0.73–0.82 need/budget), hive 99.4–100% at 0.9× (0.64–0.77). Browser smoke verified both 100-cell boards from settings/share URLs. P15 adds shared multiplayer support. |
+| 15 — Shared-topology multiplayer + mosaic polish | ✅ | 3659d23 | DONE. Mosaic, triangle and hive now play in local, bot and online multiplayer: bottom/top-centre seeds, territory expansion, majority/blocked game-over, one-ply bot ladder, board ownership overlays, server room shape + `boardSeed` snapshots, optimistic updates, replay. Mosaic geometry is randomized from the board seed, and the “S” glyph is replaced by a highlighted start-cell outline. 12 new 2P engine tests; gates green. |
 
 <!-- When resuming: replace the phase row above that is 🟡 with the current commit hash and a
      `NEXT:` note describing the next task, e.g.
@@ -382,17 +383,17 @@ Budget = 1.05× the same ladder/color classic solo limit; `CUBE_LIMIT_FACTOR=1.0
 
 ## Phase 13 — Mosaic Board Mode ✅
 
-**Goal:** add the irregular polygonal Voronoi tiling shown in the reference image as a solo board
+**Goal:** add the irregular polygonal Voronoi tiling shown in the reference image as a board
 shape, `'mosaic'`. The engine is pure TypeScript, derives adjacency from the same polygon edges it
-draws, and keeps the existing `number[][]` plus `"r,c"` encoding. Multiplayer remains flat-board
-only, following the cube follow-up rule.
+draws, and keeps the existing `number[][]` plus `"r,c"` encoding.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
-| P13.1 | Voronoi/mosaic engine: fixed-seed jittered lattice, polygon coverage, adjacency, center flood, hint/win/count, budget/stars, engine tests | ✅ |
+| P13.1 | Voronoi/mosaic engine: seeded jittered lattice, polygon coverage, adjacency, center flood, hint/win/count, budget/stars, engine tests | ✅ |
 | P13.2 | SVG MosaicBoard + exhaustive renderer, solo current-color/hint dispatch, share links, records/stats, selector and copy plumbing | ✅ |
 | P13.3 | Verification, calibration table, browser smoke test, final gates | ✅ |
 | P13.4 | Visual follow-up: more varied “deformed” Voronoi cell shapes (4–8 sides on the 18×18 layout), thinner/clearer borders, a dark start marker instead of a white seed treatment, and a bottom-centre origin | ✅ |
+| P13.5 | Randomize the shard pattern per board seed and replace the “S” glyph with the standard highlighted start-cell outline | ✅ (P15) |
 
 **Phase 13 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
 and `npm run build` green; calibration recorded; daily challenge remains classic.
@@ -437,10 +438,9 @@ Budget = 0.95× the same ladder/color classic solo limit; `MOSAIC_LIMIT_FACTOR=0
 
 ## Phase 14 — Triangle and Hexagon-Hive Board Modes ✅
 
-**Goal:** add two solo topologies: a square tiled by triangular cells and a regular pointy-top
+**Goal:** add two topologies: a square tiled by triangular cells and a regular pointy-top
 honeycomb of hexagonal cells. The engines derive adjacency from the same edges used to draw the
-boards, and the flood starts from a marked bottom-centre cell. Multiplayer remains flat-board
-only, following the cube/mosaic solo-only convention.
+boards, and the flood starts from a highlighted bottom-centre cell.
 
 | ID | Task | Status |
 | -- | ---- | ------ |
@@ -448,6 +448,7 @@ only, following the cube/mosaic solo-only convention.
 | P14.2 | Hexagon-hive engine: regular pointy-top hexagons, edge-derived adjacency, bottom-centre flood, hint/win/count, budget/stars, engine tests | ✅ |
 | P14.3 | Triangle/hive boards, exhaustive renderer, solo current-color/hint dispatch, share links, records/stats, selector and copy plumbing | ✅ |
 | P14.4 | Calibration, browser smoke tests, ROADMAP calibration notes, final gates | ✅ |
+| P14.5 | Two-player triangle/hive kernels and board ownership overlays, wired through local/bot/online rooms | ✅ (P15) |
 
 **Phase 14 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
 and `npm run build` green; daily challenge remains classic.
@@ -461,6 +462,25 @@ Selected factors are `TRIANGLE_LIMIT_FACTOR=1.6` and `HIVE_LIMIT_FACTOR=0.9` (pa
 Across all 25 size/color configs, the greedy hint reached **98.4–100%** with average need/budget
 **0.73–0.82** on triangle boards and **99.4–100%** with average need/budget **0.64–0.77** on
 hexagon-hive boards.
+
+---
+
+## Phase 15 — Shared-Topology Multiplayer + Mosaic Polish ✅
+
+**Goal:** let mosaic, triangle and hive boards play beyond solo (local pass & play, bot and online)
+while keeping the cube solo-only, then finish the mosaic visual pass: no “S” glyph, a standard
+start-cell highlight, and a different shard layout for every board seed.
+
+| ID | Task | Status |
+| -- | ---- | ------ |
+| P15.1 | Mosaic visual polish: layout derived from `side + layoutSeed`, solo boards use their generated seed, start cell highlighted with an accent outline instead of an “S” glyph | ✅ |
+| P15.2 | Two-player kernels for mosaic/triangle/hive: P1 bottom-centre and P2 top-centre seeds, component generation, territory expansion, majority/blocked game-over, easy/medium/master one-ply bot; exhaustive `floodLogic` dispatch | ✅ |
+| P15.3 | Plumb the topologies through local/bot/online: `TwoPlayerGameState.boardSeed`, server room shape + seed snapshots/rematch, optimistic online updates, board ownership overlays, replay seed, settings/lobby/help copy | ✅ |
+| P15.4 | Verification: 12 new two-player engine tests, full gate run, roadmap + README cleanup, stale `bun.lock` / AI-Studio `metadata.json` removed | ✅ |
+
+**Phase 15 checks:** `npm run typecheck`, `npm run test`, `npm run lint`, `npm run format:check`,
+and `npm run build` green. Daily challenge and classic parity remain untouched; the cube remains
+the only solo-only topology.
 
 ---
 

@@ -13,7 +13,7 @@ A strategic color-filling puzzle game built with React, Vite, and Tailwind CSS. 
   - **Symmetrical Color Locking**: Neither player can select their own or their rival's current color.
   - **Live Battle Meter**: Real-time domination percentage bar, series score tracker (Best of X), rematch flow, and active turn indicators.
 - **Dynamic Grid Sizes**: Play on 10x10, 12x12, 14x14, 16x16, or 18x18 grids.
-- **◉ Wheel Boards (solo)**: A polar mandala variant — flood outward from the center core across rings and radial sectors, with its own calibrated move budget, star thresholds, records and share links.
+- **Board Shapes**: Classic square, polar Wheel, random-shard Mosaic, triangular tiling, and hexagonal Hive — each with calibrated budgets, star thresholds, records and share links. Wheel, Mosaic, Triangle and Hive also play in local, bot and online multiplayer; the 3D Cube surface is solo-only.
 - **Color Selection**: Choose between 4, 5, 6, 7, or 8 colors.
 - **Progressive Challenge**: A 5-stage gauntlet that keeps growing the board and adding colors.
 - **Smart Hint System**: Instant move calculations showing potential cell gains.
@@ -101,7 +101,6 @@ npm start
 │   └── index.css                  # Global styles & Tailwind
 ├── public/                        # Static assets
 ├── ROADMAP.md                     # Improvement plan and progress tracker
-├── metadata.json                  # App metadata
 └── package.json                   # Dependencies and scripts
 ```
 
