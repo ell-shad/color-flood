@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "sim": "tsx scripts/sim.ts",
     "bench": "tsx scripts/abBench.ts",
     "bench:all": "tsx scripts/benchmark.ts",
     "test": "vitest run",

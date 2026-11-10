@@ -186,9 +186,9 @@ Goal: solver-calibrated solo limits + stars; limited/removed hints; strong seede
 
 ## Phase 3 — Online Multiplayer Rewrite ✅
 
-> Manual acceptance (pending user): open two browsers, finish a match with no desync, and
-> refresh mid-game with `?room=CODE` — the reloading player must resume by token with their
-> original role (P1 stays P1). Everything mechanizable is automated (95 tests).
+> Manual acceptance: **done** in the P6.6 follow-up (`026bb4e`) — two browsers finished a match
+> with live board mirroring, and a mid-game refresh resumed the same seat by token (P1 stayed
+> P1) with no desync. Everything mechanizable is automated (95 tests at the time).
 
 Known defects (confirmed by reading server.ts + useOnlineMultiplayer.ts): three sync layers
 (PeerJS + REST/1.2s polling + unused ws), host grid never sent on `POST /api/rooms` so polling

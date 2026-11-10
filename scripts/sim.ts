@@ -50,7 +50,7 @@ const arg = (name: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 
 const noWrite = process.argv.includes('--no-write');
-const persist = !noWrite;
+const persist = process.argv.includes('--persist') && !noWrite;
 const verify = process.argv.includes('--verify');
 const BOARDS = Number(arg('boards') ?? (verify ? 200 : 120));
 const configFilter = arg('config'); // "18:8"
