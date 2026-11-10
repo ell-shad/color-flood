@@ -72,6 +72,8 @@ export interface MultiplayerReplayData {
   /** Labels shown on the "who played" chips. */
   p1Name: string;
   p2Name: string;
+  /** P14: mosaic geometry seed; other topologies ignore it. */
+  boardSeed?: number;
   /** boards show a BOT badge instead of P2 for bot opponents (P10.3). */
   opponent?: MultiplayerOpponent;
 }

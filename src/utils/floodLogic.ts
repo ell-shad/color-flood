@@ -13,6 +13,24 @@ import {
   generateTwoPlayerCube,
 } from './cubeEngine';
 import {
+  bestMosaicMultiplayerMove,
+  checkMosaicMultiplayerGameOver,
+  expandMosaicTerritory,
+  generateTwoPlayerMosaic,
+} from './mosaicEngine';
+import {
+  bestTriangleMultiplayerMove,
+  checkTriangleMultiplayerGameOver,
+  expandTriangleTerritory,
+  generateTwoPlayerTriangle,
+} from './triangleEngine';
+import {
+  bestHiveMultiplayerMove,
+  checkHiveMultiplayerGameOver,
+  expandHiveTerritory,
+  generateTwoPlayerHive,
+} from './hiveEngine';
+import {
   connectedRegionFlat,
   countRegionFlat,
   expandTerritoryFlat,
@@ -51,17 +69,19 @@ export const generateBoardForShape = (
   size: number,
   colorCount: number,
   rng: Rng = Math.random,
+  layoutSeed: number = 0,
 ): TwoPlayerGridResult => {
   switch (shape) {
     case 'wheel':
       return generateTwoPlayerWheel(size, colorCount, rng);
     case 'cube':
       return generateTwoPlayerCube(size, colorCount, rng);
-    // Multiplayer is flat-board only (P11.7/P13/P14): a solo shape that reaches
-    // this path builds the square board rather than crashing a room.
     case 'mosaic':
+      return generateTwoPlayerMosaic(size, colorCount, rng, layoutSeed);
     case 'triangle':
+      return generateTwoPlayerTriangle(size, colorCount, rng);
     case 'hive':
+      return generateTwoPlayerHive(size, colorCount, rng);
     case 'classic':
       return generateTwoPlayerGrid(size, colorCount, rng);
     default:
@@ -75,6 +95,7 @@ export const expandTerritoryForShape = (
   currentCells: string[],
   opponentCells: string[],
   targetColor: number,
+  layoutSeed: number = 0,
 ): { newGrid: number[][]; newCells: string[]; gain: number } => {
   switch (shape) {
     case 'wheel':
@@ -82,8 +103,17 @@ export const expandTerritoryForShape = (
     case 'cube':
       return expandCubeTerritory(grid, currentCells, opponentCells, targetColor);
     case 'mosaic':
+      return expandMosaicTerritory(
+        grid,
+        currentCells,
+        opponentCells,
+        targetColor,
+        layoutSeed,
+      );
     case 'triangle':
+      return expandTriangleTerritory(grid, currentCells, opponentCells, targetColor);
     case 'hive':
+      return expandHiveTerritory(grid, currentCells, opponentCells, targetColor);
     case 'classic':
       return expandPlayerTerritory(grid, currentCells, opponentCells, targetColor);
     default:
@@ -99,6 +129,7 @@ export const checkGameOverForShape = (
   colorCount: number,
   p1Color: number,
   p2Color: number,
+  layoutSeed: number = 0,
 ): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
   const totalCells = cellCountOf(grid);
   switch (shape) {
@@ -127,8 +158,42 @@ export const checkGameOverForShape = (
         p2Cells,
       );
     case 'mosaic':
+      return checkMosaicMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+        layoutSeed,
+      );
     case 'triangle':
+      return checkTriangleMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      );
     case 'hive':
+      return checkHiveMultiplayerGameOver(
+        totalCells,
+        p1Cells.length,
+        p2Cells.length,
+        colorCount,
+        p1Color,
+        p2Color,
+        grid,
+        p1Cells,
+        p2Cells,
+      );
     case 'classic':
       return checkMultiplayerGameOver(
         totalCells,
@@ -158,6 +223,7 @@ export const getBestMoveForShape = (
   colorCount: number,
   difficulty: BotDifficulty = 'master',
   options: BotMoveOptions = {},
+  layoutSeed: number = 0,
 ): { bestColor: number; maxGain: number } => {
   switch (shape) {
     case 'wheel':
@@ -183,8 +249,42 @@ export const getBestMoveForShape = (
         difficulty,
       );
     case 'mosaic':
+      return bestMosaicMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+        options.rng ?? Math.random,
+        layoutSeed,
+      );
     case 'triangle':
+      return bestTriangleMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+        options.rng ?? Math.random,
+      );
     case 'hive':
+      return bestHiveMultiplayerMove(
+        grid,
+        activePlayer,
+        p1Cells,
+        p2Cells,
+        p1Color,
+        p2Color,
+        colorCount,
+        difficulty,
+        options.rng ?? Math.random,
+      );
     case 'classic':
       return getBestMultiplayerMove(
         grid,

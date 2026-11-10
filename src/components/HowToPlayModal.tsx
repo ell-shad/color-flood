@@ -86,9 +86,10 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Starting Root:</strong> You always control the top-left tile (0,
-                  0). Click any of the color buttons below to recolor your connected
-                  block.
+                  <strong>Starting Root:</strong> On a classic board you always control
+                  the top-left tile (0, 0). Other board shapes highlight their marked
+                  start cell. Click any of the color buttons below to recolor your
+                  connected block.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
@@ -113,27 +114,31 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Mosaic boards (solo only):</strong> switch Board Shape to{' '}
-                  <em>Mosaic</em> — the board is an irregular tiling of polygonal shards
-                  and the flood starts in the marked shard at the bottom centre, spreading
-                  shard by shard across shared edges.
+                  <strong>Mosaic boards:</strong> switch Board Shape to <em>Mosaic</em> —
+                  the board is an irregular tiling of polygonal shards and the flood
+                  starts in the highlighted shard at the bottom centre, spreading shard by
+                  shard across shared edges. Two-player matches seed both players at the
+                  bottom and top centres.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Triangle boards (solo only):</strong> switch Board Shape to{' '}
+                  <strong>Triangle boards:</strong> switch Board Shape to{' '}
                   <em>Triangle</em> — every cell is a triangle, and the flood starts in
-                  the marked triangle at the bottom centre, spreading along shared
-                  triangle edges.
+                  the highlighted triangle at the bottom centre, spreading along shared
+                  triangle edges. Two-player matches seed both players at the bottom and
+                  top centres.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Hexagon hive boards (solo only):</strong> switch Board Shape to{' '}
+                  <strong>Hexagon hive boards:</strong> switch Board Shape to{' '}
                   <em>Hive</em> — every cell is a hexagon, and the flood starts in the
-                  marked hexagon at the bottom centre, spreading through the honeycomb.
+                  highlighted hexagon at the bottom centre, spreading through the
+                  honeycomb. Two-player matches seed both players at the bottom and top
+                  centres.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">

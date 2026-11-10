@@ -89,7 +89,7 @@ interface SettingsPanelProps {
   onChangeGridSize: (size: GridSize) => void;
   colorCount: ColorCount;
   onChangeColorCount: (count: ColorCount) => void;
-  /** P7: solo board topology (Classic square / Wheel) — solo only. */
+  /** P7: board topology (classic square / wheel / mosaic / triangle / hive). */
   boardShape?: BoardShape;
   onChangeBoardShape?: (shape: BoardShape) => void;
   mode: GameMode;
@@ -157,8 +157,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
   const panelRef = useModalA11y(true);
-  // P12: solo-only topologies are not offered outside solo, and a stored cube
-  // preference shows as the flat board it actually plays as there.
+  // P12/P15: only the cube is solo-only, and a stored cube preference shows as
+  // the flat board it actually plays as in multiplayer.
   const shapeOptions = BOARD_SHAPE_OPTIONS.filter(
     ({ id }) => mode === 'solo' || !isSoloOnlyShape(id),
   );
@@ -316,8 +316,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           )}
 
-          {/* P7/P9/P12: Board Shape — classic square, mandala wheel, and (solo
-              only) the cube surface. */}
+          {/* P7/P9/P14: Board Shape — flat boards play solo and multiplayer;
+              the cube surface is the one solo-only topology. */}
           {onChangeBoardShape && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -325,9 +325,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   Board Shape
                 </label>
                 <span className="text-[10px] text-indigo-400 font-mono">
-                  {shapeOptions.length > 2
-                    ? 'floods from the center out'
-                    : 'seeds both on the outer ring'}
+                  {activeShape === 'wheel'
+                    ? 'seeds both on the outer ring'
+                    : activeShape === 'cube'
+                      ? 'rotates across six faces'
+                      : 'floods from the marked start'}
                 </span>
               </div>
               <div className={`grid grid-cols-2 gap-1.5`}>
@@ -350,8 +352,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
               {mode !== 'solo' && (
                 <p className="text-[9px] text-slate-500 leading-tight">
-                  Cube, mosaic, triangle and hive are solo modes — multiplayer stays on
-                  the flat boards.
+                  The cube surface is solo-only — multiplayer uses the flat boards.
                 </p>
               )}
             </div>

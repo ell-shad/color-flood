@@ -95,15 +95,19 @@ const buildFreshRound = (action: {
   challengeType: ChallengeType;
   shape: BoardShape;
 }): TwoPlayerGameState => {
+  const boardSeed = Math.floor(Math.random() * 2 ** 32);
   const { grid, p1Cells, p2Cells, p1Color, p2Color } = generateBoardForShape(
     action.shape,
     action.size,
     action.colors,
+    undefined,
+    boardSeed,
   );
   return {
     grid,
     shape: action.shape,
     boardSize: action.size as GridSize,
+    boardSeed,
     turn: action.startTurn,
     p1Cells,
     p2Cells,
@@ -147,6 +151,7 @@ const localReducer = (
         currentCells,
         opponentCells,
         action.color,
+        state.boardSeed,
       );
 
       const nextP1Cells = turn === 1 ? newCells : state.p1Cells;
@@ -162,6 +167,7 @@ const localReducer = (
         action.colors,
         nextP1Color,
         nextP2Color,
+        state.boardSeed,
       );
 
       const nextStageWins = { 1: [...state.stageWins[1]], 2: [...state.stageWins[2]] };
@@ -388,6 +394,7 @@ export function useLocalMatch(
         currentCells,
         opponentCells,
         color,
+        s.boardSeed,
       );
       const nextP1Cells = turn === 1 ? newCells : s.p1Cells;
       const nextP2Cells = turn === 2 ? newCells : s.p2Cells;
@@ -402,6 +409,7 @@ export function useLocalMatch(
         colors,
         nextP1Color,
         nextP2Color,
+        s.boardSeed,
       );
 
       optsRef.current.onMoveStart?.(turn, color);
@@ -479,6 +487,7 @@ export function useLocalMatch(
         colorCount: activeColorCountOf(current, colorCount),
         difficulty: botDifficulty,
         shape: current.shape,
+        layoutSeed: current.boardSeed,
       }).then((bestColor) => {
         if (cancelled) return;
         // Stale response (state changed while the worker computed) is dropped.

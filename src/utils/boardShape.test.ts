@@ -12,13 +12,8 @@ const ALL_SHAPES: BoardShape[] = [
 ];
 
 describe('isSoloOnlyShape', () => {
-  it('marks the cube, mosaic, triangle and hive surfaces as solo-only and the flat boards as shared', () => {
-    expect(ALL_SHAPES.filter(isSoloOnlyShape)).toEqual([
-      'cube',
-      'mosaic',
-      'triangle',
-      'hive',
-    ]);
+  it('marks only the cube surface as solo-only and the flat boards as shared', () => {
+    expect(ALL_SHAPES.filter(isSoloOnlyShape)).toEqual(['cube']);
   });
 });
 
@@ -27,13 +22,13 @@ describe('shapeForMode', () => {
     for (const shape of ALL_SHAPES) expect(shapeForMode(shape, 'solo')).toBe(shape);
   });
 
-  it('drops the cube in multiplayer and leaves the flat boards alone', () => {
+  it('drops only the cube in multiplayer and leaves the other boards alone', () => {
     const modes: GameMode[] = ['multiplayer'];
     for (const mode of modes) {
       expect(shapeForMode('cube', mode)).toBe('classic');
-      expect(shapeForMode('mosaic', mode)).toBe('classic');
-      expect(shapeForMode('triangle', mode)).toBe('classic');
-      expect(shapeForMode('hive', mode)).toBe('classic');
+      expect(shapeForMode('mosaic', mode)).toBe('mosaic');
+      expect(shapeForMode('triangle', mode)).toBe('triangle');
+      expect(shapeForMode('hive', mode)).toBe('hive');
       expect(shapeForMode('wheel', mode)).toBe('wheel');
       expect(shapeForMode('classic', mode)).toBe('classic');
     }

@@ -41,6 +41,8 @@ export interface BotMoveRequest {
   colorCount: number;
   /** Board topology (omitted ⇒ classic square, e.g. legacy callers/tests). */
   shape?: BoardShape;
+  /** P14: geometry seed for the non-square territories. */
+  layoutSeed?: number;
   difficulty: BotDifficulty;
 }
 
@@ -56,6 +58,8 @@ const computeSync = (req: BotMoveRequest): number =>
     req.p2Color,
     req.colorCount,
     req.difficulty,
+    {},
+    req.layoutSeed,
   ).bestColor;
 
 /**

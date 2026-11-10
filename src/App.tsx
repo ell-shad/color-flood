@@ -340,6 +340,7 @@ export default function App() {
                       theme={session.currentTheme}
                       showColorSymbols={session.showColorSymbols}
                       boardPx={boardPx}
+                      layoutSeed={session.boardSeed}
                       mode={session.mode}
                       opponent={session.opponent}
                       p1Cells={session.gridView.p1Cells}
@@ -569,6 +570,7 @@ export default function App() {
                   theme={session.currentTheme}
                   shape={session.soloState.shape}
                   size={session.soloState.boardSize}
+                  layoutSeed={session.soloState.seed}
                 />
               ) : session.multiplayerReplay ? (
                 <ReplayModal
@@ -580,6 +582,7 @@ export default function App() {
                   theme={session.currentTheme}
                   shape={session.multiplayerReplay.shape}
                   size={session.multiplayerReplay.size}
+                  layoutSeed={session.multiplayerReplay.boardSeed ?? 0}
                   multiplayer={session.multiplayerReplay}
                 />
               ) : null}

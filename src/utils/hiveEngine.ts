@@ -9,14 +9,15 @@ import {
 } from './soloBalance';
 
 /**
- * P14 — hexagon-hive board (solo only).
+ * P14 — hexagon-hive board.
  *
  * Regular pointy-top hexagons are laid out in a staggered lattice and scaled
  * uniformly into the unit square. Adjacency is derived from shared polygon
  * edges, so the flood walks the visible honeycomb walls.
  *
  * Storage remains `number[rows][cols]` and `"r,c"` cell keys: row `r`, column
- * `c` is one hexagonal cell.
+ * `c` is one hexagonal cell. The same graph powers two-player hive, seeded at
+ * the bottom and top centres.
  */
 
 export interface HiveCell {
@@ -165,6 +166,12 @@ export const hiveSeedCell = (rows: number, cols: number): [number, number] => {
   return [Math.floor(seed / cols), seed % cols];
 };
 
+/** The opposite multiplayer seed: the top-centre hexagon. */
+export const hiveTopSeedCell = (rows: number, cols: number): [number, number] => [
+  0,
+  Math.floor(cols / 2),
+];
+
 /** Seeded board generation. */
 export const generateHiveBoard = (
   size: number,
@@ -298,3 +305,212 @@ export const getHivePar = (size: number, colorCount: number): number =>
 
 export const rateHiveStars = (moves: number, size: number, colors: number): SoloStars =>
   rateSoloStarsWith(moves, getHivePar(size, colors), getMaxHiveMoves(size, colors));
+
+// --- Two-player hive ---------------------------------------------------------
+
+export interface TwoPlayerHiveBoard {
+  grid: number[][];
+  p1Cells: string[];
+  p2Cells: string[];
+  p1Color: number;
+  p2Color: number;
+}
+
+const hiveComponentFrom = (
+  grid: number[][],
+  start: number,
+  color: number,
+  rows: number,
+  cols: number,
+): string[] => {
+  const { cells } = hiveLayout(rows, cols);
+  const seen = new Uint8Array(cells.length);
+  const queue: number[] = [start];
+  seen[start] = 1;
+  const out: number[] = [start];
+  let head = 0;
+  while (head < queue.length) {
+    const index = queue[head++];
+    for (const next of cells[index].neighbours) {
+      if (!seen[next] && grid[Math.floor(next / cols)][next % cols] === color) {
+        seen[next] = 1;
+        out.push(next);
+        queue.push(next);
+      }
+    }
+  }
+  return out.map((index) => `${Math.floor(index / cols)},${index % cols}`);
+};
+
+/**
+ * Two-player hive board: P1 starts at the bottom-centre hexagon and P2 at the
+ * top-centre hexagon.
+ */
+export const generateTwoPlayerHive = (
+  size: number,
+  colorCount: number,
+  rng: Rng = Math.random,
+): TwoPlayerHiveBoard => {
+  const [rows, cols] = hiveDimensions(size);
+  const grid: number[][] = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => Math.floor(rng() * colorCount)),
+  );
+  // P1 shares the solo flood origin so both modes read the same start cell;
+  // the staggered lattice can shift it by one column from `floor(cols / 2)`.
+  const [p1r, p1c] = hiveSeedCell(rows, cols);
+  const p1Index = p1r * cols + p1c;
+  const [p2r, p2c] = hiveTopSeedCell(rows, cols);
+  const p2Index = p2r * cols + p2c;
+  const p1Color = grid[p1r][p1c];
+  const p2Color = (p1Color + 1 + Math.floor(rng() * (colorCount - 1))) % colorCount;
+  grid[p2r][p2c] = p2Color;
+  return {
+    grid,
+    p1Cells: hiveComponentFrom(grid, p1Index, p1Color, rows, cols),
+    p2Cells: hiveComponentFrom(grid, p2Index, p2Color, rows, cols),
+    p1Color,
+    p2Color,
+  };
+};
+
+/** Territory expansion over the honeycomb adjacency graph. */
+export const expandHiveTerritory = (
+  grid: number[][],
+  currentCells: string[],
+  opponentCells: string[],
+  targetColor: number,
+): { newGrid: number[][]; newCells: string[]; gain: number } => {
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+  const { cells } = hiveLayout(rows, cols);
+  const out = grid.map((row) => [...row]);
+  const opponentSet = new Set(opponentCells);
+  const owned = new Set<string>();
+  const newCells: string[] = [];
+  const queue: number[] = [];
+
+  for (const key of currentCells) {
+    if (owned.has(key)) continue;
+    owned.add(key);
+    const [r, c] = key.split(',').map(Number);
+    out[r][c] = targetColor;
+    newCells.push(key);
+    queue.push(r * cols + c);
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const index = queue[head++];
+    for (const next of cells[index].neighbours) {
+      const key = `${Math.floor(next / cols)},${next % cols}`;
+      if (
+        !owned.has(key) &&
+        !opponentSet.has(key) &&
+        out[Math.floor(next / cols)][next % cols] === targetColor
+      ) {
+        owned.add(key);
+        newCells.push(key);
+        queue.push(next);
+      }
+    }
+  }
+
+  return { newGrid: out, newCells, gain: newCells.length - currentCells.length };
+};
+
+export const checkHiveMultiplayerGameOver = (
+  totalCells: number,
+  p1Count: number,
+  p2Count: number,
+  colorCount: number,
+  p1Color: number,
+  p2Color: number,
+  grid: number[][],
+  p1Cells: string[],
+  p2Cells: string[],
+): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
+  const majority = Math.floor(totalCells / 2) + 1;
+  if (p1Count >= majority) return 'p1_won';
+  if (p2Count >= majority) return 'p2_won';
+  if (p1Count + p2Count >= totalCells) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+  const legal = (own: number, other: number) => {
+    const list: number[] = [];
+    for (let i = 0; i < colorCount; i++) if (i !== own && i !== other) list.push(i);
+    return list;
+  };
+  const canGain = (
+    own: string[],
+    other: string[],
+    ownColor: number,
+    otherColor: number,
+  ) =>
+    legal(ownColor, otherColor).some(
+      (c) => expandHiveTerritory(grid, own, other, c).gain > 0,
+    );
+  if (
+    !canGain(p1Cells, p2Cells, p1Color, p2Color) &&
+    !canGain(p2Cells, p1Cells, p2Color, p1Color)
+  ) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+  return 'playing';
+};
+
+/** Same one-ply easy/medium/master heuristic as wheel and cube. */
+export const bestHiveMultiplayerMove = (
+  grid: number[][],
+  activePlayer: 1 | 2,
+  p1Cells: string[],
+  p2Cells: string[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+  difficulty: 'easy' | 'medium' | 'master' = 'master',
+  rng: Rng = Math.random,
+): { bestColor: number; maxGain: number } => {
+  const mine = activePlayer === 1 ? p1Cells : p2Cells;
+  const theirs = activePlayer === 1 ? p2Cells : p1Cells;
+  const myColor = activePlayer === 1 ? p1Color : p2Color;
+  const theirColor = activePlayer === 1 ? p2Color : p1Color;
+  const legal: number[] = [];
+  for (let i = 0; i < colorCount; i++) {
+    if (i !== myColor && i !== theirColor) legal.push(i);
+  }
+  if (legal.length === 0) return { bestColor: 0, maxGain: 0 };
+  const gains = new Map<number, number>();
+  for (const c of legal) {
+    gains.set(c, expandHiveTerritory(grid, mine, theirs, c).gain);
+  }
+  if (difficulty === 'easy' && rng() < 0.6) {
+    const pick = legal[Math.floor(rng() * legal.length)];
+    return { bestColor: pick, maxGain: gains.get(pick) ?? 0 };
+  }
+  if (difficulty === 'medium') {
+    let best = legal[0];
+    for (const c of legal) if ((gains.get(c) ?? 0) > (gains.get(best) ?? 0)) best = c;
+    return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+  }
+  let best = legal[0];
+  let bestScore = -Infinity;
+  for (const c of legal) {
+    const { newGrid, newCells } = expandHiveTerritory(grid, mine, theirs, c);
+    let reply = 0;
+    for (let r = 0; r < colorCount; r++) {
+      if (r === c || r === theirColor) continue;
+      const g = expandHiveTerritory(newGrid, theirs, newCells, r).gain;
+      if (g > reply) reply = g;
+    }
+    const score = (gains.get(c) ?? 0) * 1.5 - reply * 0.8;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+};

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { GameTheme } from '../types';
+import type { GameMode, GameTheme, MultiplayerOpponent } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
 import { GHOST_ALPHA } from './BoardCell';
@@ -28,6 +28,13 @@ interface MosaicBoardProps {
   /** Ladder size (10..18) — also the number of cells per row. */
   size: number;
   theme?: GameTheme;
+  mode?: GameMode;
+  opponent?: MultiplayerOpponent;
+  p1Cells?: string[];
+  p2Cells?: string[];
+  showTerritoryOverlay?: boolean;
+  lastMovingPlayer?: 1 | 2;
+  layoutSeed?: number;
   /** P5.4: overlay digit (palette index + 1) per cell — color-blind aid. */
   showColorSymbols?: boolean;
   /** P7.3: frame width override (the replay modal renders it smaller). */
@@ -48,6 +55,11 @@ interface FacetProps {
   inkShadow: string;
   ghost: boolean;
   isSeed: boolean;
+  isP1Start: boolean;
+  isP2Start: boolean;
+  ownedMarker: 'none' | 'p1' | 'p2';
+  showOverlay: boolean;
+  p2Label: string;
 }
 
 const Facet = React.memo(function Facet({
@@ -61,8 +73,14 @@ const Facet = React.memo(function Facet({
   inkShadow,
   ghost,
   isSeed,
+  isP1Start,
+  isP2Start,
+  ownedMarker,
+  showOverlay,
+  p2Label,
   cell,
 }: FacetProps) {
+  const seedColor = isP2Start ? '#fb7185' : '#22d3ee';
   return (
     <>
       <polygon
@@ -70,8 +88,18 @@ const Facet = React.memo(function Facet({
         points={points}
         fill={color}
         fillOpacity={ghost ? GHOST_ALPHA : 1}
-        stroke={ghost ? 'rgba(226,232,240,0.42)' : 'rgba(15,23,42,0.58)'}
-        strokeWidth={ghost ? 0.2 : isSeed ? 0.65 : 0.42}
+        stroke={
+          ghost
+            ? 'rgba(226,232,240,0.42)'
+            : isSeed || isP1Start || isP2Start
+              ? seedColor
+              : showOverlay && ownedMarker === 'p1'
+                ? '#22d3ee'
+                : showOverlay && ownedMarker === 'p2'
+                  ? '#fb7185'
+                  : 'rgba(15,23,42,0.58)'
+        }
+        strokeWidth={ghost ? 0.2 : isSeed || isP1Start || isP2Start ? 0.85 : 0.42}
         strokeLinejoin="round"
         style={{
           transition: 'fill 0.26s ease-out',
@@ -92,28 +120,19 @@ const Facet = React.memo(function Facet({
           {glyph}
         </text>
       )}
-      {isSeed && (
-        <g aria-label="Starting shard">
-          <circle
-            cx={cell.site[0] * 100}
-            cy={cell.site[1] * 100}
-            r={2.7}
-            fill="#0f172a"
-            stroke="#22d3ee"
-            strokeWidth={0.45}
-          />
-          <text
-            x={cell.site[0] * 100}
-            y={cell.site[1] * 100}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="#f8fafc"
-            fontSize={3.1}
-            fontWeight={900}
-          >
-            S
-          </text>
-        </g>
+      {(isP1Start || isP2Start) && (
+        <text
+          x={cell.site[0] * 100}
+          y={cell.site[1] * 100}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#f8fafc"
+          fontSize={3.4}
+          fontWeight={900}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+        >
+          {isP1Start ? 'P1' : p2Label}
+        </text>
       )}
     </>
   );
@@ -123,14 +142,47 @@ export const MosaicBoard: React.FC<MosaicBoardProps> = ({
   grid,
   size,
   theme = THEMES.arcade,
+  mode = 'solo',
+  opponent,
+  p1Cells = [],
+  p2Cells = [],
+  showTerritoryOverlay = true,
+  lastMovingPlayer = 1,
+  layoutSeed = 0,
   showColorSymbols = false,
   frameWidth,
   boardPx,
 }) => {
   const side = grid.length || size;
-  const layout = useMemo(() => mosaicLayout(side), [side]);
-  const distances = useMemo(() => mosaicDistanceField(side), [side]);
-  const seedCell = useMemo(() => mosaicSeedCell(side), [side]);
+  const layout = useMemo(() => mosaicLayout(side, layoutSeed), [side, layoutSeed]);
+  const seedCell = useMemo(() => mosaicSeedCell(side, layoutSeed), [side, layoutSeed]);
+  const distances = useMemo(() => {
+    if (mode !== 'multiplayer') return mosaicDistanceField(side, layoutSeed);
+    const activeKey = lastMovingPlayer === 2 ? p2Cells[0] : p1Cells[0];
+    const [ar, ac] = (activeKey ?? `${seedCell[0]},${seedCell[1]}`)
+      .split(',')
+      .map(Number);
+    const start = ar * side + ac;
+    const distances = new Int16Array(layout.cells.length).fill(-1);
+    if (start < 0 || start >= layout.cells.length)
+      return mosaicDistanceField(side, layoutSeed);
+    distances[start] = 0;
+    const queue: number[] = [start];
+    let head = 0;
+    while (head < queue.length) {
+      const index = queue[head++];
+      for (const next of layout.cells[index].neighbours) {
+        if (distances[next] === -1) {
+          distances[next] = distances[index] + 1;
+          queue.push(next);
+        }
+      }
+    }
+    return distances;
+  }, [lastMovingPlayer, layout, mode, p1Cells, p2Cells, seedCell, side, layoutSeed]);
+  const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
+  const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
+  const p2Label = opponent === 'bot' ? 'BOT' : 'P2';
 
   const glyphs = theme.emoji;
   const showGlyphs = showColorSymbols || !!glyphs;
@@ -186,7 +238,18 @@ export const MosaicBoard: React.FC<MosaicBoardProps> = ({
               inkColor={ink ? ink.color : ''}
               inkShadow={ink ? ink.shadow : ''}
               ghost={!!glyphs}
-              isSeed={r === seedCell[0] && c === seedCell[1]}
+              isSeed={mode === 'solo' && r === seedCell[0] && c === seedCell[1]}
+              isP1Start={mode === 'multiplayer' && p1Cells[0] === `${r},${c}`}
+              isP2Start={mode === 'multiplayer' && p2Cells[0] === `${r},${c}`}
+              ownedMarker={
+                mode === 'multiplayer' && p1Set.has(`${r},${c}`)
+                  ? 'p1'
+                  : mode === 'multiplayer' && p2Set.has(`${r},${c}`)
+                    ? 'p2'
+                    : 'none'
+              }
+              showOverlay={showTerritoryOverlay}
+              p2Label={p2Label}
             />
           );
         })}

@@ -8,7 +8,7 @@ import {
 } from './soloBalance';
 
 /**
- * P13 — Mosaic boards (irregular polygonal tiling, solo only).
+ * P13 — Mosaic boards (irregular polygonal tiling).
  *
  * A mosaic is a Voronoi diagram of jittered lattice points inside the unit
  * square: every cell is a convex polygon, every polygon comes from its own
@@ -22,13 +22,13 @@ import {
  * order. Solo reducer, undo diffs, share links, records and replay therefore
  * need no new encoding — only flood/win/count/hint dispatch by shape.
  *
- * The polygon layout is derived from the side alone (fixed PRNG seed), so a
- * layout can be regenerated anywhere — engine, board, tests — from the grid
- * dimensions, with no extra state to thread through the game.
+ * The polygon layout is derived from the side and a 32-bit layout seed, so the
+ * same board can be regenerated anywhere — engine, board, tests, server,
+ * replay — with no extra geometry state beyond that seed.
  *
- * Multiplayer is flat-board only (P11.7 rule: the cube is the only 3D solo
- * shape, and the mosaic follows the same solo-only convention), so this module
- * has no two-player kernels.
+ * The same graph also powers two-player mosaic: P1 starts at the bottom-centre
+ * shard, P2 at the opposite top-centre shard, and each turn expands the active
+ * player's territory across shared polygon edges.
  */
 
 export type Point = [number, number];
@@ -174,8 +174,8 @@ const diagramOf = (sites: Point[]): { polygons: Point[][]; neighbours: number[][
   return { polygons, neighbours };
 };
 
-const buildLayout = (side: number): MosaicLayout => {
-  const rng = mulberry32((0x5eed1a3 ^ (side * 2654435761)) >>> 0);
+const buildLayout = (side: number, layoutSeed: number): MosaicLayout => {
+  const rng = mulberry32((0x5eed1a3 ^ layoutSeed ^ (side * 2654435761)) >>> 0);
   let sites: Point[] = [];
   for (let r = 0; r < side; r++) {
     for (let c = 0; c < side; c++) {
@@ -220,14 +220,14 @@ const buildLayout = (side: number): MosaicLayout => {
   return { side, cells, seed };
 };
 
-const layoutCache = new Map<number, MosaicLayout>();
+const layoutCache = new Map<string, MosaicLayout>();
 
-/** Layout for a board side (cells per row); generated once and cached. */
-export const mosaicLayout = (side: number): MosaicLayout => {
-  const key = Math.max(2, Math.floor(side));
+/** Layout for a board side and seed; generated once and cached. */
+export const mosaicLayout = (side: number, layoutSeed: number = 0): MosaicLayout => {
+  const key = `${Math.max(2, Math.floor(side))}:${layoutSeed >>> 0}`;
   let layout = layoutCache.get(key);
   if (!layout) {
-    layout = buildLayout(key);
+    layout = buildLayout(Math.max(2, Math.floor(side)), layoutSeed >>> 0);
     layoutCache.set(key, layout);
   }
   return layout;
@@ -246,8 +246,11 @@ const rowOf = (index: number, side: number): number => Math.floor(index / side);
 const colOf = (index: number, side: number): number => index % side;
 
 /** The solo flood origin: the bottom-centre cell. */
-export const mosaicSeedCell = (side: number): [number, number] => {
-  const { seed } = mosaicLayout(side);
+export const mosaicSeedCell = (
+  side: number,
+  layoutSeed: number = 0,
+): [number, number] => {
+  const { seed } = mosaicLayout(side, layoutSeed);
   return [rowOf(seed, side), colOf(seed, side)];
 };
 
@@ -259,13 +262,14 @@ export const generateMosaicBoard = (
   size: number,
   colorCount: number,
   rng: Rng = Math.random,
+  layoutSeed: number = 0,
 ): number[][] => {
   const side = mosaicSide(size);
   const grid: number[][] = Array.from({ length: side }, () =>
     Array.from({ length: side }, () => Math.floor(rng() * colorCount)),
   );
   // A monochrome board would be won before the first move.
-  const [sr, sc] = mosaicSeedCell(side);
+  const [sr, sc] = mosaicSeedCell(side, layoutSeed);
   const seedColor = grid[sr][sc];
   if (grid.every((row) => row.every((cell) => cell === seedColor))) {
     grid[(sr + 1) % side][(sc + 1) % side] = (seedColor + 1) % colorCount;
@@ -274,9 +278,13 @@ export const generateMosaicBoard = (
 };
 
 /** Cell indices of the connected region of `color` containing the origin. */
-const originRegion = (grid: number[][], color: number): number[] => {
+const originRegion = (
+  grid: number[][],
+  color: number,
+  layoutSeed: number = 0,
+): number[] => {
   const side = grid.length;
-  const { cells, seed } = mosaicLayout(side);
+  const { cells, seed } = mosaicLayout(side, layoutSeed);
   const seen = new Uint8Array(cells.length);
   const queue: number[] = [seed];
   seen[seed] = 1;
@@ -296,12 +304,13 @@ const originRegion = (grid: number[][], color: number): number[] => {
 };
 
 /** Graph distance (cells) from the seed cell — the flood's wave stagger. */
-const distanceCache = new Map<number, Int16Array>();
+const distanceCache = new Map<string, Int16Array>();
 
-export const mosaicDistanceField = (side: number): Int16Array => {
-  const cached = distanceCache.get(side);
+export const mosaicDistanceField = (side: number, layoutSeed: number = 0): Int16Array => {
+  const key = `${side}:${layoutSeed >>> 0}`;
+  const cached = distanceCache.get(key);
   if (cached) return cached;
-  const { cells, seed } = mosaicLayout(side);
+  const { cells, seed } = mosaicLayout(side, layoutSeed);
   const distances = new Int16Array(cells.length).fill(-1);
   distances[seed] = 0;
   const queue: number[] = [seed];
@@ -315,33 +324,40 @@ export const mosaicDistanceField = (side: number): Int16Array => {
       }
     }
   }
-  distanceCache.set(side, distances);
+  distanceCache.set(key, distances);
   return distances;
 };
 
-export const floodMosaic = (grid: number[][], targetColor: number): number[][] => {
+export const floodMosaic = (
+  grid: number[][],
+  targetColor: number,
+  layoutSeed: number = 0,
+): number[][] => {
   const side = grid.length;
-  const [sr, sc] = mosaicSeedCell(side);
+  const [sr, sc] = mosaicSeedCell(side, layoutSeed);
   const startColor = grid[sr][sc];
   if (startColor === targetColor) return grid;
   const out = grid.map((row) => [...row]);
-  for (const index of originRegion(grid, startColor)) {
+  for (const index of originRegion(grid, startColor, layoutSeed)) {
     out[rowOf(index, side)][colOf(index, side)] = targetColor;
   }
   return out;
 };
 
-export const checkMosaicWin = (grid: number[][]): boolean => {
+export const checkMosaicWin = (grid: number[][], layoutSeed: number = 0): boolean => {
   const side = grid.length;
-  const [sr, sc] = mosaicSeedCell(side);
+  const [sr, sc] = mosaicSeedCell(side, layoutSeed);
   const color = grid[sr][sc];
   return grid.every((row) => row.every((cell) => cell === color));
 };
 
-export const countConnectedMosaic = (grid: number[][]): number => {
+export const countConnectedMosaic = (
+  grid: number[][],
+  layoutSeed: number = 0,
+): number => {
   const side = grid.length;
-  const [sr, sc] = mosaicSeedCell(side);
-  return originRegion(grid, grid[sr][sc]).length;
+  const [sr, sc] = mosaicSeedCell(side, layoutSeed);
+  return originRegion(grid, grid[sr][sc], layoutSeed).length;
 };
 
 /**
@@ -351,23 +367,28 @@ export const countConnectedMosaic = (grid: number[][]): number => {
 export const bestMosaicMoveWithGain = (
   grid: number[][],
   colorCount: number,
+  layoutSeed: number = 0,
 ): { color: number; gain: number } | null => {
-  if (checkMosaicWin(grid)) return null;
+  if (checkMosaicWin(grid, layoutSeed)) return null;
   const side = grid.length;
-  const [sr, sc] = mosaicSeedCell(side);
+  const [sr, sc] = mosaicSeedCell(side, layoutSeed);
   const seedColor = grid[sr][sc];
-  const before = countConnectedMosaic(grid);
+  const before = countConnectedMosaic(grid, layoutSeed);
   let best: { color: number; gain: number } | null = null;
   for (let color = 0; color < colorCount; color++) {
     if (color === seedColor) continue;
-    const gain = countConnectedMosaic(floodMosaic(grid, color)) - before;
+    const gain =
+      countConnectedMosaic(floodMosaic(grid, color, layoutSeed), layoutSeed) - before;
     if (gain > 0 && (best === null || gain > best.gain)) best = { color, gain };
   }
   return best;
 };
 
-export const bestMosaicMove = (grid: number[][], colorCount: number): number | null =>
-  bestMosaicMoveWithGain(grid, colorCount)?.color ?? null;
+export const bestMosaicMove = (
+  grid: number[][],
+  colorCount: number,
+  layoutSeed: number = 0,
+): number | null => bestMosaicMoveWithGain(grid, colorCount, layoutSeed)?.color ?? null;
 
 /**
  * Move budget and stars.
@@ -389,3 +410,245 @@ export const getMosaicPar = (size: number, colorCount: number): number =>
 
 export const rateMosaicStars = (moves: number, size: number, colors: number): SoloStars =>
   rateSoloStarsWith(moves, getMosaicPar(size, colors), getMaxMosaicMoves(size, colors));
+
+// --- Two-player mosaic --------------------------------------------------------
+
+/** P14: opposite (top-centre) seed used for multiplayer. */
+export const mosaicTopSeedCell = (
+  side: number,
+  layoutSeed: number = 0,
+): [number, number] => {
+  const { cells } = mosaicLayout(side, layoutSeed);
+  let seed = 0;
+  let seedScore = Infinity;
+  cells.forEach((cell, index) => {
+    const [x, y] = cell.site;
+    const score = y * 2 + Math.abs(x - 0.5);
+    if (score < seedScore) {
+      seedScore = score;
+      seed = index;
+    }
+  });
+  return [rowOf(seed, side), colOf(seed, side)];
+};
+
+export interface TwoPlayerMosaicBoard {
+  grid: number[][];
+  p1Cells: string[];
+  p2Cells: string[];
+  p1Color: number;
+  p2Color: number;
+}
+
+const indexToKey = (index: number, cols: number): string =>
+  `${rowOf(index, cols)},${colOf(index, cols)}`;
+const keyToIndex = (key: string, cols: number): number => {
+  const [r, c] = key.split(',').map(Number);
+  return r * cols + c;
+};
+
+const componentFrom = (
+  grid: number[][],
+  start: number,
+  color: number,
+  side: number,
+  layoutSeed: number,
+): string[] => {
+  const { cells } = mosaicLayout(side, layoutSeed);
+  const seen = new Uint8Array(cells.length);
+  const queue: number[] = [start];
+  seen[start] = 1;
+  const out: number[] = [start];
+  let head = 0;
+  while (head < queue.length) {
+    const index = queue[head++];
+    for (const next of cells[index].neighbours) {
+      if (!seen[next] && grid[rowOf(next, side)][colOf(next, side)] === color) {
+        seen[next] = 1;
+        out.push(next);
+        queue.push(next);
+      }
+    }
+  }
+  return out.map((index) => indexToKey(index, side));
+};
+
+/**
+ * Two-player mosaic: P1 starts at the bottom-centre seed and P2 at the
+ * top-centre seed, with the same component rule as the solo flood.
+ */
+export const generateTwoPlayerMosaic = (
+  size: number,
+  colorCount: number,
+  rng: Rng = Math.random,
+  layoutSeed: number = 0,
+): TwoPlayerMosaicBoard => {
+  const side = mosaicSide(size);
+  const layout = mosaicLayout(side, layoutSeed);
+  const grid: number[][] = Array.from({ length: side }, () =>
+    Array.from({ length: side }, () => Math.floor(rng() * colorCount)),
+  );
+  const p1Index = layout.seed;
+  const [p2r, p2c] = mosaicTopSeedCell(side, layoutSeed);
+  const p2Index = p2r * side + p2c;
+  const p1Color = grid[rowOf(p1Index, side)][colOf(p1Index, side)];
+  const p2Color = (p1Color + 1 + Math.floor(rng() * (colorCount - 1))) % colorCount;
+  grid[p2r][p2c] = p2Color;
+  return {
+    grid,
+    p1Cells: componentFrom(grid, p1Index, p1Color, side, layoutSeed),
+    p2Cells: componentFrom(grid, p2Index, p2Color, side, layoutSeed),
+    p1Color,
+    p2Color,
+  };
+};
+
+/** Territory expansion on the visible mosaic graph. */
+export const expandMosaicTerritory = (
+  grid: number[][],
+  currentCells: string[],
+  opponentCells: string[],
+  targetColor: number,
+  layoutSeed: number = 0,
+): { newGrid: number[][]; newCells: string[]; gain: number } => {
+  const side = grid.length;
+  const { cells } = mosaicLayout(side, layoutSeed);
+  const out = grid.map((row) => [...row]);
+  const opponentSet = new Set(opponentCells);
+  const owned = new Set<string>();
+  const newCells: string[] = [];
+  const queue: number[] = [];
+
+  for (const key of currentCells) {
+    if (owned.has(key)) continue;
+    owned.add(key);
+    const [r, c] = key.split(',').map(Number);
+    out[r][c] = targetColor;
+    newCells.push(key);
+    queue.push(keyToIndex(key, side));
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const index = queue[head++];
+    for (const next of cells[index].neighbours) {
+      const key = indexToKey(next, side);
+      if (
+        !owned.has(key) &&
+        !opponentSet.has(key) &&
+        out[rowOf(next, side)][colOf(next, side)] === targetColor
+      ) {
+        owned.add(key);
+        newCells.push(key);
+        queue.push(next);
+      }
+    }
+  }
+
+  return { newGrid: out, newCells, gain: newCells.length - currentCells.length };
+};
+
+export const checkMosaicMultiplayerGameOver = (
+  totalCells: number,
+  p1Count: number,
+  p2Count: number,
+  colorCount: number,
+  p1Color: number,
+  p2Color: number,
+  grid: number[][],
+  p1Cells: string[],
+  p2Cells: string[],
+  layoutSeed: number = 0,
+): 'playing' | 'p1_won' | 'p2_won' | 'draw' => {
+  const majority = Math.floor(totalCells / 2) + 1;
+  if (p1Count >= majority) return 'p1_won';
+  if (p2Count >= majority) return 'p2_won';
+  if (p1Count + p2Count >= totalCells) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+  const legal = (own: number, other: number) => {
+    const list: number[] = [];
+    for (let i = 0; i < colorCount; i++) if (i !== own && i !== other) list.push(i);
+    return list;
+  };
+  const canGain = (
+    own: string[],
+    other: string[],
+    ownColor: number,
+    otherColor: number,
+  ) =>
+    legal(ownColor, otherColor).some(
+      (c) => expandMosaicTerritory(grid, own, other, c, layoutSeed).gain > 0,
+    );
+  if (
+    !canGain(p1Cells, p2Cells, p1Color, p2Color) &&
+    !canGain(p2Cells, p1Cells, p2Color, p1Color)
+  ) {
+    if (p1Count > p2Count) return 'p1_won';
+    if (p2Count > p1Count) return 'p2_won';
+    return 'draw';
+  }
+  return 'playing';
+};
+
+/** Same one-ply easy/medium/master heuristic as wheel and hive. */
+export const bestMosaicMultiplayerMove = (
+  grid: number[][],
+  activePlayer: 1 | 2,
+  p1Cells: string[],
+  p2Cells: string[],
+  p1Color: number,
+  p2Color: number,
+  colorCount: number,
+  difficulty: 'easy' | 'medium' | 'master' = 'master',
+  rng: Rng = Math.random,
+  layoutSeed: number = 0,
+): { bestColor: number; maxGain: number } => {
+  const mine = activePlayer === 1 ? p1Cells : p2Cells;
+  const theirs = activePlayer === 1 ? p2Cells : p1Cells;
+  const myColor = activePlayer === 1 ? p1Color : p2Color;
+  const theirColor = activePlayer === 1 ? p2Color : p1Color;
+  const legal: number[] = [];
+  for (let i = 0; i < colorCount; i++) {
+    if (i !== myColor && i !== theirColor) legal.push(i);
+  }
+  if (legal.length === 0) return { bestColor: 0, maxGain: 0 };
+  const gains = new Map<number, number>();
+  for (const c of legal) {
+    gains.set(c, expandMosaicTerritory(grid, mine, theirs, c, layoutSeed).gain);
+  }
+  if (difficulty === 'easy' && rng() < 0.6) {
+    const pick = legal[Math.floor(rng() * legal.length)];
+    return { bestColor: pick, maxGain: gains.get(pick) ?? 0 };
+  }
+  if (difficulty === 'medium') {
+    let best = legal[0];
+    for (const c of legal) if ((gains.get(c) ?? 0) > (gains.get(best) ?? 0)) best = c;
+    return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+  }
+  let best = legal[0];
+  let bestScore = -Infinity;
+  for (const c of legal) {
+    const { newGrid, newCells } = expandMosaicTerritory(
+      grid,
+      mine,
+      theirs,
+      c,
+      layoutSeed,
+    );
+    let reply = 0;
+    for (let r = 0; r < colorCount; r++) {
+      if (r === c || r === theirColor) continue;
+      const g = expandMosaicTerritory(newGrid, theirs, newCells, r, layoutSeed).gain;
+      if (g > reply) reply = g;
+    }
+    const score = (gains.get(c) ?? 0) * 1.5 - reply * 0.8;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return { bestColor: best, maxGain: gains.get(best) ?? 0 };
+};

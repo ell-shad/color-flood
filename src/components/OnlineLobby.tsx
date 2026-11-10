@@ -16,9 +16,11 @@ import {
   Eye,
   Circle,
   Square,
+  Triangle,
+  Hexagon,
 } from 'lucide-react';
 import { OnlineRoomState, ChallengeType, BoardShape } from '../types';
-import { isWheel } from '../utils/boardShape';
+import { isHive, isMosaic, isTriangle, isWheel } from '../utils/boardShape';
 import { getPublicShareUrl } from '../utils/urlHelper';
 import { loadStringOr, saveString } from '../utils/storage';
 
@@ -377,12 +379,12 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           </div>
         </div>
 
-        {/* P9: Board shape — polar wheel or classic square. */}
+        {/* P9/P14: Board shape — wheel, mosaic, triangle and hive play online too. */}
         <div className="space-y-1.5 text-left">
           <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold block">
             Board Shape
           </span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setSelectedShape('classic')}
               aria-pressed={selectedShape === 'classic'}
@@ -407,11 +409,53 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
               <Circle className="w-3 h-3" />
               Wheel
             </button>
+            <button
+              onClick={() => setSelectedShape('mosaic')}
+              aria-pressed={isMosaic(selectedShape)}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isMosaic(selectedShape)
+                  ? 'bg-amber-950/70 border-amber-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Hexagon className="w-3 h-3" />
+              Mosaic
+            </button>
+            <button
+              onClick={() => setSelectedShape('triangle')}
+              aria-pressed={isTriangle(selectedShape)}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isTriangle(selectedShape)
+                  ? 'bg-cyan-950/70 border-cyan-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Triangle className="w-3 h-3" />
+              Triangle
+            </button>
+            <button
+              onClick={() => setSelectedShape('hive')}
+              aria-pressed={isHive(selectedShape)}
+              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isHive(selectedShape)
+                  ? 'bg-lime-950/70 border-lime-500 text-white'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Hexagon className="w-3 h-3" />
+              Hive
+            </button>
           </div>
           <p className="text-[9px] text-slate-500 leading-tight">
-            {isWheel(selectedShape)
-              ? 'Both players start on the outer ring and flood inward.'
-              : 'Both players start in opposite corners.'}
+            {isMosaic(selectedShape)
+              ? 'Both players start at the bottom and top centres of a random mosaic.'
+              : isTriangle(selectedShape)
+                ? 'Both players start at the bottom and top centres of a triangular board.'
+                : isHive(selectedShape)
+                  ? 'Both players start at the bottom and top centres of a hexagon hive.'
+                  : isWheel(selectedShape)
+                    ? 'Both players start on the outer ring and flood inward.'
+                    : 'Both players start at the bottom and top centres.'}
           </p>
         </div>
 

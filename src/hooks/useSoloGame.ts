@@ -135,7 +135,7 @@ const currentFloodColor = (state: SoloGameState): number => {
     return state.grid[r][c];
   }
   if (state.shape === 'mosaic') {
-    const [r, c] = mosaicSeedCell(state.grid.length);
+    const [r, c] = mosaicSeedCell(state.grid.length, state.seed);
     return state.grid[r][c];
   }
   if (state.shape === 'triangle') {
@@ -175,7 +175,7 @@ const soloReducer = (
           maxMoves = getMaxCubeMoves(action.size, action.colors);
           break;
         case 'mosaic':
-          grid = generateMosaicBoard(action.size, action.colors, mulberry32(seed));
+          grid = generateMosaicBoard(action.size, action.colors, mulberry32(seed), seed);
           maxMoves = getMaxMosaicMoves(action.size, action.colors);
           break;
         case 'triangle':
@@ -221,8 +221,8 @@ const soloReducer = (
           isWin = checkCubeWin(newGrid);
           break;
         case 'mosaic':
-          newGrid = floodMosaic(state.grid, action.color);
-          isWin = checkMosaicWin(newGrid);
+          newGrid = floodMosaic(state.grid, action.color, state.seed);
+          isWin = checkMosaicWin(newGrid, state.seed);
           break;
         case 'triangle':
           newGrid = floodTriangle(state.grid, action.color);

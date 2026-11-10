@@ -83,6 +83,8 @@ export interface RoomInternal {
   turnTimerSec: 0 | 30 | 60;
   /** Server timestamp of the current turn's start. */
   turnStartedAt: number;
+  /** P14: geometry seed for the randomized mosaic layout in this round. */
+  boardSeed: number;
   /**
    * P10.4: one TwoPlayerMoveRecord per move of the CURRENT round. It is the
    * same recording format the local machines use, applied server-side (the
@@ -257,6 +259,7 @@ const sanitize = (room: RoomInternal): OnlineRoomState => {
     p1Color: room.p1Color,
     p2Color: room.p2Color,
     status: room.status,
+    boardSeed: room.boardSeed,
     p1Moves: room.p1Moves,
     p2Moves: room.p2Moves,
     movesCount: room.movesCount,
@@ -359,6 +362,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       currentCells,
       opponentCells,
       color,
+      room.boardSeed,
     );
     // P10.4: the round recording — same format as the local machines. The
     // diff must come off the PRE-move grid, and gained is the exact tail of
@@ -391,6 +395,7 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       room.colorCount,
       room.p1Color,
       room.p2Color,
+      room.boardSeed,
     );
     room.status = outcome;
     if (outcome === 'p1_won') {
@@ -434,7 +439,15 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
       if (newColorCount !== undefined) room.colorCount = newColorCount;
     }
 
-    const board = generateBoardForShape(room.shape, room.gridSize, room.colorCount);
+    const boardSeed = Math.floor(Math.random() * 2 ** 32);
+    const board = generateBoardForShape(
+      room.shape,
+      room.gridSize,
+      room.colorCount,
+      undefined,
+      boardSeed,
+    );
+    room.boardSeed = boardSeed;
     room.grid = board.grid;
     room.p1Cells = board.p1Cells;
     room.p2Cells = board.p2Cells;
@@ -482,17 +495,34 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         case undefined:
           shape = 'classic';
           break;
+        case 'mosaic':
+          shape = 'mosaic';
+          break;
+        case 'triangle':
+          shape = 'triangle';
+          break;
+        case 'hive':
+          shape = 'hive';
+          break;
         default:
           assertNever(input.shape as never);
           break;
       }
-      const board = generateBoardForShape(shape, gridSize, colorCount);
+      const boardSeed = Math.floor(Math.random() * 2 ** 32);
+      const board = generateBoardForShape(
+        shape,
+        gridSize,
+        colorCount,
+        undefined,
+        boardSeed,
+      );
       const room: RoomInternal = {
         roomId,
         version: 1,
         gridSize,
         colorCount,
         shape,
+        boardSeed,
         p1: {
           id: token,
           name: input.playerName?.trim() || 'Player 1',

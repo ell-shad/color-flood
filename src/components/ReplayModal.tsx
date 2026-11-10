@@ -16,7 +16,6 @@ import {
   reconstructTwoPlayerReplayStates,
   type MultiplayerReplayData,
 } from '../utils/replay';
-import { isCube, isWheel } from '../utils/boardShape';
 import { BoardRenderer } from './BoardRenderer';
 import type { SoloMoveDiff, GameTheme, BoardShape } from '../types';
 import type { TwoPlayerReplayState } from '../utils/replay';
@@ -35,6 +34,8 @@ interface ReplayModalProps {
   shape?: BoardShape;
   /** P7.3: ladder size (10–18) the wheel geometry derives from. */
   size?: number;
+  /** P14: mosaic geometry seed (ignored by the other topologies). */
+  layoutSeed?: number;
   /** Auto-advance cadence for the play button (ms). */
   stepMs?: number;
   /**
@@ -59,6 +60,7 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
   theme,
   shape = 'classic' as BoardShape,
   size = 10,
+  layoutSeed = 0,
   stepMs = 700,
   multiplayer,
 }) => {
@@ -173,7 +175,7 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
               lightweight historical replay grid. A 2P state wraps the grid +
               ownership, so the ARRAY passed to the boards is state.grid. */}
           <div className="flex justify-center">
-            {isWheel(shape) || isCube(shape) || multiplayer ? (
+            {shape !== 'classic' || multiplayer ? (
               <BoardRenderer
                 shape={shape}
                 grid={state ? state.grid : replayGrid}
@@ -181,6 +183,7 @@ export const ReplayModal: React.FC<ReplayModalProps> = ({
                 theme={theme}
                 frameWidth="min(100%, 300px)"
                 boardPx={300}
+                layoutSeed={layoutSeed}
                 mode={multiplayer ? 'multiplayer' : 'solo'}
                 opponent={multiplayer?.opponent}
                 p1Cells={state ? state.p1Cells : []}

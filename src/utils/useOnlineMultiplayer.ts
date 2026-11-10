@@ -362,6 +362,7 @@ export function useOnlineMultiplayer() {
         currentCells,
         opponentCells,
         color,
+        prev.boardSeed ?? 0,
       );
 
       const nextP1Cells = fromRole === 1 ? newCells : prev.p1Cells;
@@ -377,6 +378,7 @@ export function useOnlineMultiplayer() {
         prev.colorCount,
         nextP1Color,
         nextP2Color,
+        prev.boardSeed ?? 0,
       );
 
       const series = { ...prev.series };
@@ -450,12 +452,14 @@ export function useOnlineMultiplayer() {
       const isProg = challengeType === 'progressive';
       const size = isProg ? 10 : gridSize;
       const colors = isProg ? 4 : colorCount;
-      const board = generateBoardForShape(shape, size, colors);
+      const boardSeed = Math.floor(Math.random() * 2 ** 32);
+      const board = generateBoardForShape(shape, size, colors, undefined, boardSeed);
       const preview: OnlineRoomState = {
         roomId: '000000',
         gridSize: size,
         colorCount: colors,
         shape,
+        boardSeed,
         grid: board.grid,
         turn: 1,
         firstTurnPlayer: 1,

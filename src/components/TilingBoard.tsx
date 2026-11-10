@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { GameTheme } from '../types';
+import type { GameMode, GameTheme, MultiplayerOpponent } from '../types';
 import { THEMES } from '../utils/themes';
 import { cellInkOn } from '../utils/contrast';
 import { GHOST_ALPHA } from './BoardCell';
@@ -19,6 +19,11 @@ interface TilingBoardProps {
   distances: Int16Array;
   label: string;
   theme?: GameTheme;
+  mode?: GameMode;
+  opponent?: MultiplayerOpponent;
+  p1Cells?: string[];
+  p2Cells?: string[];
+  showTerritoryOverlay?: boolean;
   showColorSymbols?: boolean;
   frameWidth?: string;
   boardPx?: number;
@@ -36,6 +41,11 @@ interface TileFacetProps {
   inkShadow: string;
   ghost: boolean;
   isSeed: boolean;
+  isP1Start: boolean;
+  isP2Start: boolean;
+  ownedMarker: 'none' | 'p1' | 'p2';
+  showOverlay: boolean;
+  p2Label: string;
 }
 
 const TileFacet = React.memo(function TileFacet({
@@ -49,8 +59,14 @@ const TileFacet = React.memo(function TileFacet({
   inkShadow,
   ghost,
   isSeed,
+  isP1Start,
+  isP2Start,
+  ownedMarker,
+  showOverlay,
+  p2Label,
   cell,
 }: TileFacetProps) {
+  const seedColor = isP2Start ? '#fb7185' : '#22d3ee';
   return (
     <>
       <polygon
@@ -58,8 +74,18 @@ const TileFacet = React.memo(function TileFacet({
         points={points}
         fill={color}
         fillOpacity={ghost ? GHOST_ALPHA : 1}
-        stroke={ghost ? 'rgba(226,232,240,0.42)' : 'rgba(15,23,42,0.58)'}
-        strokeWidth={ghost ? 0.2 : isSeed ? 0.65 : 0.42}
+        stroke={
+          ghost
+            ? 'rgba(226,232,240,0.42)'
+            : isSeed || isP1Start || isP2Start
+              ? seedColor
+              : showOverlay && ownedMarker === 'p1'
+                ? '#22d3ee'
+                : showOverlay && ownedMarker === 'p2'
+                  ? '#fb7185'
+                  : 'rgba(15,23,42,0.58)'
+        }
+        strokeWidth={ghost ? 0.2 : isSeed || isP1Start || isP2Start ? 0.85 : 0.42}
         strokeLinejoin="round"
         style={{
           transition: 'fill 0.26s ease-out',
@@ -79,28 +105,19 @@ const TileFacet = React.memo(function TileFacet({
           {glyph}
         </text>
       )}
-      {isSeed && (
-        <g aria-label="Starting cell">
-          <circle
-            cx={cell.site[0] * 100}
-            cy={cell.site[1] * 100}
-            r={2.7}
-            fill="#0f172a"
-            stroke="#22d3ee"
-            strokeWidth={0.45}
-          />
-          <text
-            x={cell.site[0] * 100}
-            y={cell.site[1] * 100}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="#f8fafc"
-            fontSize={3.1}
-            fontWeight={900}
-          >
-            S
-          </text>
-        </g>
+      {(isP1Start || isP2Start) && (
+        <text
+          x={cell.site[0] * 100}
+          y={cell.site[1] * 100}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#f8fafc"
+          fontSize={3.4}
+          fontWeight={900}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+        >
+          {isP1Start ? 'P1' : p2Label}
+        </text>
       )}
     </>
   );
@@ -117,11 +134,18 @@ export const TilingBoard: React.FC<TilingBoardProps> = ({
   distances,
   label,
   theme = THEMES.arcade,
+  mode = 'solo',
+  opponent,
+  p1Cells = [],
+  p2Cells = [],
+  showTerritoryOverlay = true,
   showColorSymbols = false,
   frameWidth,
   boardPx,
 }) => {
   const cols = grid[0]?.length ?? 0;
+  const p1Set = useMemo(() => new Set(p1Cells), [p1Cells]);
+  const p2Set = useMemo(() => new Set(p2Cells), [p2Cells]);
   const glyphs = theme.emoji;
   const showGlyphs = showColorSymbols || !!glyphs;
 
@@ -172,7 +196,26 @@ export const TilingBoard: React.FC<TilingBoardProps> = ({
               inkColor={ink ? ink.color : ''}
               inkShadow={ink ? ink.shadow : ''}
               ghost={!!glyphs}
-              isSeed={index === seed}
+              isSeed={mode === 'solo' && index === seed}
+              isP1Start={
+                mode === 'multiplayer' &&
+                p1Cells[0] === `${Math.floor(index / cols)},${index % cols}`
+              }
+              isP2Start={
+                mode === 'multiplayer' &&
+                p2Cells[0] === `${Math.floor(index / cols)},${index % cols}`
+              }
+              ownedMarker={
+                mode === 'multiplayer' &&
+                p1Set.has(`${Math.floor(index / cols)},${index % cols}`)
+                  ? 'p1'
+                  : mode === 'multiplayer' &&
+                      p2Set.has(`${Math.floor(index / cols)},${index % cols}`)
+                    ? 'p2'
+                    : 'none'
+              }
+              showOverlay={showTerritoryOverlay}
+              p2Label={opponent === 'bot' ? 'BOT' : 'P2'}
             />
           );
         })}

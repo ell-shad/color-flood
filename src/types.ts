@@ -96,6 +96,8 @@ export interface TwoPlayerGameState {
   shape: BoardShape;
   /** P10.1: ladder size the round was generated from (wheel geometry reads it). */
   boardSize: GridSize;
+  /** P14: geometry seed used by the randomized mosaic layout. */
+  boardSeed: number;
   turn: PlayerId;
   p1Cells: string[];
   p2Cells: string[];
@@ -154,6 +156,8 @@ export interface OnlineRoomState {
   themeId?: ThemeId;
   /** Optional per-turn move timer in seconds (0 = off). Host-configurable. */
   turnTimerSec?: 0 | 30 | 60;
+  /** P14: geometry seed for the randomized mosaic board in this room. */
+  boardSeed?: number;
   /**
    * P10.4: one `TwoPlayerMoveRecord` per move of the finished round. The
    * server attaches it to a snapshot only once the round has actually ended,

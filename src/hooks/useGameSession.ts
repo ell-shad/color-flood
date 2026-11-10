@@ -85,6 +85,7 @@ const coerceRoom = (room: OnlineRoomState): TwoPlayerGameState | null => {
     // the room's gridSize IS the round's ladder size, and a room only carries
     // recorded moves once its round has ended (P10.4).
     boardSize: (room.gridSize || 10) as GridSize,
+    boardSeed: room.boardSeed ?? 0,
     history: room.roundHistory ?? [],
     // The spread keeps the declared (un-narrowed) status union; re-assign the
     // narrowed property so 'waiting' cannot leak into a live match.
@@ -116,8 +117,10 @@ export interface GameSession {
   mode: GameMode;
   gridSize: GridSize;
   colorCount: ColorCount;
-  /** P7: solo board topology pref (classic square / mandala wheel). */
+  /** P7/P14: board topology of the round being replayed. */
   boardShape: BoardShape;
+  /** P14: geometry seed of the board on screen (mosaic only). */
+  boardSeed: number;
   botDifficulty: BotDifficulty;
   challengeType: ChallengeType;
   opponent: MultiplayerOpponent;
@@ -823,6 +826,7 @@ export function useGameSession(): GameSession {
         p2Name: playerNames.p2,
         // Online rooms badge P2 the same way the live HUD does (never BOT).
         opponent: 'online',
+        boardSeed: roomState.boardSeed ?? 0,
       };
     }
     const m = localState;
@@ -839,6 +843,7 @@ export function useGameSession(): GameSession {
       p2Name: playerNames.p2,
       // The boards swap P2's badge for BOT in bot matches (mirrors live play).
       opponent: prefs.opponent === 'bot' ? 'bot' : 'local',
+      boardSeed: m.boardSeed,
     };
   })();
 
@@ -854,6 +859,15 @@ export function useGameSession(): GameSession {
   } else {
     boardShape = localState?.shape ?? prefs.boardShape;
   }
+  // P14: the mosaic geometry seed belongs to the same source as the shape.
+  let boardSeed: number;
+  if (prefs.mode === 'solo') {
+    boardSeed = soloState?.seed ?? 0;
+  } else if (prefs.opponent === 'online') {
+    boardSeed = roomState?.boardSeed ?? 0;
+  } else {
+    boardSeed = localState?.boardSeed ?? 0;
+  }
   // The solo flood color is the seed color: classic top-left, wheel seed
   // ring, and the cube's center face cell.
   const soloCurrentColor = (() => {
@@ -864,7 +878,7 @@ export function useGameSession(): GameSession {
       return soloState.grid[r][c];
     }
     if (soloState.shape === 'mosaic') {
-      const [r, c] = mosaicSeedCell(soloState.grid.length);
+      const [r, c] = mosaicSeedCell(soloState.grid.length, soloState.seed);
       return soloState.grid[r][c];
     }
     if (soloState.shape === 'triangle') {
@@ -927,7 +941,7 @@ export function useGameSession(): GameSession {
       if (m.status === 'draw') return 'Round drawn.';
       return `${m.status === 'p1_won' ? playerNames.p1 : playerNames.p2} wins the round.`;
     }
-    return `${playerNames[m.turn]} to move — ${m.movesCount} moves played`;
+    return `${playerNames[m.turn === 1 ? 'p1' : 'p2']} to move — ${m.movesCount} moves played`;
   })();
 
   // ---------------------------------------------------------------
@@ -1008,7 +1022,7 @@ export function useGameSession(): GameSession {
           break;
         }
         case 'mosaic': {
-          const mosaicHint = bestMosaicMoveWithGain(s.grid, s.boardColors);
+          const mosaicHint = bestMosaicMoveWithGain(s.grid, s.boardColors, s.seed);
           setHint(mosaicHint?.color ?? null);
           setHintGain(mosaicHint?.gain);
           break;
@@ -1057,6 +1071,7 @@ export function useGameSession(): GameSession {
       // Hints run on the main thread: hard cap the search time so the UI
       // never freezes (checked every 256 nodes).
       { deadlineMs: 300, now: () => performance.now() },
+      localState.boardSeed,
     );
     setHint(bestColor);
     setHintGain(maxGain);
@@ -1371,6 +1386,7 @@ export function useGameSession(): GameSession {
     gridSize: prefs.gridSize,
     colorCount: prefs.colorCount,
     boardShape,
+    boardSeed,
     botDifficulty: prefs.botDifficulty,
     challengeType: prefs.challengeType,
     opponent: prefs.opponent,

@@ -18,6 +18,8 @@ export interface BotWorkerRequest {
   colorCount: number;
   /** P9: board topology — wheels use the polar search. */
   shape?: BoardShape;
+  /** P14: mosaic geometry seed for non-square territory layouts. */
+  layoutSeed?: number;
   difficulty: BotDifficulty;
   /** Wall-clock cap for the search; checked every 256 nodes. */
   deadlineMs?: number;
@@ -44,6 +46,7 @@ self.onmessage = (e: MessageEvent<BotWorkerRequest>) => {
       req.colorCount,
       req.difficulty,
       { deadlineMs: req.deadlineMs, now: () => performance.now() },
+      req.layoutSeed,
     );
     bestColor = move;
   } catch {

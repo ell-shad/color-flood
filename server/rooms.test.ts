@@ -538,8 +538,8 @@ describe('P10.4 online round replay recording', () => {
     expect(Array.isArray(ended.roundHistory![0].gained)).toBe(true);
   });
 
-  it('reconstructs the opening board from the server record on both flat shapes', () => {
-    for (const shape of ['classic', 'wheel'] as const) {
+  it('reconstructs the opening board from the server record on every shared shape', () => {
+    for (const shape of ['classic', 'wheel', 'mosaic', 'triangle', 'hive'] as const) {
       const { service, advance } = makeService();
       const created = service.createRoom({
         playerName: 'Host',
@@ -552,6 +552,8 @@ describe('P10.4 online round replay recording', () => {
       if (!joined.ok) throw new Error('join failed');
       const roomId = created.roomId;
       const opening = service.readState(roomId)!;
+      expect(opening.shape).toBe(shape);
+      expect(typeof opening.boardSeed).toBe('number');
 
       // Ten alternating moves (the round can legitimately end earlier).
       for (let i = 0; i < 10; i++) {
@@ -617,6 +619,21 @@ describe('P10.4 online round replay recording', () => {
       service.updateSettings(created.roomId, created.token, { shape: 'cube' }).ok,
     ).toBe(true);
     expect(service.readState(created.roomId)!.shape).toBe('classic');
+  });
+
+  it('accepts the shared tiling shapes as lobby updates', () => {
+    for (const shape of ['mosaic', 'triangle', 'hive'] as const) {
+      const { service } = makeService();
+      const created = service.createRoom({
+        playerName: 'Host',
+        gridSize: 10,
+        colorCount: 4,
+      });
+      expect(service.updateSettings(created.roomId, created.token, { shape }).ok).toBe(
+        true,
+      );
+      expect(service.readState(created.roomId)!.shape).toBe(shape);
+    }
   });
 
   it('clears the recording when the next round starts', () => {

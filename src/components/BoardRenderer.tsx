@@ -27,6 +27,7 @@ export interface BoardRendererProps {
   showColorSymbols?: boolean;
   frameWidth?: string;
   boardPx?: number;
+  layoutSeed?: number;
   lastMovingPlayer?: 1 | 2;
 }
 
@@ -43,6 +44,7 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
   showColorSymbols = false,
   frameWidth,
   boardPx,
+  layoutSeed = 0,
   lastMovingPlayer = 1,
 }) => {
   switch (shape) {
@@ -85,9 +87,16 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
           grid={grid}
           size={size}
           theme={theme}
+          mode={mode}
+          opponent={opponent}
+          p1Cells={p1Cells}
+          p2Cells={p2Cells}
+          showTerritoryOverlay={showTerritoryOverlay}
           showColorSymbols={showColorSymbols}
           frameWidth={frameWidth}
           boardPx={boardPx}
+          lastMovingPlayer={lastMovingPlayer}
+          layoutSeed={layoutSeed}
         />
       );
     case 'triangle':
@@ -96,9 +105,15 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
           grid={grid}
           size={size}
           theme={theme}
+          mode={mode}
+          opponent={opponent}
+          p1Cells={p1Cells}
+          p2Cells={p2Cells}
+          showTerritoryOverlay={showTerritoryOverlay}
           showColorSymbols={showColorSymbols}
           frameWidth={frameWidth}
           boardPx={boardPx}
+          lastMovingPlayer={lastMovingPlayer}
         />
       );
     case 'hive':
@@ -107,9 +122,15 @@ export const BoardRenderer: React.FC<BoardRendererProps> = ({
           grid={grid}
           size={size}
           theme={theme}
+          mode={mode}
+          opponent={opponent}
+          p1Cells={p1Cells}
+          p2Cells={p2Cells}
+          showTerritoryOverlay={showTerritoryOverlay}
           showColorSymbols={showColorSymbols}
           frameWidth={frameWidth}
           boardPx={boardPx}
+          lastMovingPlayer={lastMovingPlayer}
         />
       );
     case 'classic':

@@ -81,7 +81,7 @@ export function isCube(shape: BoardShape): boolean {
   }
 }
 
-/** P13: irregular polygonal tiling (solo only, like the cube). */
+/** P13: irregular polygonal tiling. */
 export function isMosaic(shape: BoardShape): boolean {
   switch (shape) {
     case 'classic':
@@ -97,7 +97,7 @@ export function isMosaic(shape: BoardShape): boolean {
   }
 }
 
-/** P14: triangular tiling (solo only, like the cube and mosaic). */
+/** P14: triangular tiling. */
 export function isTriangle(shape: BoardShape): boolean {
   switch (shape) {
     case 'classic':
@@ -113,7 +113,7 @@ export function isTriangle(shape: BoardShape): boolean {
   }
 }
 
-/** P14: regular hexagonal hive (solo only, like the cube and mosaic). */
+/** P14: regular hexagonal hive. */
 export function isHive(shape: BoardShape): boolean {
   switch (shape) {
     case 'classic':
@@ -131,17 +131,15 @@ export function isHive(shape: BoardShape): boolean {
 
 /**
  * True for topologies that exist only in solo play. The cube surface is a solo
- * mode: its six-face seeding and territory markers are too hard to read with
- * two players on the same screen.
+ * mode; mosaic, triangle and hive also play in multiplayer.
  */
 export function isSoloOnlyShape(shape: BoardShape): boolean {
-  return isCube(shape) || isMosaic(shape) || isTriangle(shape) || isHive(shape);
+  return isCube(shape);
 }
 
 /**
- * The shape a game may actually play in `mode`. Multiplayer — local 2P, vs bot
- * and online — is flat-board only, so a stored `cube` preference falls back to
- * classic there instead of seeding a board the mode does not support.
+ * The shape a game may actually play in `mode`. Multiplayer supports the flat
+ * boards; only the 3D cube stays solo-only.
  */
 export function shapeForMode(shape: BoardShape, mode: GameMode): BoardShape {
   if (mode === 'solo') return shape;
