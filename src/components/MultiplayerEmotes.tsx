@@ -124,6 +124,7 @@ export const MultiplayerEmotes: React.FC<MultiplayerEmotesProps> = ({
                   : 'bg-slate-800/80 hover:bg-rose-950/60 hover:ring-1 hover:ring-rose-400/50 border border-slate-700/40'
               }`}
               title={`Send ${emoji}`}
+              aria-label={`Send ${emoji} reaction`}
             >
               <span>{emoji}</span>
             </button>

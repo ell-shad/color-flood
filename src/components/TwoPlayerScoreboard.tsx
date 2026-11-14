@@ -112,8 +112,8 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
       )}
 
       {/* Top Bar: Round & Alternating Turn Badge, Series Score & Tools */}
-      <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400 px-0.5">
-        <div className="flex items-center gap-1.5 font-mono">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] text-slate-400 px-0.5">
+        <div className="flex items-center gap-1.5 font-mono tabular-nums">
           <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold">
             R{roundNum} • P{firstTurn} opened
           </span>
@@ -143,7 +143,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
             </button>
           )}
 
-          <span className="text-[10px] text-slate-400 font-mono hidden xs:inline">
+          <span className="text-[10px] text-slate-400 font-mono tabular-nums hidden xs:inline">
             Win: <strong className="text-slate-300">{targetToWin}</strong>
           </span>
 
@@ -226,7 +226,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
                   />
                 )}
               </div>
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1 tabular-nums">
                 <span className="text-base sm:text-lg font-mono font-black text-white leading-none">
                   {p1Count}
                 </span>
@@ -295,7 +295,7 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
                   {displayName2}
                 </span>
               </div>
-              <div className="flex items-baseline justify-end gap-1">
+              <div className="flex items-baseline justify-end gap-1 tabular-nums">
                 <span className="text-[10px] font-mono text-rose-400 font-semibold">
                   {p2Percent}%
                 </span>
@@ -343,7 +343,14 @@ export const TwoPlayerScoreboard: React.FC<TwoPlayerScoreboardProps> = ({
         </div>
 
         {/* Domination Tug-of-War Bar */}
-        <div className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex shadow-inner mt-1.5">
+        <div
+          role="progressbar"
+          aria-label={`Territory domination: ${displayName1} ${p1Percent}%, ${displayName2} ${p2Percent}%`}
+          aria-valuemin={0}
+          aria-valuemax={totalCells}
+          aria-valuenow={p1Count}
+          className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex shadow-inner mt-1.5"
+        >
           {/* 50% line */}
           <div
             className="absolute top-0 bottom-0 w-[2px] bg-white/80 z-10 shadow"

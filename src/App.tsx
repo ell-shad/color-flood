@@ -1,5 +1,4 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { MotionConfig } from 'motion/react';
 import { Github, Linkedin, Info, Eye } from 'lucide-react';
 
 import { useGameSession } from './hooks/useGameSession';
@@ -117,7 +116,7 @@ export default function App() {
         ? {
             turn: null,
             label: `Waiting for ${
-              session.activeTurn === 1 ? session.playerNames.p2 : session.playerNames.p1
+              session.activeTurn === 1 ? session.playerNames.p1 : session.playerNames.p2
             }…`,
           }
         : {
@@ -196,450 +195,451 @@ export default function App() {
     img.src = url;
   };
 
-  // The reducers lazily build both boards during the first render (P4.4).
-  if (!session.soloState || !session.localState) return null;
+  const multiplayerMatch = session.activeMatch ?? session.localState;
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="h-[100dvh] w-full max-w-full bg-[#0F172A] text-slate-100 font-sans selection:bg-indigo-500/30 flex flex-col overflow-x-hidden overflow-y-auto">
-        {/* P5.3: screen-reader announcer for moves/turns/results */}
-        <div aria-live="polite" role="status" className="sr-only">
-          {session.announce}
-        </div>
-        {/* Top Streamlined Header */}
-        <div className="w-full shrink-0">
-          <Header
-            mode={session.mode}
-            onSelectMode={session.handleSelectMode}
-            opponent={session.opponent}
-            onChangeOpponent={session.handleChangeOpponent}
-            showSettings={showSettings}
-            onToggleSettings={() => setShowSettings((prev) => !prev)}
-            onToggleStats={() => setShowStats(true)}
-            onResetGame={session.initiateReset}
-            canInstall={canInstall}
-            onInstall={installPwa}
-          />
+    <div className="h-[100dvh] w-full max-w-full bg-[#0F172A] text-slate-100 font-sans selection:bg-indigo-500/30 flex flex-col overflow-x-hidden overflow-y-auto">
+      {/* P5.3: screen-reader announcer for moves/turns/results */}
+      <div aria-live="polite" role="status" className="sr-only">
+        {session.announce}
+      </div>
+      {/* Top Streamlined Header */}
+      <div className="w-full shrink-0">
+        <Header
+          mode={session.mode}
+          onSelectMode={session.handleSelectMode}
+          opponent={session.opponent}
+          onChangeOpponent={session.handleChangeOpponent}
+          showSettings={showSettings}
+          onToggleSettings={() => setShowSettings((prev) => !prev)}
+          onToggleStats={() => setShowStats(true)}
+          onResetGame={session.initiateReset}
+          canInstall={canInstall}
+          onInstall={installPwa}
+        />
 
-          {/* Online System Banner */}
-          {session.opponent === 'online' && session.onlineSystemMessage && (
-            <div className="max-w-lg mx-auto px-2 mt-1">
-              <div className="bg-slate-850/90 border border-indigo-500/30 px-2.5 py-1 rounded-lg text-[11px] text-indigo-200 flex items-center gap-1.5 shadow-sm">
-                <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span className="truncate">{session.onlineSystemMessage}</span>
-              </div>
-            </div>
-          )}
-
-          {/* P6.6: Spectator banner — receive-only seat live view */}
-          {session.opponent === 'online' && session.spectating && (
-            <div className="max-w-lg mx-auto px-2 mt-1">
-              <div className="bg-indigo-950/80 border border-indigo-500/40 px-2.5 py-1 rounded-lg text-[11px] text-indigo-200 flex items-center gap-1.5 shadow-sm">
-                <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span className="truncate">
-                  Watching{' '}
-                  <strong className="text-cyan-300 font-semibold">
-                    {session.playerNames.p1 || 'Player 1'}
-                  </strong>{' '}
-                  vs{' '}
-                  <strong className="text-rose-300 font-semibold">
-                    {session.playerNames.p2 || 'Player 2'}
-                  </strong>{' '}
-                  · 👀 {session.spectatorCount}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Main Playable Area */}
-        <main className="w-full max-w-xl mx-auto px-2 sm:px-3 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
-          {/* Online Match: Show Lobby or Game */}
-          {session.isOnlineLobbyActive ? (
-            <Suspense fallback={null}>
-              <OnlineLobby
-                roomState={session.roomState}
-                myRole={session.myRole}
-                connectionStatus={session.connectionStatus}
-                errorMessage={session.onlineError}
-                systemMessage={session.onlineSystemMessage}
-                gridSize={session.gridSize}
-                colorCount={session.colorCount}
-                onCreateRoom={(name, gSize, cCount, cType, shape) =>
-                  session.createOnlineRoom(
-                    name,
-                    gSize,
-                    cCount,
-                    cType,
-                    session.themeId,
-                    shape,
-                  )
-                }
-                onJoinRoom={session.joinOnlineRoom}
-                onSpectateRoom={session.spectateOnline}
-                onLeaveRoom={session.leaveOnlineRoom}
-                onClearError={session.clearOnlineError}
-                errorCode={session.onlineErrorCode}
-                spectatorCount={session.spectatorCount}
-              />
-            </Suspense>
-          ) : (
-            <div className="w-full flex-1 min-h-0 flex flex-col justify-center gap-1.5 sm:gap-2">
-              {/* Active Mode Scoreboard */}
-              {session.mode === 'solo' ? (
-                <>
-                  <SoloScoreboard
-                    gameState={session.soloState}
-                    currentHighScore={session.currentHighScore}
-                    onGetHint={session.getHint}
-                    hint={session.hint}
-                    hintsLeft={session.soloHintsLeft}
-                    colorCount={session.colorCount}
-                    onUndo={session.undoSolo}
-                    canUndo={session.canUndoSolo}
-                    shape={session.soloState.shape}
-                    boardSize={session.soloState.boardSize}
-                    onOpenDaily={() => setShowDaily(true)}
-                    dailyStreak={session.dailyStreak.current}
-                  />
-                </>
-              ) : (
-                <TwoPlayerScoreboard
-                  gameState={session.activeMatch ?? session.localState}
-                  gridSize={session.matchGridSize}
-                  shape={session.boardShape}
-                  opponent={session.opponent}
-                  seriesScore={session.matchSeries}
-                  isBotThinking={session.isBotThinking}
-                  onGetHint={session.getHint}
-                  hint={session.hint}
-                  showHintButton={session.showHintButton}
-                  activeEmotes={session.activeEmotes}
-                  theme={session.currentTheme}
-                  onRequestReset={session.initiateReset}
-                  {...session.onlineOnly}
-                />
-              )}
-
-              {/* Game Board with Fluid Wave Animations & Theme Styling —
-                  P7: solo wheel games render as a mandala SVG board instead. */}
-              <div
-                ref={boardRef}
-                className="relative w-full flex items-center justify-center"
-              >
-                {boardPx > 0 && (
-                  <div className="relative" style={{ width: boardPx, height: boardPx }}>
-                    <BoardRenderer
-                      shape={session.boardShape}
-                      grid={session.gridView.grid}
-                      size={
-                        session.mode === 'solo'
-                          ? session.soloState.boardSize
-                          : session.gridView.gridSize
-                      }
-                      theme={session.currentTheme}
-                      showColorSymbols={session.showColorSymbols}
-                      boardPx={boardPx}
-                      layoutSeed={session.boardSeed}
-                      mode={session.mode}
-                      opponent={session.opponent}
-                      p1Cells={session.gridView.p1Cells}
-                      p2Cells={session.gridView.p2Cells}
-                      showTerritoryOverlay={session.showTerritoryOverlay}
-                      lastMovingPlayer={session.lastMovingPlayer}
-                    />
-
-                    {/* Game Over Modal Overlay — code-split: fetched only when a
-                    round actually ends (its own render gate, mirrored here). */}
-                    {(session.soloState.status !== 'playing' ||
-                      session.matchStatus !== 'playing') && (
-                      <Suspense fallback={null}>
-                        <GameOverModal
-                          mode={session.mode}
-                          soloStatus={session.soloState.status}
-                          soloMoves={session.soloState.moves}
-                          multiplayerStatus={session.matchStatus}
-                          p1Count={session.gridView.p1Cells.length}
-                          p2Count={session.gridView.p2Cells.length}
-                          totalCells={session.totalCells}
-                          opponent={session.opponent}
-                          seriesScore={session.matchSeries}
-                          challengeType={session.matchChallengeType}
-                          currentStage={session.matchStage}
-                          onPlayAgain={session.playAgain}
-                          onAcceptRematch={session.acceptOnlineRematch}
-                          onDeclineRematch={session.declineOnlineRematch}
-                          onResetSeries={session.resetSeries}
-                          dailyShareText={session.dailyShareText}
-                          onWatchReplay={
-                            // P10.3/P10.4: solo rounds replay from the
-                            // machine's diffs; multiplayer rounds from the
-                            // recording — any opponent (the session only
-                            // materializes multiplayerReplay for FINISHED
-                            // rounds that carry history).
-                            (session.mode === 'solo' &&
-                              session.soloState.status !== 'playing') ||
-                            (session.mode === 'multiplayer' &&
-                              !!session.multiplayerReplay)
-                              ? () => setShowReplay(true)
-                              : undefined
-                          }
-                          shareBoardLink={session.soloShareUrl}
-                          p1Name={session.onlineOnly.p1Name}
-                          p2Name={session.onlineOnly.p2Name}
-                          myRole={session.myRole}
-                          rematchRequestedBy={session.rematchRequestedBy}
-                          onLeaveRoom={session.leaveOnlineRoom}
-                          spectating={session.spectating}
-                          isHost={session.myRole === 1}
-                          onHostRematch={session.hostOnlineRematch}
-                        />
-                      </Suspense>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Interactive Multiplayer Emote Reaction Bar */}
-              {session.mode === 'multiplayer' && (
-                <Suspense fallback={null}>
-                  <MultiplayerEmotes
-                    opponent={session.opponent}
-                    myRole={session.myRole}
-                    activeTurn={session.activeTurn}
-                    activeEmotes={session.activeEmotes}
-                    onSendEmote={(sender, emoji) =>
-                      session.triggerEmote(sender, emoji, true)
-                    }
-                    p1Name={session.playerNames.p1}
-                    p2Name={session.playerNames.p2}
-                    disabled={session.emoteBarDisabled}
-                  />
-                </Suspense>
-              )}
-
-              {/* Color Action Palette (hidden for spectator seats) */}
-              {!session.spectating && (
-                <ColorPalette
-                  colorCount={session.paletteColorCount}
-                  mode={session.mode}
-                  onSelectColor={session.pickColor}
-                  disabled={session.paletteDisabled}
-                  hint={session.hint}
-                  hintGain={session.hintGain}
-                  soloCurrentColor={session.soloCurrentColor}
-                  p1Color={session.activeMatch?.p1Color ?? 0}
-                  p2Color={session.activeMatch?.p2Color ?? 0}
-                  opponent={session.opponent}
-                  theme={session.currentTheme}
-                  boardShape={session.boardShape}
-                  turnStatus={turnStatus}
-                />
-              )}
-            </div>
-          )}
-        </main>
-
-        {/* Settings sheet — outside the play column, so opening it never
-            moves the board and it stays anchored to the header button. */}
-        {showSettings && (
-          <Suspense fallback={null}>
-            <SettingsPanel
-              gridSize={session.gridSize}
-              onChangeGridSize={session.handleChangeGridSize}
-              colorCount={session.colorCount}
-              onChangeColorCount={session.handleChangeColorCount}
-              boardShape={session.boardShape}
-              onChangeBoardShape={session.handleChangeBoardShape}
-              mode={session.mode}
-              opponent={session.opponent}
-              onChangeOpponent={session.setOpponent}
-              botDifficulty={session.botDifficulty}
-              onChangeBotDifficulty={session.handleSetBotDifficulty}
-              showTerritoryOverlay={session.showTerritoryOverlay}
-              onToggleTerritoryOverlay={() =>
-                session.setShowTerritoryOverlay((prev) => !prev)
-              }
-              showColorSymbols={session.showColorSymbols}
-              onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
-              showHints={session.showHints}
-              onToggleShowHints={() => session.setShowHints((prev) => !prev)}
-              onResetSeries={session.resetSeries}
-              onSetToEasiest={session.handleSetToEasiest}
-              activeThemeId={session.themeId}
-              onOpenThemeModal={() => setShowThemeModal(true)}
-              challengeType={session.challengeType}
-              onChangeChallengeType={session.handleChangeChallengeType}
-              turnTimerSec={session.roomState?.turnTimerSec ?? 0}
-              onChangeTurnTimerSec={
-                session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
-              }
-              soundMuted={session.soundMuted}
-              onToggleSound={session.toggleSound}
-              onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
-              onClose={() => setShowSettings(false)}
-              onOpenInfo={() => {
-                setShowSettings(false);
-                setShowInfoModal(true);
-              }}
-            />
-          </Suspense>
-        )}
-
-        {/* Opponent Reset Approval Modal — mounted only while a proposal or
-            local confirm exists; its props already carry every state it needs. */}
-        {(Boolean(session.activeOnlineProposal) || session.showLocalResetConfirm) && (
-          <Suspense fallback={null}>
-            <ResetApprovalModal
-              isOpen={true}
-              proposal={session.activeOnlineProposal}
-              myRole={session.myRole}
-              opponent={session.opponent}
-              p1Name={session.roomState?.p1Name || 'Player 1'}
-              p2Name={session.roomState?.p2Name || 'Player 2'}
-              isLocalConfirm={session.showLocalResetConfirm}
-              onAccept={
-                session.opponent === 'online'
-                  ? session.acceptOnlineRematch
-                  : session.confirmLocalReset
-              }
-              onDecline={
-                session.opponent === 'online'
-                  ? session.declineOnlineRematch
-                  : session.cancelLocalReset
-              }
-              onCancelLocal={session.cancelLocalReset}
-            />
-          </Suspense>
-        )}
-
-        {showThemeModal && (
-          <Suspense fallback={null}>
-            <ThemeSelectorModal
-              isOpen={true}
-              activeThemeId={session.themeId}
-              onSelectTheme={session.handleSelectTheme}
-              onClose={() => setShowThemeModal(false)}
-            />
-          </Suspense>
-        )}
-
-        {showDaily && (
-          <Suspense fallback={null}>
-            <DailyChallengeModal
-              isOpen={true}
-              onClose={() => setShowDaily(false)}
-              dailyDate={session.dailyDate}
-              dailyShareText={session.dailyShareText}
-              dailyStreak={session.dailyStreak}
-              onStartDaily={() => {
-                session.startDailyChallenge();
-                setShowDaily(false);
-              }}
-            />
-          </Suspense>
-        )}
-
-        {showStats && (
-          <Suspense fallback={null}>
-            <StatsModal
-              isOpen={true}
-              onClose={() => setShowStats(false)}
-              soloStats={session.soloStats}
-              dailyStreak={session.dailyStreak}
-              onReset={session.resetSoloStats}
-            />
-          </Suspense>
-        )}
-
-        {/* P6.3/P10.3: replay viewer (over the game-over card) — solo rounds
-            step recorded diffs; multiplayer rounds walk recorded moves with
-            their ownership overlay. */}
-        {showReplay &&
-          (session.mode === 'solo'
-            ? !!session.soloState
-            : !!session.multiplayerReplay) && (
-            <Suspense fallback={null}>
-              {session.mode === 'solo' && session.soloState ? (
-                <ReplayModal
-                  isOpen={true}
-                  onClose={() => setShowReplay(false)}
-                  grid={session.soloState.grid}
-                  history={session.soloState.history}
-                  playedColors={session.soloState.playedColors}
-                  theme={session.currentTheme}
-                  shape={session.soloState.shape}
-                  size={session.soloState.boardSize}
-                  layoutSeed={session.soloState.seed}
-                />
-              ) : session.multiplayerReplay ? (
-                <ReplayModal
-                  isOpen={true}
-                  onClose={() => setShowReplay(false)}
-                  grid={session.multiplayerReplay.grid}
-                  history={[]}
-                  playedColors={[]}
-                  theme={session.currentTheme}
-                  shape={session.multiplayerReplay.shape}
-                  size={session.multiplayerReplay.size}
-                  layoutSeed={session.multiplayerReplay.boardSeed ?? 0}
-                  multiplayer={session.multiplayerReplay}
-                />
-              ) : null}
-            </Suspense>
-          )}
-
-        {showInfoModal && (
-          <Suspense fallback={null}>
-            <HowToPlayModal
-              isOpen={true}
-              onClose={() => setShowInfoModal(false)}
-              initialMode={session.mode}
-            />
-          </Suspense>
-        )}
-
-        {/* P5.7: first-run interactive tutorial (once per device) */}
-        {showTutorial && !session.isOnlineLobbyActive && (
-          <Suspense fallback={null}>
-            <FirstRunTutorial
-              hasMadeFirstMove={hasMadeFirstMove}
-              onFinish={finishTutorial}
-              boardShape={session.mode === 'solo' ? session.boardShape : 'classic'}
-            />
-          </Suspense>
-        )}
-
-        {/* Sleek Minimal Footer */}
-        <footer className="w-full max-w-xl mx-auto pt-0.5 pb-1 px-3 text-center shrink-0">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-            <span>
-              Created by{' '}
-              <span className="text-slate-400 font-semibold">Elshad Guliyev</span>
-            </span>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://github.com/ell-shad"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 hover:text-indigo-400 transition-colors"
-                title="GitHub Profile"
-              >
-                <Github className="w-3.5 h-3.5" />
-              </a>
-              <a
-                href="https://www.linkedin.com/in/elshad-guliyev/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-500 hover:text-indigo-400 transition-colors"
-                title="LinkedIn Profile"
-              >
-                <Linkedin className="w-3.5 h-3.5" />
-              </a>
+        {/* Online System Banner */}
+        {session.opponent === 'online' && session.onlineSystemMessage && (
+          <div className="max-w-lg mx-auto px-2 mt-1">
+            <div className="bg-slate-850/90 border border-indigo-500/30 px-2.5 py-1 rounded-lg text-[11px] text-indigo-200 flex items-center gap-1.5 shadow-sm">
+              <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate">{session.onlineSystemMessage}</span>
             </div>
           </div>
-        </footer>
+        )}
+
+        {/* P6.6: Spectator banner — receive-only seat live view */}
+        {session.opponent === 'online' && session.spectating && (
+          <div className="max-w-lg mx-auto px-2 mt-1">
+            <div className="bg-indigo-950/80 border border-indigo-500/40 px-2.5 py-1 rounded-lg text-[11px] text-indigo-200 flex items-center gap-1.5 shadow-sm">
+              <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate">
+                Watching{' '}
+                <strong className="text-cyan-300 font-semibold">
+                  {session.playerNames.p1 || 'Player 1'}
+                </strong>{' '}
+                vs{' '}
+                <strong className="text-rose-300 font-semibold">
+                  {session.playerNames.p2 || 'Player 2'}
+                </strong>{' '}
+                · 👀 {session.spectatorCount}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
-    </MotionConfig>
+
+      {/* Main Playable Area */}
+      <main className="w-full max-w-xl mx-auto px-2 sm:px-3 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
+        {/* Online Match: Show Lobby or Game */}
+        {session.isOnlineLobbyActive ? (
+          <Suspense
+            fallback={
+              <div className="w-full max-w-sm sm:max-w-md mx-auto bg-slate-900 border border-slate-750 rounded-2xl p-6 shadow-2xl my-3 animate-pulse space-y-4">
+                <div className="w-10 h-10 rounded-2xl bg-slate-800 mx-auto" />
+                <div className="h-5 w-44 bg-slate-800 rounded mx-auto" />
+                <div className="h-24 w-full bg-slate-950/70 rounded-xl" />
+                <div className="h-10 w-full bg-slate-800 rounded-xl" />
+              </div>
+            }
+          >
+            <OnlineLobby
+              roomState={session.roomState}
+              myRole={session.myRole}
+              connectionStatus={session.connectionStatus}
+              errorMessage={session.onlineError}
+              systemMessage={session.onlineSystemMessage}
+              gridSize={session.gridSize}
+              colorCount={session.colorCount}
+              onCreateRoom={(name, gSize, cCount, cType, shape) =>
+                session.createOnlineRoom(
+                  name,
+                  gSize,
+                  cCount,
+                  cType,
+                  session.themeId,
+                  shape,
+                )
+              }
+              onJoinRoom={session.joinOnlineRoom}
+              onSpectateRoom={session.spectateOnline}
+              onLeaveRoom={session.leaveOnlineRoom}
+              onClearError={session.clearOnlineError}
+              errorCode={session.onlineErrorCode}
+              spectatorCount={session.spectatorCount}
+            />
+          </Suspense>
+        ) : (
+          <div className="w-full flex-1 min-h-0 flex flex-col justify-center gap-1.5 sm:gap-2">
+            {/* Active Mode Scoreboard */}
+            {session.mode === 'solo' && session.soloState ? (
+              <SoloScoreboard
+                gameState={session.soloState}
+                currentHighScore={session.currentHighScore}
+                onGetHint={session.getHint}
+                hint={session.hint}
+                hintsLeft={session.soloHintsLeft}
+                colorCount={session.soloState.boardColors}
+                onUndo={session.undoSolo}
+                canUndo={session.canUndoSolo}
+                shape={session.soloState.shape}
+                boardSize={session.soloState.boardSize}
+                onOpenDaily={() => setShowDaily(true)}
+                dailyStreak={session.dailyStreak.current}
+              />
+            ) : multiplayerMatch ? (
+              <TwoPlayerScoreboard
+                gameState={multiplayerMatch}
+                gridSize={session.matchGridSize}
+                shape={session.boardShape}
+                opponent={session.opponent}
+                seriesScore={session.matchSeries}
+                isBotThinking={session.isBotThinking}
+                onGetHint={session.getHint}
+                hint={session.hint}
+                showHintButton={session.showHintButton}
+                activeEmotes={session.activeEmotes}
+                theme={session.currentTheme}
+                onRequestReset={session.initiateReset}
+                {...session.onlineOnly}
+              />
+            ) : null}
+
+            {/* Game Board with Fluid Wave Animations & Theme Styling */}
+            <div
+              ref={boardRef}
+              className="relative w-full flex items-center justify-center"
+            >
+              {boardPx > 0 && (
+                <div className="relative" style={{ width: boardPx, height: boardPx }}>
+                  <BoardRenderer
+                    shape={session.boardShape}
+                    grid={session.gridView.grid}
+                    size={
+                      session.mode === 'solo' && session.soloState
+                        ? session.soloState.boardSize
+                        : session.gridView.gridSize
+                    }
+                    theme={session.currentTheme}
+                    showColorSymbols={session.showColorSymbols}
+                    boardPx={boardPx}
+                    layoutSeed={session.boardSeed}
+                    mode={session.mode}
+                    opponent={session.opponent}
+                    p1Cells={session.gridView.p1Cells}
+                    p2Cells={session.gridView.p2Cells}
+                    showTerritoryOverlay={session.showTerritoryOverlay}
+                    lastMovingPlayer={session.lastMovingPlayer}
+                  />
+
+                  {/* Game Over Modal Overlay — code-split: fetched only when the active mode finishes */}
+                  {(session.mode === 'solo'
+                    ? !!session.soloState && session.soloState.status !== 'playing'
+                    : session.matchStatus !== 'playing') && (
+                    <Suspense fallback={null}>
+                      <GameOverModal
+                        mode={session.mode}
+                        soloStatus={session.soloState?.status ?? 'playing'}
+                        soloMoves={session.soloState?.moves ?? 0}
+                        multiplayerStatus={session.matchStatus}
+                        p1Count={session.gridView.p1Cells.length}
+                        p2Count={session.gridView.p2Cells.length}
+                        totalCells={session.totalCells}
+                        opponent={session.opponent}
+                        seriesScore={session.matchSeries}
+                        challengeType={session.matchChallengeType}
+                        currentStage={session.matchStage}
+                        onPlayAgain={session.playAgain}
+                        onAcceptRematch={session.acceptOnlineRematch}
+                        onDeclineRematch={session.declineOnlineRematch}
+                        onResetSeries={session.resetSeries}
+                        dailyShareText={session.dailyShareText}
+                        onWatchReplay={
+                          (session.mode === 'solo' &&
+                            session.soloState?.status !== 'playing') ||
+                          (session.mode === 'multiplayer' && !!session.multiplayerReplay)
+                            ? () => setShowReplay(true)
+                            : undefined
+                        }
+                        shareBoardLink={session.soloShareUrl}
+                        p1Name={session.onlineOnly.p1Name}
+                        p2Name={session.onlineOnly.p2Name}
+                        myRole={session.myRole}
+                        rematchRequestedBy={session.rematchRequestedBy}
+                        onLeaveRoom={session.leaveOnlineRoom}
+                        spectating={session.spectating}
+                        isHost={session.myRole === 1}
+                        onHostRematch={session.hostOnlineRematch}
+                      />
+                    </Suspense>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Interactive Multiplayer Emote Reaction Bar */}
+            {session.mode === 'multiplayer' && (
+              <Suspense fallback={null}>
+                <MultiplayerEmotes
+                  opponent={session.opponent}
+                  myRole={session.myRole}
+                  activeTurn={session.activeTurn}
+                  activeEmotes={session.activeEmotes}
+                  onSendEmote={(sender, emoji) =>
+                    session.triggerEmote(sender, emoji, true)
+                  }
+                  p1Name={session.playerNames.p1}
+                  p2Name={session.playerNames.p2}
+                  disabled={session.emoteBarDisabled}
+                />
+              </Suspense>
+            )}
+
+            {/* Color Action Palette (hidden for spectator seats) */}
+            {!session.spectating && (
+              <ColorPalette
+                colorCount={session.paletteColorCount}
+                mode={session.mode}
+                onSelectColor={session.pickColor}
+                disabled={session.paletteDisabled}
+                hint={session.hint}
+                hintGain={session.hintGain}
+                soloCurrentColor={session.soloCurrentColor}
+                p1Color={session.activeMatch?.p1Color ?? 0}
+                p2Color={session.activeMatch?.p2Color ?? 0}
+                opponent={session.opponent}
+                theme={session.currentTheme}
+                boardShape={session.boardShape}
+                turnStatus={turnStatus}
+              />
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Settings sheet — outside the play column, so opening it never
+            moves the board and it stays anchored to the header button. */}
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsPanel
+            gridSize={session.gridSize}
+            onChangeGridSize={session.handleChangeGridSize}
+            colorCount={session.colorCount}
+            onChangeColorCount={session.handleChangeColorCount}
+            boardShape={session.boardShape}
+            onChangeBoardShape={session.handleChangeBoardShape}
+            mode={session.mode}
+            opponent={session.opponent}
+            onChangeOpponent={session.setOpponent}
+            botDifficulty={session.botDifficulty}
+            onChangeBotDifficulty={session.handleSetBotDifficulty}
+            showTerritoryOverlay={session.showTerritoryOverlay}
+            onToggleTerritoryOverlay={() =>
+              session.setShowTerritoryOverlay((prev) => !prev)
+            }
+            showColorSymbols={session.showColorSymbols}
+            onToggleColorSymbols={() => session.setShowColorSymbols((prev) => !prev)}
+            showHints={session.showHints}
+            onToggleShowHints={() => session.setShowHints((prev) => !prev)}
+            onResetSeries={session.resetSeries}
+            onSetToEasiest={session.handleSetToEasiest}
+            activeThemeId={session.themeId}
+            onOpenThemeModal={() => setShowThemeModal(true)}
+            challengeType={
+              session.mode === 'multiplayer'
+                ? session.matchChallengeType
+                : session.challengeType
+            }
+            onChangeChallengeType={session.handleChangeChallengeType}
+            onlineStructuralLocked={session.onlineStructuralLocked}
+            isOnlineHost={session.isOnlineHost}
+            turnTimerSec={session.roomState?.turnTimerSec ?? 0}
+            onChangeTurnTimerSec={
+              session.turnTimerEditable ? session.handleChangeTurnTimer : undefined
+            }
+            soundMuted={session.soundMuted}
+            onToggleSound={session.toggleSound}
+            onDownloadIcon={import.meta.env.DEV ? handleDownloadIcon : undefined}
+            onClose={() => setShowSettings(false)}
+            onOpenInfo={() => {
+              setShowSettings(false);
+              setShowInfoModal(true);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Opponent Reset Approval Modal — mounted only while a proposal or
+            local confirm exists; its props already carry every state it needs. */}
+      {(Boolean(session.activeOnlineProposal) || session.showLocalResetConfirm) && (
+        <Suspense fallback={null}>
+          <ResetApprovalModal
+            isOpen={true}
+            proposal={session.activeOnlineProposal}
+            myRole={session.myRole}
+            opponent={session.opponent}
+            p1Name={session.roomState?.p1Name || 'Player 1'}
+            p2Name={session.roomState?.p2Name || 'Player 2'}
+            isLocalConfirm={session.showLocalResetConfirm}
+            onAccept={
+              session.opponent === 'online'
+                ? session.acceptOnlineRematch
+                : session.confirmLocalReset
+            }
+            onDecline={
+              session.opponent === 'online'
+                ? session.declineOnlineRematch
+                : session.cancelLocalReset
+            }
+            onCancelLocal={session.cancelLocalReset}
+          />
+        </Suspense>
+      )}
+
+      {showThemeModal && (
+        <Suspense fallback={null}>
+          <ThemeSelectorModal
+            isOpen={true}
+            activeThemeId={session.themeId}
+            onSelectTheme={session.handleSelectTheme}
+            onClose={() => setShowThemeModal(false)}
+          />
+        </Suspense>
+      )}
+
+      {showDaily && (
+        <Suspense fallback={null}>
+          <DailyChallengeModal
+            isOpen={true}
+            onClose={() => setShowDaily(false)}
+            dailyDate={session.dailyDate}
+            dailyShareText={session.dailyShareText}
+            dailyStreak={session.dailyStreak}
+            onStartDaily={() => {
+              session.startDailyChallenge();
+              setShowDaily(false);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {showStats && (
+        <Suspense fallback={null}>
+          <StatsModal
+            isOpen={true}
+            onClose={() => setShowStats(false)}
+            soloStats={session.soloStats}
+            dailyStreak={session.dailyStreak}
+            onReset={session.resetSoloStats}
+          />
+        </Suspense>
+      )}
+
+      {/* P6.3/P10.3: replay viewer (over the game-over card) — solo rounds
+            step recorded diffs; multiplayer rounds walk recorded moves with
+            their ownership overlay. */}
+      {showReplay &&
+        (session.mode === 'solo' ? !!session.soloState : !!session.multiplayerReplay) && (
+          <Suspense fallback={null}>
+            {session.mode === 'solo' && session.soloState ? (
+              <ReplayModal
+                isOpen={true}
+                onClose={() => setShowReplay(false)}
+                grid={session.soloState.grid}
+                history={session.soloState.history}
+                playedColors={session.soloState.playedColors}
+                theme={session.currentTheme}
+                shape={session.soloState.shape}
+                size={session.soloState.boardSize}
+                layoutSeed={session.soloState.seed}
+              />
+            ) : session.multiplayerReplay ? (
+              <ReplayModal
+                isOpen={true}
+                onClose={() => setShowReplay(false)}
+                grid={session.multiplayerReplay.grid}
+                history={[]}
+                playedColors={[]}
+                theme={session.currentTheme}
+                shape={session.multiplayerReplay.shape}
+                size={session.multiplayerReplay.size}
+                layoutSeed={session.multiplayerReplay.boardSeed ?? 0}
+                multiplayer={session.multiplayerReplay}
+              />
+            ) : null}
+          </Suspense>
+        )}
+
+      {showInfoModal && (
+        <Suspense fallback={null}>
+          <HowToPlayModal
+            isOpen={true}
+            onClose={() => setShowInfoModal(false)}
+            initialMode={session.mode}
+          />
+        </Suspense>
+      )}
+
+      {/* P5.7: first-run interactive tutorial (once per device) */}
+      {showTutorial && !session.isOnlineLobbyActive && (
+        <Suspense fallback={null}>
+          <FirstRunTutorial
+            hasMadeFirstMove={hasMadeFirstMove}
+            onFinish={finishTutorial}
+            boardShape={session.mode === 'solo' ? session.boardShape : 'classic'}
+          />
+        </Suspense>
+      )}
+
+      {/* Sleek Minimal Footer */}
+      <footer className="w-full max-w-xl mx-auto pt-0.5 pb-1 px-3 text-center shrink-0">
+        <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+          <span>
+            Created by{' '}
+            <span className="text-slate-400 font-semibold">Elshad Guliyev</span>
+          </span>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://github.com/ell-shad"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-indigo-400 transition-colors"
+              title="GitHub Profile"
+            >
+              <Github className="w-3.5 h-3.5" />
+            </a>
+            <a
+              href="https://www.linkedin.com/in/elshad-guliyev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-indigo-400 transition-colors"
+              title="LinkedIn Profile"
+            >
+              <Linkedin className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

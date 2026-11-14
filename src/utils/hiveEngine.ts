@@ -138,7 +138,7 @@ export const hiveLayout = (rows: number, cols: number): HiveLayout => {
   return layout;
 };
 
-const hiveDimensions = (size: number): [number, number] => {
+export const hiveDimensions = (size: number): [number, number] => {
   const ladder: Record<GridSize, [number, number]> = {
     10: [10, 9],
     12: [12, 10],

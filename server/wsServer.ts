@@ -258,6 +258,7 @@ export const mountWsServer = (wss: WebSocketServer, service: RoomService): Mount
               gridSize: parsed.gridSize,
               colorCount: parsed.colorCount,
               challengeType: parsed.challengeType,
+              shape: parsed.shape,
               turnTimerSec: parsed.turnTimerSec,
             });
             if (!result.ok) fail(result.code ?? 'bad_message', result.message ?? 'error');

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { BoardShape, GameMode, MultiplayerOpponent, PlayerId, GameTheme } from '../types';
 import { THEMES } from '../utils/themes';
 import { isFlatShape } from '../utils/boardShape';
@@ -110,18 +109,16 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
 
           return (
             <div key={idx} className="relative group">
-              <motion.button
-                whileHover={!isColorDisabled ? { scale: 1.08, y: -2 } : {}}
-                whileTap={!isColorDisabled ? { scale: 0.92 } : {}}
+              <button
+                type="button"
                 onClick={() => !isColorDisabled && onSelectColor(idx)}
                 disabled={isColorDisabled}
-                // Only transform/shadow animate: the current-color dimming used
-                // to cross-fade opacity+grayscale on every move, which read as
-                // the palette flashing while playing.
+                // Only transform/shadow animate: CSS compositor hover/tap keeps
+                // motion/react out of the initial boot chunk.
                 className={`w-10 h-10 sm:w-12 sm:h-12 min-w-[38px] min-h-[38px] rounded-xl sm:rounded-2xl shadow-md transition-[transform,box-shadow] duration-150 relative flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
                   isColorDisabled
                     ? 'opacity-35 grayscale-[0.5] scale-95 shadow-none'
-                    : 'hover:shadow-indigo-500/20 active:scale-95'
+                    : 'hover:scale-105 hover:-translate-y-0.5 hover:shadow-indigo-500/20 active:scale-92'
                 } ${
                   isHinted
                     ? 'ring-3 ring-amber-400 ring-offset-2 ring-offset-[#0F172A] scale-105'
@@ -151,22 +148,18 @@ export const ColorPalette: React.FC<ColorPaletteProps> = ({
                     {badgeLabel}
                   </span>
                 )}
-              </motion.button>
+              </button>
 
               {/* Best Hint Bubble */}
               {isHinted && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute -top-7 left-1/2 -translate-x-1/2 pointer-events-none z-20"
-                >
+                <div className="absolute -top-7 left-1/2 -translate-x-1/2 pointer-events-none z-20 animate-[pop-in_160ms_ease-out]">
                   <div className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded shadow-lg whitespace-nowrap uppercase tracking-wider flex items-center gap-1">
                     <span>Best</span>
                     {typeof hintGain === 'number' && hintGain > 0 && (
                       <span className="font-mono">(+{hintGain})</span>
                     )}
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           );

@@ -320,7 +320,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 <span className="text-amber-300 font-semibold flex items-center justify-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   <span>
-                    Stage {currentStage} complete! Next up: Stage {nextStageNum}
+                    {currentStage >= 5
+                      ? 'Final Stage 5 complete! Rematch on Stage 5'
+                      : `Stage ${currentStage} complete! Next up: Stage ${nextStageNum}`}
                   </span>
                 </span>
               ) : isDraw ? (
@@ -435,7 +437,11 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>
-                  {isProgressive ? `Start Stage ${nextStageNum} Now` : 'Rematch Now'}
+                  {isProgressive
+                    ? currentStage >= 5
+                      ? 'Rematch Stage 5'
+                      : `Start Stage ${nextStageNum} Now`
+                    : 'Rematch Now'}
                 </span>
               </button>
             ) : (
@@ -446,7 +452,9 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>
                   {isProgressive
-                    ? `Advance to Stage ${nextStageNum}`
+                    ? currentStage >= 5
+                      ? 'Replay Stage 5'
+                      : `Advance to Stage ${nextStageNum}`
                     : opponent === 'online'
                       ? 'Request Rematch (Alternating Turns)'
                       : 'Play Again'}

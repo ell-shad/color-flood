@@ -321,7 +321,7 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
             width: cubePx,
             height: cubePx,
             transformStyle: 'preserve-3d',
-            transform: `rotateX(${DEFAULT_ROTATION.x}deg) rotateY(${DEFAULT_ROTATION.y}deg)`,
+            transform: `rotateX(var(--cube-x, ${DEFAULT_ROTATION.x}deg)) rotateY(var(--cube-y, ${DEFAULT_ROTATION.y}deg))`,
           }}
         >
           {faces.map((face) => {
@@ -446,61 +446,64 @@ export const CubeBoard: React.FC<CubeBoardProps> = ({
               gridAutoRows: `${netFacePx}px`,
             }}
           >
-            {NET_FACES.map(({ face, col, row }) => (
-              <div
-                key={face}
-                data-cube-net-face={face}
-                className="relative overflow-hidden rounded-md border border-slate-700/60"
-                style={{
-                  gridColumn: col + 1,
-                  gridRow: row + 1,
-                  width: netFacePx,
-                  height: netFacePx,
-                }}
-                title={`Face ${face + 1}`}
-              >
+            {NET_FACES.map(({ face, col, row }) => {
+              const transpose =
+                placements[face]?.transpose ?? cubeFaceDisplay(face).transpose;
+              return (
                 <div
-                  className="grid w-full"
+                  key={face}
+                  data-cube-net-face={face}
+                  className="relative overflow-hidden rounded-md border border-slate-700/60"
                   style={{
-                    gridTemplateColumns: `repeat(${Math.max(1, side)}, minmax(0, 1fr))`,
+                    gridColumn: col + 1,
+                    gridRow: row + 1,
+                    width: netFacePx,
+                    height: netFacePx,
                   }}
+                  title={`Face ${face + 1}`}
                 >
-                  {Array.from({ length: Math.max(0, side) }, (_, dr) =>
-                    Array.from({ length: Math.max(0, side) }, (_, dc) => {
-                      const { transpose } = cubeFaceDisplay(face);
-                      const i = transpose ? dc : dr;
-                      const j = transpose ? dr : dc;
-                      const r = face * side + i;
-                      const c = j;
-                      const key = `${r},${c}`;
-                      const colorIdx = grid[r]?.[c] ?? 0;
-                      const owned = p1Set.has(key) ? 1 : p2Set.has(key) ? 2 : 0;
-                      const isStart = soloSeedKey === key;
-                      return (
-                        <span
-                          key={key}
-                          style={{
-                            backgroundColor: theme.colors[colorIdx] || '#FF595E',
-                            boxShadow:
-                              showTerritoryOverlay && owned === 1
-                                ? 'inset 0 0 0 1.5px #22D3EE'
-                                : showTerritoryOverlay && owned === 2
-                                  ? 'inset 0 0 0 1.5px #FB7185'
-                                  : isStart
-                                    ? 'inset 0 0 0 1.5px #FFFFFF'
-                                    : undefined,
-                            aspectRatio: '1/1',
-                          }}
-                        />
-                      );
-                    }),
-                  )}
+                  <div
+                    className="grid w-full"
+                    style={{
+                      gridTemplateColumns: `repeat(${Math.max(1, side)}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {Array.from({ length: Math.max(0, side) }, (_, dr) =>
+                      Array.from({ length: Math.max(0, side) }, (_, dc) => {
+                        const i = transpose ? dc : dr;
+                        const j = transpose ? dr : dc;
+                        const r = face * side + i;
+                        const c = j;
+                        const key = `${r},${c}`;
+                        const colorIdx = grid[r]?.[c] ?? 0;
+                        const owned = p1Set.has(key) ? 1 : p2Set.has(key) ? 2 : 0;
+                        const isStart = soloSeedKey === key;
+                        return (
+                          <span
+                            key={key}
+                            style={{
+                              backgroundColor: theme.colors[colorIdx] || '#FF595E',
+                              boxShadow:
+                                showTerritoryOverlay && owned === 1
+                                  ? 'inset 0 0 0 1.5px #22D3EE'
+                                  : showTerritoryOverlay && owned === 2
+                                    ? 'inset 0 0 0 1.5px #FB7185'
+                                    : isStart
+                                      ? 'inset 0 0 0 1.5px #FFFFFF'
+                                      : undefined,
+                              aspectRatio: '1/1',
+                            }}
+                          />
+                        );
+                      }),
+                    )}
+                  </div>
+                  <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-slate-950/70 px-1 text-[8px] font-black text-slate-200">
+                    F{face + 1}
+                  </span>
                 </div>
-                <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-slate-950/70 px-1 text-[8px] font-black text-slate-200">
-                  F{face + 1}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {soloSeedKey && (
             <figcaption className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wider text-slate-400">

@@ -118,6 +118,9 @@ interface SettingsPanelProps {
   /** Online only (P3.5): optional per-turn move timer, host configurable. */
   turnTimerSec?: 0 | 30 | 60;
   onChangeTurnTimerSec?: (sec: 0 | 30 | 60) => void;
+  /** Online only: disables board/rule changes mid-round or for non-host players. */
+  onlineStructuralLocked?: boolean;
+  isOnlineHost?: boolean;
   /** Settings is now an overlay sheet anchored to the header button. */
   onClose: () => void;
   /** How-to-Play moved off the header row into the sheet. */
@@ -150,6 +153,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onChangeChallengeType,
   turnTimerSec = 0,
   onChangeTurnTimerSec,
+  onlineStructuralLocked = false,
+  isOnlineHost = true,
   soundMuted = false,
   onToggleSound,
   onClose,
@@ -157,12 +162,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const currentTheme = THEMES[activeThemeId] || THEMES.arcade;
   const panelRef = useModalA11y(true);
-  // P12/P15: only the cube is solo-only, and a stored cube preference shows as
-  // the flat board it actually plays as in multiplayer.
   const shapeOptions = BOARD_SHAPE_OPTIONS.filter(
     ({ id }) => mode === 'solo' || !isSoloOnlyShape(id),
   );
   const activeShape = parseBoardShape(boardShape);
+  const isProgressiveActive = mode === 'multiplayer' && challengeType === 'progressive';
+  const structuralDisabled = opponent === 'online' && onlineStructuralLocked;
+  const sizeColorDisabled = structuralDisabled || isProgressiveActive;
+  const lockHint = !isOnlineHost ? 'Host only' : 'Between rounds only';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
@@ -240,7 +247,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               {onSetToEasiest && (
                 <button
                   onClick={onSetToEasiest}
-                  className="px-2 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                  disabled={structuralDisabled}
+                  title={
+                    structuralDisabled
+                      ? lockHint
+                      : 'Reset difficulty to easiest (10×10, 4 colors)'
+                  }
+                  className="px-2 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm"
                 >
                   <Sparkles className="w-3 h-3 text-emerald-400" />
                   <span>Easiest</span>
@@ -252,31 +265,40 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {/* In Multiplayer: Progressive Track vs Standard Match Mode */}
           {mode === 'multiplayer' && onChangeChallengeType && (
             <div className="space-y-1.5 pb-2.5 border-b border-slate-750">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                Multiplayer Challenge Ladder
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                  Multiplayer Challenge Ladder
+                </label>
+                {structuralDisabled && (
+                  <span className="text-[10px] text-amber-400 font-mono">{lockHint}</span>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => onChangeChallengeType('progressive')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  disabled={structuralDisabled}
+                  aria-pressed={challengeType === 'progressive'}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
                     challengeType === 'progressive'
                       ? 'bg-amber-500 text-slate-950 shadow-md border border-amber-400/50'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
                   }`}
                 >
-                  <Trophy className="w-3.5 h-3.5" />
-                  <span>Progressive Track (5 Stages)</span>
+                  <Trophy className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Progressive (5 Stages)</span>
                 </button>
                 <button
                   onClick={() => onChangeChallengeType('standard')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  disabled={structuralDisabled}
+                  aria-pressed={challengeType === 'standard'}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
                     challengeType === 'standard'
                       ? 'bg-indigo-600 text-white shadow-md border border-indigo-400/50'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
                   }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Standard Match</span>
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Standard Match</span>
                 </button>
               </div>
             </div>
@@ -332,14 +354,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       : 'floods from the marked start'}
                 </span>
               </div>
-              <div className={`grid grid-cols-2 gap-1.5`}>
-                {shapeOptions.map(({ id, label, title, Icon, activeClass }) => (
+              <div className="grid grid-cols-2 gap-1.5">
+                {shapeOptions.map(({ id, label, title, Icon, activeClass }, idx) => (
                   <button
                     key={id}
                     onClick={() => onChangeBoardShape(id)}
-                    title={title}
+                    disabled={structuralDisabled}
+                    title={structuralDisabled ? lockHint : title}
                     aria-pressed={activeShape === id}
-                    className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
+                      shapeOptions.length % 2 === 1 && idx === shapeOptions.length - 1
+                        ? 'col-span-2'
+                        : ''
+                    } ${
                       activeShape === id
                         ? activeClass
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
@@ -360,12 +387,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           {/* Grid Size Selection */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                 Grid Size
               </label>
               <span className="text-[10px] text-indigo-400 font-mono">
-                10x10 is easiest
+                {isProgressiveActive
+                  ? 'Set by stage 1–5'
+                  : structuralDisabled
+                    ? lockHint
+                    : '10x10 is easiest'}
               </span>
             </div>
             <div className="flex gap-1.5">
@@ -373,7 +404,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <button
                   key={size}
                   onClick={() => onChangeGridSize(size)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                  disabled={sizeColorDisabled}
+                  aria-pressed={gridSize === size}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed flex flex-col items-center justify-center ${
                     gridSize === size
                       ? 'bg-indigo-600 text-white shadow border border-indigo-400/50'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
@@ -392,12 +425,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           {/* Color Count Selection */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                 Colors Count
               </label>
               <span className="text-[10px] text-indigo-400 font-mono">
-                4 Colors is easiest
+                {isProgressiveActive
+                  ? 'Set by stage 1–5'
+                  : structuralDisabled
+                    ? lockHint
+                    : '4 Colors is easiest'}
               </span>
             </div>
             <div className="flex gap-1.5">
@@ -405,7 +442,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <button
                   key={count}
                   onClick={() => onChangeColorCount(count)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                  disabled={sizeColorDisabled}
+                  aria-pressed={colorCount === count}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed flex flex-col items-center justify-center ${
                     colorCount === count
                       ? 'bg-indigo-600 text-white shadow border border-indigo-400/50'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-750 border border-slate-700/50'
@@ -422,26 +461,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* P5.4: Color-blind aid — palette-digit overlay on every cell.
-            Keep it visible in every mode; it is a device-level aid. */}
-          {onToggleColorSymbols && (
-            <div className="flex items-center justify-between gap-2">
-              <button
-                onClick={onToggleColorSymbols}
-                title="Show the palette number on each cell so colors stay tellable without hue vision (pairs with the Color Safe theme)"
-                className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
-              >
-                <Shapes className="w-3.5 h-3.5 text-sky-400" />
-                <span>
-                  Symbols:{' '}
-                  <strong className="text-white">
-                    {showColorSymbols ? 'ON' : 'OFF'}
-                  </strong>
-                </span>
-              </button>
-              <span className="text-[10px] text-slate-400">
-                Color-blind aid (1–8 = palette keys)
-              </span>
+          {/* P5.4: Color-blind aid & synthesized audio toggle (available in all modes). */}
+          {(onToggleColorSymbols || onToggleSound) && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {onToggleColorSymbols && (
+                <button
+                  onClick={onToggleColorSymbols}
+                  title="Show the palette number on each cell so colors stay tellable without hue vision (pairs with the Color Safe theme)"
+                  className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
+                >
+                  <Shapes className="w-3.5 h-3.5 text-sky-400" />
+                  <span>
+                    Symbols:{' '}
+                    <strong className="text-white">
+                      {showColorSymbols ? 'ON' : 'OFF'}
+                    </strong>
+                  </span>
+                </button>
+              )}
+              {onToggleSound && (
+                <button
+                  onClick={onToggleSound}
+                  title="Synthesized move / win / loss sounds (P4.8)"
+                  className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    Sound:{' '}
+                    <strong className="text-white">{soundMuted ? 'OFF' : 'ON'}</strong>
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
@@ -478,7 +528,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               )}
 
               {/* Territory Highlight Toggle & Reset Series */}
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1">
                 <button
                   onClick={onToggleTerritoryOverlay}
                   className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
@@ -502,20 +552,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <span>
                       Hints:{' '}
                       <strong className="text-white">{showHints ? 'ON' : 'OFF'}</strong>
-                    </span>
-                  </button>
-                )}
-
-                {onToggleSound && (
-                  <button
-                    onClick={onToggleSound}
-                    title="Synthesized move / win / loss sounds (P4.8)"
-                    className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/50"
-                  >
-                    <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>
-                      Sound:{' '}
-                      <strong className="text-white">{soundMuted ? 'OFF' : 'ON'}</strong>
                     </span>
                   </button>
                 )}

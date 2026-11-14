@@ -133,43 +133,97 @@ const clipToBisector = (poly: Point[], own: Point, other: Point): Point[] => {
  * the loop wrongly reports every far site that happened to cut the square
  * before the near sites had narrowed it down.
  */
-const diagramOf = (sites: Point[]): { polygons: Point[][]; neighbours: number[][] } => {
+const polyMaxDistSq = (poly: Point[], own: Point): number => {
+  let maxR2 = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const dx = poly[i][0] - own[0];
+    const dy = poly[i][1] - own[1];
+    const r2 = dx * dx + dy * dy;
+    if (r2 > maxR2) maxR2 = r2;
+  }
+  return maxR2;
+};
+
+const diagramOf = (
+  sites: Point[],
+  side: number,
+): { polygons: Point[][]; neighbours: number[][] } => {
   const n = sites.length;
-  const polygons: Point[][] = [];
+  const polygons: Point[][] = new Array(n);
+  const maxR2List = new Float64Array(n);
 
   for (let i = 0; i < n; i++) {
+    const own = sites[i];
+    const r = Math.floor(i / side);
+    const c = i % side;
     let poly = squarePolygon();
-    for (let j = 0; j < n && poly.length >= 3; j++) {
-      if (j === i) continue;
-      poly = clipToBisector(poly, sites[i], sites[j]);
-    }
-    polygons.push(poly.length >= 3 ? poly : squarePolygon());
-  }
 
-  const neighbours: number[][] = polygons.map((poly, i) => {
-    const adj: number[] = [];
-    for (let j = 0; j < n; j++) {
-      if (j === i) continue;
-      const own = sites[i];
+    // 1. Clip nearby 5x5 lattice window first so the polygon radius shrinks quickly.
+    const rMin = Math.max(0, r - 2);
+    const rMax = Math.min(side - 1, r + 2);
+    const cMin = Math.max(0, c - 2);
+    const cMax = Math.min(side - 1, c + 2);
+    for (let rr = rMin; rr <= rMax && poly.length >= 3; rr++) {
+      for (let cc = cMin; cc <= cMax && poly.length >= 3; cc++) {
+        const j = rr * side + cc;
+        if (j === i) continue;
+        poly = clipToBisector(poly, own, sites[j]);
+      }
+    }
+
+    // 2. Prune distant sites via Cauchy-Schwarz: if d^2 > 4 * maxR^2, no point in
+    //    `poly` can be closer to `other` than `own`, nor lie on the bisector.
+    let maxR2 = polyMaxDistSq(poly, own);
+    for (let j = 0; j < n && poly.length >= 3; j++) {
+      const jr = Math.floor(j / side);
+      const jc = j % side;
+      if (Math.abs(jr - r) <= 2 && Math.abs(jc - c) <= 2) continue;
       const other = sites[j];
       const dx = other[0] - own[0];
       const dy = other[1] - own[1];
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 4 * maxR2 + 1e-4) continue;
+      poly = clipToBisector(poly, own, other);
+      maxR2 = polyMaxDistSq(poly, own);
+    }
+
+    const finished = poly.length >= 3 ? poly : squarePolygon();
+    polygons[i] = finished;
+    maxR2List[i] = polyMaxDistSq(finished, own);
+  }
+
+  const neighbours: number[][] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const poly = polygons[i];
+    const own = sites[i];
+    const maxR2 = maxR2List[i];
+    const adj: number[] = [];
+    for (let j = 0; j < n; j++) {
+      if (j === i) continue;
+      const other = sites[j];
+      const dx = other[0] - own[0];
+      const dy = other[1] - own[1];
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 4 * maxR2 + 1e-4) continue;
       const mx = (own[0] + other[0]) / 2;
       const my = (own[1] + other[1]) / 2;
-      const onBisector = (p: Point) =>
-        Math.abs(dx * (p[0] - mx) + dy * (p[1] - my)) < 1e-9;
       for (let k = 0; k < poly.length; k++) {
         const a = poly[k];
         const b = poly[(k + 1) % poly.length];
-        const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        if (length > 1e-6 && onBisector(a) && onBisector(b)) {
+        const ex = b[0] - a[0];
+        const ey = b[1] - a[1];
+        if (ex * ex + ey * ey <= 1e-12) continue;
+        if (
+          Math.abs(dx * (a[0] - mx) + dy * (a[1] - my)) < 1e-9 &&
+          Math.abs(dx * (b[0] - mx) + dy * (b[1] - my)) < 1e-9
+        ) {
           adj.push(j);
           break;
         }
       }
     }
-    return adj;
-  });
+    neighbours[i] = adj;
+  }
 
   return { polygons, neighbours };
 };
@@ -190,7 +244,7 @@ const buildLayout = (side: number, layoutSeed: number): MosaicLayout => {
   let polygons: Point[][] = [];
   let neighbours: number[][] = [];
   for (let step = 0; step <= RELAX_STEPS; step++) {
-    const diagram = diagramOf(sites);
+    const diagram = diagramOf(sites, side);
     polygons = diagram.polygons;
     neighbours = diagram.neighbours;
     if (step === RELAX_STEPS) break;
@@ -220,6 +274,7 @@ const buildLayout = (side: number, layoutSeed: number): MosaicLayout => {
   return { side, cells, seed };
 };
 
+const MAX_MOSAIC_CACHE = 32;
 const layoutCache = new Map<string, MosaicLayout>();
 
 /** Layout for a board side and seed; generated once and cached. */
@@ -228,6 +283,10 @@ export const mosaicLayout = (side: number, layoutSeed: number = 0): MosaicLayout
   let layout = layoutCache.get(key);
   if (!layout) {
     layout = buildLayout(Math.max(2, Math.floor(side)), layoutSeed >>> 0);
+    if (layoutCache.size >= MAX_MOSAIC_CACHE) {
+      const oldest = layoutCache.keys().next().value;
+      if (oldest !== undefined) layoutCache.delete(oldest);
+    }
     layoutCache.set(key, layout);
   }
   return layout;
@@ -323,6 +382,10 @@ export const mosaicDistanceField = (side: number, layoutSeed: number = 0): Int16
         queue.push(next);
       }
     }
+  }
+  if (distanceCache.size >= MAX_MOSAIC_CACHE) {
+    const oldest = distanceCache.keys().next().value;
+    if (oldest !== undefined) distanceCache.delete(oldest);
   }
   distanceCache.set(key, distances);
   return distances;

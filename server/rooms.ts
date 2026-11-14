@@ -791,6 +791,26 @@ export const createRoomService = (deps: ServiceDeps): RoomService => {
         if (room.challengeType === 'standard') {
           if (settings.gridSize !== undefined) room.gridSize = settings.gridSize;
           if (settings.colorCount !== undefined) room.colorCount = settings.colorCount;
+        } else if (room.status === 'waiting') {
+          room.currentStage = 1;
+          room.gridSize = STAGE_CONFIGS[1].gridSize;
+          room.colorCount = STAGE_CONFIGS[1].colorCount;
+        }
+        if (room.status === 'waiting') {
+          const boardSeed = Math.floor(Math.random() * 2 ** 32);
+          const board = generateBoardForShape(
+            room.shape,
+            room.gridSize,
+            room.colorCount,
+            undefined,
+            boardSeed,
+          );
+          room.boardSeed = boardSeed;
+          room.grid = board.grid;
+          room.p1Cells = board.p1Cells;
+          room.p2Cells = board.p2Cells;
+          room.p1Color = board.p1Color;
+          room.p2Color = board.p2Color;
         }
       }
       bump(room);

@@ -657,4 +657,45 @@ describe('P10.4 online round replay recording', () => {
     expect(next.roundHistory).toBeUndefined();
     expect(store.get(roomId)!.history).toHaveLength(0);
   });
+
+  it('regenerates the waiting-room board when structural settings or challengeType change', () => {
+    const { service } = makeService();
+    const created = service.createRoom({
+      playerName: 'Host',
+      challengeType: 'standard',
+      gridSize: 10,
+      colorCount: 4,
+      shape: 'classic',
+    });
+    expect(service.readState(created.roomId)!.grid).toHaveLength(10);
+
+    // Resize & switch to hive in waiting lobby → board dimensions update immediately.
+    expect(
+      service.updateSettings(created.roomId, created.token, {
+        gridSize: 14,
+        colorCount: 6,
+        shape: 'hive',
+      }).ok,
+    ).toBe(true);
+    const updated = service.readState(created.roomId)!;
+    expect(updated.shape).toBe('hive');
+    expect(updated.gridSize).toBe(14);
+    expect(updated.colorCount).toBe(6);
+    expect(updated.grid).toHaveLength(14);
+    expect(updated.grid[0]).toHaveLength(12);
+
+    // Switch back to progressive → snaps to Stage 1 (10 / 4) and regenerates the board.
+    expect(
+      service.updateSettings(created.roomId, created.token, {
+        challengeType: 'progressive',
+      }).ok,
+    ).toBe(true);
+    const prog = service.readState(created.roomId)!;
+    expect(prog.challengeType).toBe('progressive');
+    expect(prog.currentStage).toBe(1);
+    expect(prog.gridSize).toBe(10);
+    expect(prog.colorCount).toBe(4);
+    expect(prog.grid).toHaveLength(10);
+    expect(prog.grid[0]).toHaveLength(9);
+  });
 });

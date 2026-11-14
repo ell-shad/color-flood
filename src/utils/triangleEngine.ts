@@ -111,7 +111,7 @@ export const triangleLayout = (rows: number, cols: number): TriangleLayout => {
   return layout;
 };
 
-const triangleDimensions = (size: number): [number, number] => {
+export const triangleDimensions = (size: number): [number, number] => {
   const ladder: Record<GridSize, [number, number]> = {
     10: [5, 20],
     12: [6, 24],

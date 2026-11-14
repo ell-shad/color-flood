@@ -283,27 +283,30 @@ export interface SoloGameOptions {
  */
 export function useSoloGame(
   opts: SoloGameOptions = {},
-  initial: { size: GridSize; colors: ColorCount; shape: BoardShape },
+  initial: { size: GridSize; colors: ColorCount; shape: BoardShape; deferred?: boolean },
 ) {
   const [soloState, dispatch] = useReducer(soloReducer, null, () =>
-    soloReducer(null, {
-      type: 'init',
-      size: initial.size,
-      colors: initial.colors,
-      shape: initial.shape,
-    }),
+    initial.deferred
+      ? null
+      : soloReducer(null, {
+          type: 'init',
+          size: initial.size,
+          colors: initial.colors,
+          shape: initial.shape,
+        }),
   );
   const [highScores, setHighScores] = useState<HighScore[]>(() => loadHighScores());
 
   // Callbacks are read through refs so the once-per-transition effect below
-  // never resurrects stale closures. The ref write lives inside the effect
-  // (react-hooks/refs forbids render-phase ref access) and the transition
-  // logic consumes the fresh value on the same flush.
+  // never resurrects stale closures.
   const optsRef = useRef(opts);
   const onEndStatus = useRef<SoloGameState['status'] | null>(null);
 
   useEffect(() => {
     optsRef.current = opts;
+  });
+
+  useEffect(() => {
     if (!soloState) return;
     if (soloState.status === onEndStatus.current) return;
     if (soloState.status === 'playing') {
@@ -316,7 +319,7 @@ export function useSoloGame(
     } else if (soloState.status === 'lost') {
       optsRef.current.onLose?.(soloState);
     }
-  });
+  }, [soloState]);
 
   const init = useCallback(
     (size: GridSize, colors: ColorCount, seed?: number, shape?: BoardShape) =>

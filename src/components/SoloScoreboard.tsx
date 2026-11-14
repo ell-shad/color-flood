@@ -94,7 +94,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
           Moves
         </span>
         <span
-          className={`font-mono font-black text-lg leading-none ${
+          className={`font-mono font-black text-lg leading-none tabular-nums ${
             isLossRisk ? 'text-rose-400 animate-pulse' : 'text-indigo-300'
           }`}
         >
@@ -128,7 +128,7 @@ export const SoloScoreboard: React.FC<SoloScoreboardProps> = ({
         aria-label={`Best score: ${currentHighScore ?? 'none yet'}`}
       >
         <Trophy className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-        <span className="font-mono font-black text-sm text-amber-300">
+        <span className="font-mono font-black text-sm text-amber-300 tabular-nums">
           {currentHighScore || '--'}
         </span>
         {stars !== null && (

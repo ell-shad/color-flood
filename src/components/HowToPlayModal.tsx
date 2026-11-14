@@ -162,19 +162,21 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Corners:</strong>{' '}
-                  <span className="text-cyan-400 font-bold">Player 1</span> starts at the{' '}
-                  <em>Top-Left</em> corner.{' '}
-                  <span className="text-rose-400 font-bold">Player 2 (or AI Bot)</span>{' '}
-                  starts at the <em>Bottom-Right</em> corner.
+                  <strong>Starting Positions:</strong> On <em>Classic</em>,{' '}
+                  <span className="text-cyan-400 font-bold">Player 1</span> starts at
+                  Top-Left and{' '}
+                  <span className="text-rose-400 font-bold">Player 2 (or Bot)</span> at
+                  Bottom-Right. On <em>Wheel</em>, both start opposite on the outer ring;
+                  on <em>Mosaic</em>, <em>Triangle</em>, and <em>Hive</em>, both start at
+                  the bottom and top centres.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Color Locking:</strong> You take turns choosing a color. You{' '}
-                  <em>cannot</em> pick your current color, and you <em>cannot</em> pick
-                  the color currently owned by your opponent!
+                  <strong>Color Locking:</strong> You take turns choosing a color (first
+                  turn alternates each round!). You <em>cannot</em> pick your current
+                  color or the color currently owned by your opponent.
                 </p>
               </div>
               <div className="flex gap-2.5 items-start">
@@ -188,10 +190,12 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
               <div className="flex gap-2.5 items-start">
                 <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Play Modes:</strong> Challenge a friend{' '}
-                  <strong>Online from distance</strong> via room code or instant shareable
-                  link, play <strong>Pass & Play</strong> locally on one device, or battle
-                  the <strong>AI Bot</strong> (Easy, Medium, Master).
+                  <strong>Play Modes & Tracks:</strong> Play <strong>Online</strong> via
+                  room code or shareable link (with mutual reset approval &amp; live
+                  emotes), <strong>Pass &amp; Play</strong> locally, or challenge the{' '}
+                  <strong>AI Bot</strong>. Pick <strong>Progressive Track</strong> to
+                  climb Stages 1–5 from easiest to hardest, or{' '}
+                  <strong>Custom Match</strong> for fixed board settings.
                 </p>
               </div>
             </div>

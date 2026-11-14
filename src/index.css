@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-slate-750: #293548;
+  --color-slate-850: #172033;
+  --animate-spin-slow: spin 3s linear infinite;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 html,
 body {
   margin: 0;

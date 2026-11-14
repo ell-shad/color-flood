@@ -80,7 +80,14 @@ type LocalAction =
       challengeType: ChallengeType;
       shape: BoardShape;
     }
-  | { type: 'move'; color: number; colors: number }
+  | {
+      type: 'move';
+      color: number;
+      newGrid: number[][];
+      newCells: string[];
+      gain: number;
+      outcome: TwoPlayerGameState['status'];
+    }
   | { type: 'reset_meta' };
 
 const EMPTY_STAGE_WINS: { 1: number[]; 2: number[] } = { 1: [], 2: [] };
@@ -144,31 +151,12 @@ const localReducer = (
 
       const turn = state.turn;
       const currentCells = turn === 1 ? state.p1Cells : state.p2Cells;
-      const opponentCells = turn === 1 ? state.p2Cells : state.p1Cells;
-      const { newGrid, newCells, gain } = expandTerritoryForShape(
-        state.shape,
-        state.grid,
-        currentCells,
-        opponentCells,
-        action.color,
-        state.boardSeed,
-      );
+      const { newGrid, newCells, gain, outcome } = action;
 
       const nextP1Cells = turn === 1 ? newCells : state.p1Cells;
       const nextP2Cells = turn === 2 ? newCells : state.p2Cells;
       const nextP1Color = turn === 1 ? action.color : state.p1Color;
       const nextP2Color = turn === 2 ? action.color : state.p2Color;
-
-      const outcome = checkGameOverForShape(
-        state.shape,
-        newGrid,
-        nextP1Cells,
-        nextP2Cells,
-        action.colors,
-        nextP1Color,
-        nextP2Color,
-        state.boardSeed,
-      );
 
       const nextStageWins = { 1: [...state.stageWins[1]], 2: [...state.stageWins[2]] };
       if (outcome !== 'playing' && state.challengeType === 'progressive') {
@@ -270,10 +258,12 @@ export function useLocalMatch(
     colorCount: ColorCount;
     gridSize: GridSize;
     shape: BoardShape;
+    deferred?: boolean;
   },
 ): LocalMatch {
   const { botEnabled, botDifficulty, colorCount } = opts;
   const [state, dispatch] = useReducer(localReducer, null, () => {
+    if (initial.deferred) return null;
     // Lazy initial round (P4.4: no re-creating effect — the board is built once
     // during the first render and explicit handlers re-create it on paper).
     const startStage = PROGRESSIVE_STAGES[0] || { gridSize: 10, colorCount: 4 };
@@ -328,45 +318,51 @@ export function useLocalMatch(
     o.onMoveStart?.(args.startTurn ?? 1);
   }, []);
 
-  const advanceRound: LocalMatch['advanceRound'] = useCallback((nextStageOverride?) => {
-    const s = stateRef.current;
-    if (!s) return;
-    const o = optsRef.current;
-    const nextRound = s.roundNumber + 1;
-    // Strictly alternate first turn.
-    const nextFirst: PlayerId = s.firstTurnPlayer === 1 ? 2 : 1;
-    if (s.challengeType === 'progressive') {
-      const targetStage =
-        nextStageOverride !== undefined
-          ? nextStageOverride
-          : Math.min(5, s.currentStage + 1);
-      const stageConfig = PROGRESSIVE_STAGES[targetStage - 1] || PROGRESSIVE_STAGES[0];
-      dispatch({
-        type: 'init_round',
-        size: stageConfig.gridSize,
-        colors: stageConfig.colorCount,
-        startTurn: nextFirst,
-        round: nextRound,
-        stage: targetStage,
-        stageWins: s.stageWins,
-        challengeType: s.challengeType,
-        shape: o.boardShape,
-      });
-    } else {
-      dispatch({
-        type: 'init_round',
-        size: o.gridSize,
-        colors: o.colorCount,
-        startTurn: nextFirst,
-        round: nextRound,
-        stage: s.currentStage,
-        stageWins: s.stageWins,
-        challengeType: s.challengeType,
-        shape: o.boardShape,
-      });
-    }
-    o.onMoveStart?.(nextFirst);
-  }, []);
+  const advanceRound: LocalMatch['advanceRound'] = useCallback(
+    (nextStageOverride?) => {
+      const s = stateRef.current;
+      if (!s) {
+        initRound({ stage: nextStageOverride ?? 1 });
+        return;
+      }
+      const o = optsRef.current;
+      const nextRound = s.roundNumber + 1;
+      // Strictly alternate first turn.
+      const nextFirst: PlayerId = s.firstTurnPlayer === 1 ? 2 : 1;
+      if (s.challengeType === 'progressive') {
+        const targetStage =
+          nextStageOverride !== undefined
+            ? nextStageOverride
+            : Math.min(5, s.currentStage + 1);
+        const stageConfig = PROGRESSIVE_STAGES[targetStage - 1] || PROGRESSIVE_STAGES[0];
+        dispatch({
+          type: 'init_round',
+          size: stageConfig.gridSize,
+          colors: stageConfig.colorCount,
+          startTurn: nextFirst,
+          round: nextRound,
+          stage: targetStage,
+          stageWins: s.stageWins,
+          challengeType: s.challengeType,
+          shape: o.boardShape,
+        });
+      } else {
+        dispatch({
+          type: 'init_round',
+          size: o.gridSize,
+          colors: o.colorCount,
+          startTurn: nextFirst,
+          round: nextRound,
+          stage: s.currentStage,
+          stageWins: s.stageWins,
+          challengeType: s.challengeType,
+          shape: o.boardShape,
+        });
+      }
+      o.onMoveStart?.(nextFirst);
+    },
+    [initRound],
+  );
 
   const resetSeries = useCallback(() => {
     const cleared: SeriesScore = { p1: 0, p2: 0, draws: 0 };
@@ -384,11 +380,11 @@ export function useLocalMatch(
       const turn = s.turn;
       const colors = activeColorCountOf(s, optsRef.current.colorCount);
 
-      // Pre-dispatch outcome for synchronous callbacks; the reducer re-runs the
-      // same pure engine call when it transforms the state (see header docs).
+      // Compute expansion and game-over once and forward the result into the
+      // reducer so synchronous callbacks and state update share one engine pass.
       const currentCells = turn === 1 ? s.p1Cells : s.p2Cells;
       const opponentCells = turn === 1 ? s.p2Cells : s.p1Cells;
-      const { newCells, gain } = expandTerritoryForShape(
+      const { newGrid, newCells, gain } = expandTerritoryForShape(
         s.shape,
         s.grid,
         currentCells,
@@ -403,7 +399,7 @@ export function useLocalMatch(
       const totalCells = cellCountOf(s.grid);
       const outcome = checkGameOverForShape(
         s.shape,
-        s.grid,
+        newGrid,
         nextP1Cells,
         nextP2Cells,
         colors,
@@ -443,7 +439,7 @@ export function useLocalMatch(
         }
       }
 
-      dispatch({ type: 'move', color, colors });
+      dispatch({ type: 'move', color, newGrid, newCells, gain, outcome });
       // Refs & dispatch are stable; the compiler's inferred deps are listed
       // explicitly so manual memoization can be preserved.
     },

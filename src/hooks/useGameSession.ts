@@ -1,6 +1,5 @@
-import React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import confetti from 'canvas-confetti';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type confetti from 'canvas-confetti';
 import type {
   ActiveEmote,
   BotDifficulty,
@@ -111,6 +110,10 @@ const matchGridSizeOf = (m: TwoPlayerGameState, fallback: number): number =>
 
 const BOT_NAMES = { p1: 'Player 1', p2: 'AI Bot' } as const;
 const LOCAL_NAMES = { p1: 'Player 1', p2: 'Player 2' } as const;
+
+const launchConfetti = (options: confetti.Options) => {
+  void import('canvas-confetti').then((mod) => mod.default(options)).catch(() => {});
+};
 
 export interface GameSession {
   // --- Preferences (P4.1) ---
@@ -284,6 +287,9 @@ export interface GameSession {
   handleSelectTheme: (id: ThemeId) => void;
   /** Host-only per-turn timer editing (online). */
   turnTimerEditable: boolean;
+  /** Online host check & structural settings lock (mid-game or non-host). */
+  isOnlineHost: boolean;
+  onlineStructuralLocked: boolean;
 
   // --- Local reset confirmation modal ---
   showLocalResetConfirm: boolean;
@@ -356,7 +362,7 @@ export function useGameSession(): GameSession {
           hapticWin(prefs.soundMuted);
           // P5.5: the OS reduce-motion setting skips the burst; sound stays.
           if (!prefersReducedMotionSnapshot()) {
-            confetti({
+            launchConfetti({
               particleCount: 180,
               spread: 90,
               origin: { y: 0.55 },
@@ -374,6 +380,7 @@ export function useGameSession(): GameSession {
       colorCount: prefs.colorCount,
       gridSize: prefs.gridSize,
       shape: shapeForMode(prefs.boardShape, 'multiplayer'),
+      deferred: prefs.mode === 'solo' || prefs.opponent === 'online',
     },
   );
 
@@ -392,7 +399,7 @@ export function useGameSession(): GameSession {
         // P5.5: the OS reduce-motion setting skips the burst; sound stays.
         hapticWin(prefs.soundMuted); // P5.7
         if (!prefersReducedMotionSnapshot()) {
-          confetti({
+          launchConfetti({
             particleCount: 160,
             spread: 80,
             origin: { y: 0.6 },
@@ -422,12 +429,12 @@ export function useGameSession(): GameSession {
         recordSoloGameEnd(final, false); // P6.2
       },
     },
-    // P4.4: the first board is built lazily during this initial render.
-    // P7: the persisted board shape decides the topology of that first board.
+    // P4.4: the first board is built lazily during this initial render when booting in solo.
     {
       size: prefs.gridSize,
       colors: prefs.colorCount,
       shape: prefs.boardShape,
+      deferred: prefs.mode !== 'solo',
     },
   );
 
@@ -487,7 +494,7 @@ export function useGameSession(): GameSession {
   const dailyRoundRef = useRef<DailyRound | null>(null);
   useEffect(() => {
     dailyRoundRef.current = dailyRound;
-  });
+  }, [dailyRound]);
   const recordDailyWin = useCallback(() => {
     const round = dailyRoundRef.current;
     if (!round || round.date !== dailyDateString()) return;
@@ -497,7 +504,7 @@ export function useGameSession(): GameSession {
   }, []);
 
   /** Wordle-style share sheet for the current/last daily round result. */
-  const dailyShareText = (() => {
+  const dailyShareText = useMemo(() => {
     if (!dailyRound || !soloState || soloState.status === 'playing') return null;
     return buildDailyShareText({
       dateString: dailyRound.date,
@@ -508,7 +515,7 @@ export function useGameSession(): GameSession {
       playedColors: soloState.playedColors,
       status: soloState.status,
     });
-  })();
+  }, [dailyRound, soloState]);
 
   // --- P6.2: solo statistics ---------------------------------------------------
   // Recorded on every COMPLETED solo game (won + lost). The config follows the
@@ -571,7 +578,7 @@ export function useGameSession(): GameSession {
   }, []);
 
   /** Absolute link that regenerates the finished board (null while playing). */
-  const soloShareUrl = (() => {
+  const soloShareUrl = useMemo(() => {
     if (prefs.mode !== 'solo' || !soloState || soloState.status === 'playing')
       return null;
     // P7.3: the link carries the topology and the LADDER size (a wheel's
@@ -582,7 +589,7 @@ export function useGameSession(): GameSession {
       colors: soloState.boardColors as ColorCount,
       shape: soloState.shape,
     });
-  })();
+  }, [prefs.mode, soloState]);
 
   // --- Emote Interaction Handler (verbatim from the pre-refactor App) ---
   const triggerEmote = useCallback(
@@ -647,7 +654,7 @@ export function useGameSession(): GameSession {
   const triggerEmoteRef = useRef<typeof triggerEmote | null>(null);
   useEffect(() => {
     triggerEmoteRef.current = triggerEmote;
-  });
+  }, [triggerEmote]);
 
   // recordWin lives in the solo hook api declared below the solo options
   // object; the indirection lets onWin call it from the transition effect.
@@ -656,7 +663,7 @@ export function useGameSession(): GameSession {
   );
   useEffect(() => {
     recordSoloWinRef.current = recordSoloWin;
-  });
+  }, [recordSoloWin]);
 
   useEffect(() => {
     setOnEmoteCallback((role, emoji) => {
@@ -701,7 +708,7 @@ export function useGameSession(): GameSession {
       if (roomState.status !== 'draw') {
         // P5.5: respect the OS reduce-motion setting (sound is unaffected).
         if (!prefersReducedMotionSnapshot()) {
-          confetti({
+          launchConfetti({
             particleCount: 160,
             spread: 80,
             origin: { y: 0.55 },
@@ -754,28 +761,35 @@ export function useGameSession(): GameSession {
       : activeMatch!.currentStage
     : 1;
 
-  const playerNames =
-    onlineActive && roomState
-      ? { p1: roomState.p1Name, p2: roomState.p2Name || 'Player 2' }
-      : prefs.opponent === 'bot'
-        ? BOT_NAMES
-        : LOCAL_NAMES;
+  const playerNames = useMemo(
+    () =>
+      onlineActive && roomState
+        ? { p1: roomState.p1Name, p2: roomState.p2Name || 'Player 2' }
+        : prefs.opponent === 'bot'
+          ? BOT_NAMES
+          : LOCAL_NAMES,
+    [onlineActive, roomState, prefs.opponent],
+  );
 
-  const onlineOnly = onlineActive
-    ? {
-        p1Name: roomState!.p1Name,
-        p2Name: roomState!.p2Name,
-        roomId: roomState!.roomId,
-        p1Connected: roomState!.p1Connected,
-        p2Connected: roomState!.p2Connected,
-      }
-    : {
-        p1Name: undefined,
-        p2Name: undefined,
-        roomId: undefined,
-        p1Connected: undefined,
-        p2Connected: undefined,
-      };
+  const onlineOnly = useMemo(
+    () =>
+      onlineActive
+        ? {
+            p1Name: roomState!.p1Name,
+            p2Name: roomState!.p2Name,
+            roomId: roomState!.roomId,
+            p1Connected: roomState!.p1Connected,
+            p2Connected: roomState!.p2Connected,
+          }
+        : {
+            p1Name: undefined,
+            p2Name: undefined,
+            roomId: undefined,
+            p1Connected: undefined,
+            p2Connected: undefined,
+          },
+    [onlineActive, roomState],
+  );
 
   const isOnlineLobbyActive =
     prefs.mode === 'multiplayer' &&
@@ -808,11 +822,9 @@ export function useGameSession(): GameSession {
 
   // P10.3: replay material for the finished multiplayer round (null while a
   // round is running, while the lobby shows, or before the recording exists).
-  const multiplayerReplay: MultiplayerReplayData | null = (() => {
+  const multiplayerReplay: MultiplayerReplayData | null = useMemo(() => {
     if (prefs.mode !== 'multiplayer' || matchStatus === 'playing') return null;
     if (prefs.opponent === 'online') {
-      // P10.4 seats this — until a round's history arrives in the snapshot
-      // there is nothing to replay yet.
       if (!roomState?.roundHistory) return null;
       return {
         shape: roomState.shape ?? 'classic',
@@ -824,7 +836,6 @@ export function useGameSession(): GameSession {
         moves: roomState.roundHistory,
         p1Name: playerNames.p1,
         p2Name: playerNames.p2,
-        // Online rooms badge P2 the same way the live HUD does (never BOT).
         opponent: 'online',
         boardSeed: roomState.boardSeed ?? 0,
       };
@@ -841,16 +852,20 @@ export function useGameSession(): GameSession {
       moves: m.history,
       p1Name: playerNames.p1,
       p2Name: playerNames.p2,
-      // The boards swap P2's badge for BOT in bot matches (mirrors live play).
       opponent: prefs.opponent === 'bot' ? 'bot' : 'local',
       boardSeed: m.boardSeed,
     };
-  })();
+  }, [
+    prefs.mode,
+    prefs.opponent,
+    prefs.colorCount,
+    matchStatus,
+    roomState,
+    localState,
+    playerNames,
+  ]);
 
   const rematchRequestedBy = roomState?.rematchRequestedBy ?? null;
-  // P9: topology of the board on screen. Online rooms carry their own shape;
-  // local matches store it on the state; solo keeps it on the board itself.
-  // Older online snapshots predate shapes and therefore load as classic.
   let boardShape: BoardShape;
   if (prefs.mode === 'solo') {
     boardShape = soloState?.shape ?? prefs.boardShape;
@@ -859,7 +874,6 @@ export function useGameSession(): GameSession {
   } else {
     boardShape = localState?.shape ?? prefs.boardShape;
   }
-  // P14: the mosaic geometry seed belongs to the same source as the shape.
   let boardSeed: number;
   if (prefs.mode === 'solo') {
     boardSeed = soloState?.seed ?? 0;
@@ -868,9 +882,8 @@ export function useGameSession(): GameSession {
   } else {
     boardSeed = localState?.boardSeed ?? 0;
   }
-  // The solo flood color is the seed color: classic top-left, wheel seed
-  // ring, and the cube's center face cell.
-  const soloCurrentColor = (() => {
+
+  const soloCurrentColor = useMemo(() => {
     if (!soloState) return 0;
     if (soloState.shape === 'cube') {
       const side = getCubeSide(soloState.grid);
@@ -893,21 +906,28 @@ export function useGameSession(): GameSession {
       return soloState.grid[r][c];
     }
     return soloState.grid[0][0];
-  })();
+  }, [soloState]);
 
-  // Cell count follows the board (classic/unified rows × cols, including the
-  const totalCells = Math.max(
-    1,
-    cellCountOf(
-      prefs.mode === 'solo' ? (soloState?.grid ?? []) : (activeMatch?.grid ?? []),
-    ),
+  const totalCells = useMemo(
+    () =>
+      Math.max(
+        1,
+        cellCountOf(
+          prefs.mode === 'solo' ? (soloState?.grid ?? []) : (activeMatch?.grid ?? []),
+        ),
+      ),
+    [prefs.mode, soloState, activeMatch],
   );
-  const gridView = {
-    grid: prefs.mode === 'solo' && soloState ? soloState.grid : (activeMatch?.grid ?? []),
-    gridSize: prefs.mode === 'solo' ? dailyGridSize : matchGridSize,
-    p1Cells: activeMatch?.p1Cells ?? localState?.p1Cells ?? [],
-    p2Cells: activeMatch?.p2Cells ?? localState?.p2Cells ?? [],
-  };
+  const gridView = useMemo(
+    () => ({
+      grid:
+        prefs.mode === 'solo' && soloState ? soloState.grid : (activeMatch?.grid ?? []),
+      gridSize: prefs.mode === 'solo' ? dailyGridSize : matchGridSize,
+      p1Cells: activeMatch?.p1Cells ?? localState?.p1Cells ?? [],
+      p2Cells: activeMatch?.p2Cells ?? localState?.p2Cells ?? [],
+    }),
+    [prefs.mode, soloState, activeMatch, dailyGridSize, matchGridSize, localState],
+  );
   const gridMovesCount =
     prefs.mode === 'solo' ? (soloState?.moves ?? 0) : (activeMatch?.movesCount ?? 0);
   const paletteDisabled =
@@ -922,12 +942,21 @@ export function useGameSession(): GameSession {
     prefs.opponent === 'online'
       ? !roomState || roomState.status !== 'playing' || isSpectator
       : !!localState && localState.status !== 'playing';
-  const turnTimerEditable = prefs.opponent === 'online' && myRole === 1;
+  const isOnlineHost =
+    !(prefs.mode === 'multiplayer' && prefs.opponent === 'online' && roomState) ||
+    myRole === 1;
+  const onlineStructuralLocked =
+    prefs.mode === 'multiplayer' &&
+    prefs.opponent === 'online' &&
+    !!roomState &&
+    (myRole !== 1 || roomState.status === 'playing');
+  const turnTimerEditable =
+    prefs.mode === 'multiplayer' &&
+    prefs.opponent === 'online' &&
+    !!roomState &&
+    myRole === 1;
 
-  // --- P5.3: screen-reader announcements (derived — no cascading renders).
-  // Every move increments a counter suffix so polite live regions re-fire
-  // even when the message text repeats.
-  const announce = (() => {
+  const announce = useMemo(() => {
     if (prefs.mode === 'solo') {
       const s = soloState;
       if (!s) return '';
@@ -942,7 +971,7 @@ export function useGameSession(): GameSession {
       return `${m.status === 'p1_won' ? playerNames.p1 : playerNames.p2} wins the round.`;
     }
     return `${playerNames[m.turn === 1 ? 'p1' : 'p2']} to move — ${m.movesCount} moves played`;
-  })();
+  }, [prefs.mode, soloState, activeMatch, playerNames]);
 
   // ---------------------------------------------------------------
   // Actions
@@ -975,6 +1004,16 @@ export function useGameSession(): GameSession {
         return;
       }
       if (prefs.opponent === 'online') {
+        if (
+          !isMyTurn ||
+          !roomState ||
+          roomState.status !== 'playing' ||
+          isSpectator ||
+          color === roomState.p1Color ||
+          color === roomState.p2Color
+        ) {
+          return;
+        }
         setLastMovingPlayer(myRole ?? 1);
         playMoveSound(color);
         clearHint();
@@ -991,6 +1030,9 @@ export function useGameSession(): GameSession {
       soloCurrentColor,
       makeSoloMove,
       makeLocalMove,
+      isMyTurn,
+      roomState,
+      isSpectator,
       myRole,
       sendOnlineMove,
       clearHint,
@@ -1171,33 +1213,56 @@ export function useGameSession(): GameSession {
   // ---------------------------------------------------------------
   // Explicit settings re-creations (P4.4): deliberate fresh boards only.
   // ---------------------------------------------------------------
+  const canEditOnlineStructural =
+    !!roomState && myRole === 1 && roomState.status !== 'playing';
+
   const handleSetToEasiest = useCallback(() => {
     prefs.setGridSize(10);
     prefs.setColorCount(4);
     prefs.setBotDifficulty('easy');
-    // The shape pref is the player's board FORMAT, not a difficulty —
-    // "easiest" keeps the current topology.
-    initSoloBoard(10, 4, undefined, prefs.boardShape);
-    setSoloHintsLeft(3);
-    clearHint();
-    // Same shape as pre-refactor: a plain 10x4 round with fresh meta.
-    initRound({
-      size: 10,
-      colors: 4,
-      startTurn: 1,
-      round: 1,
-      stage: 1,
-      stageWins: { 1: [], 2: [] },
-      challengeTypeOverride: prefs.challengeType,
-    });
-  }, [initRound, initSoloBoard, prefs, clearHint, setSoloHintsLeft]);
+    if (prefs.mode === 'solo' || soloState !== null) {
+      initSoloBoard(10, 4, undefined, prefs.boardShape);
+      setSoloHintsLeft(3);
+      clearHint();
+    }
+    if (
+      (prefs.mode === 'multiplayer' && prefs.opponent !== 'online') ||
+      localState !== null
+    ) {
+      initRound({
+        size: 10,
+        colors: 4,
+        startTurn: 1,
+        round: 1,
+        stage: 1,
+        stageWins: { 1: [], 2: [] },
+        challengeTypeOverride: prefs.challengeType,
+      });
+    }
+    if (canEditOnlineStructural && roomState?.challengeType !== 'progressive') {
+      updateRoomSettings({ gridSize: 10, colorCount: 4 });
+    }
+  }, [
+    initRound,
+    initSoloBoard,
+    prefs,
+    soloState,
+    localState,
+    canEditOnlineStructural,
+    roomState,
+    updateRoomSettings,
+    clearHint,
+    setSoloHintsLeft,
+  ]);
 
   const handleChangeGridSize = useCallback(
     (size: GridSize) => {
       prefs.setGridSize(size);
-      initSoloBoard(size, prefs.colorCount, undefined, prefs.boardShape);
-      setSoloHintsLeft(3);
-      clearHint();
+      if (prefs.mode === 'solo' || soloState !== null) {
+        initSoloBoard(size, prefs.colorCount, undefined, prefs.boardShape);
+        setSoloHintsLeft(3);
+        clearHint();
+      }
       const m = localState;
       if (m && m.challengeType !== 'progressive') {
         initRound({
@@ -1210,13 +1275,19 @@ export function useGameSession(): GameSession {
           challengeTypeOverride: 'standard',
         });
       }
-      if (roomState && roomState.challengeType !== 'progressive') {
+      if (
+        canEditOnlineStructural &&
+        roomState &&
+        roomState.challengeType !== 'progressive'
+      ) {
         updateRoomSettings({ gridSize: size });
       }
     },
     [
       initRound,
       prefs,
+      soloState,
+      canEditOnlineStructural,
       roomState,
       updateRoomSettings,
       localState,
@@ -1229,9 +1300,11 @@ export function useGameSession(): GameSession {
   const handleChangeColorCount = useCallback(
     (count: ColorCount) => {
       prefs.setColorCount(count);
-      initSoloBoard(prefs.gridSize, count, undefined, prefs.boardShape);
-      setSoloHintsLeft(3);
-      clearHint();
+      if (prefs.mode === 'solo' || soloState !== null) {
+        initSoloBoard(prefs.gridSize, count, undefined, prefs.boardShape);
+        setSoloHintsLeft(3);
+        clearHint();
+      }
       const m = localState;
       if (m && m.challengeType !== 'progressive') {
         initRound({
@@ -1244,13 +1317,19 @@ export function useGameSession(): GameSession {
           challengeTypeOverride: 'standard',
         });
       }
-      if (roomState && roomState.challengeType !== 'progressive') {
+      if (
+        canEditOnlineStructural &&
+        roomState &&
+        roomState.challengeType !== 'progressive'
+      ) {
         updateRoomSettings({ colorCount: count });
       }
     },
     [
       initRound,
       prefs,
+      soloState,
+      canEditOnlineStructural,
       roomState,
       updateRoomSettings,
       localState,
@@ -1260,23 +1339,18 @@ export function useGameSession(): GameSession {
     ],
   );
 
-  /**
-   * P7/P9: swap the board topology (classic square ↔ polar wheel). Solo rebuilds
-   * its board; a local match re-inits like the grid-size switch; an online host
-   * pushes the setting and the room rebuilds between games.
-   */
   const handleChangeBoardShape = useCallback(
     (shape: BoardShape) => {
       prefs.setBoardShape(shape);
-      initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, shape);
-      setSoloHintsLeft(3);
-      clearHint();
+      if (prefs.mode === 'solo' || soloState !== null) {
+        initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, shape);
+        setSoloHintsLeft(3);
+        clearHint();
+      }
       const m = localState;
       if (m) {
         const progressive = m.challengeType === 'progressive';
         initRound({
-          // Progressive rounds read their size/colors from the stage config;
-          // the shape applies to that same stage immediately.
           size: progressive ? undefined : prefs.gridSize,
           colors: progressive ? undefined : prefs.colorCount,
           startTurn: m.firstTurnPlayer,
@@ -1287,18 +1361,19 @@ export function useGameSession(): GameSession {
           shape: shapeForMode(shape, 'multiplayer'),
         });
       }
-      if (roomState) {
+      if (canEditOnlineStructural) {
         updateRoomSettings({ shape: shapeForMode(shape, 'multiplayer') });
       }
     },
     [
       prefs,
+      soloState,
       initSoloBoard,
       clearHint,
       setSoloHintsLeft,
       localState,
       initRound,
-      roomState,
+      canEditOnlineStructural,
       updateRoomSettings,
     ],
   );
@@ -1307,41 +1382,55 @@ export function useGameSession(): GameSession {
     (type: ChallengeType) => {
       prefs.setChallengeType(type);
       const m = localState;
-      if (type === 'progressive') {
-        const s1 = PROGRESSIVE_STAGES[0] || { gridSize: 10, colorCount: 4 };
-        initRound({
-          size: s1.gridSize,
-          colors: s1.colorCount,
-          startTurn: m?.firstTurnPlayer ?? 1,
-          round: m?.roundNumber ?? 1,
-          stage: 1,
-          stageWins: m?.stageWins ?? { 1: [], 2: [] },
-          challengeTypeOverride: 'progressive',
-        });
-      } else {
-        initRound({
-          size: prefs.gridSize,
-          colors: prefs.colorCount,
-          startTurn: m?.firstTurnPlayer ?? 1,
-          round: m?.roundNumber ?? 1,
-          stage: m?.currentStage ?? 1,
-          stageWins: m?.stageWins ?? { 1: [], 2: [] },
-          challengeTypeOverride: 'standard',
-        });
+      if (prefs.mode === 'multiplayer' && prefs.opponent !== 'online') {
+        if (type === 'progressive') {
+          const s1 = PROGRESSIVE_STAGES[0] || { gridSize: 10, colorCount: 4 };
+          initRound({
+            size: s1.gridSize,
+            colors: s1.colorCount,
+            startTurn: m?.firstTurnPlayer ?? 1,
+            round: m?.roundNumber ?? 1,
+            stage: 1,
+            stageWins: m?.stageWins ?? { 1: [], 2: [] },
+            challengeTypeOverride: 'progressive',
+          });
+        } else {
+          initRound({
+            size: prefs.gridSize,
+            colors: prefs.colorCount,
+            startTurn: m?.firstTurnPlayer ?? 1,
+            round: m?.roundNumber ?? 1,
+            stage: m?.currentStage ?? 1,
+            stageWins: m?.stageWins ?? { 1: [], 2: [] },
+            challengeTypeOverride: 'standard',
+          });
+        }
       }
-      if (roomState) {
+      if (canEditOnlineStructural) {
         updateRoomSettings({ challengeType: type });
       }
     },
-    [initRound, prefs, roomState, updateRoomSettings, localState],
+    [initRound, prefs, canEditOnlineStructural, updateRoomSettings, localState],
   );
 
   const handleSelectMode = useCallback(
     (m: GameMode) => {
       prefs.setMode(m);
       clearHint();
+      if (m === 'solo' && !soloState) {
+        initSoloBoard(prefs.gridSize, prefs.colorCount, undefined, prefs.boardShape);
+        setSoloHintsLeft(3);
+      } else if (m === 'multiplayer' && prefs.opponent !== 'online' && !localState) {
+        initRound({
+          startTurn: 1,
+          round: 1,
+          stage: 1,
+          stageWins: { 1: [], 2: [] },
+          challengeTypeOverride: prefs.challengeType,
+        });
+      }
     },
-    [prefs, clearHint],
+    [prefs, clearHint, soloState, localState, initSoloBoard, initRound, setSoloHintsLeft],
   );
 
   const handleChangeOpponent = useCallback(
@@ -1495,6 +1584,8 @@ export function useGameSession(): GameSession {
     handleChangeTurnTimer,
     handleSelectTheme,
     turnTimerEditable,
+    isOnlineHost,
+    onlineStructuralLocked,
     showLocalResetConfirm,
     confirmLocalReset,
     cancelLocalReset,

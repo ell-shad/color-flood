@@ -4,6 +4,8 @@ import { PROGRESSIVE_STAGES } from '../utils/themes';
 import { assertNever } from '../utils/boardShape';
 import { cubeSideForSize } from '../utils/cubeEngine';
 import { wheelGeometry } from '../utils/circleEngine';
+import { triangleDimensions } from '../utils/triangleEngine';
+import { hiveDimensions } from '../utils/hiveEngine';
 import type { BoardShape } from '../types';
 
 interface ProgressiveTrackProps {
@@ -97,11 +99,22 @@ export const ProgressiveTrack: React.FC<ProgressiveTrackProps> = ({
                 sizeWords = `cube with ${side} cells per side`;
                 break;
               }
-              // Solo-only topologies never reach a multiplayer ladder; the
-              // cases keep the switch exhaustive.
+              case 'triangle': {
+                const [rows, cols] = triangleDimensions(stage.gridSize);
+                sizeText = `${rows}×${cols}`;
+                sizeWords = `${rows} rows by ${cols} triangles`;
+                break;
+              }
+              case 'hive': {
+                const [rows, cols] = hiveDimensions(stage.gridSize);
+                sizeText = `${rows}×${cols}`;
+                sizeWords = `${rows} by ${cols} hexagons`;
+                break;
+              }
               case 'mosaic':
-              case 'triangle':
-              case 'hive':
+                sizeText = `${stage.gridSize * stage.gridSize}`;
+                sizeWords = `${stage.gridSize * stage.gridSize} mosaic shards`;
+                break;
               case 'classic':
                 break;
               default:

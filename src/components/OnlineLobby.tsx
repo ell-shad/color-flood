@@ -87,7 +87,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
   const clearUrlParam = () => {
     const url = new URL(window.location.href);
     url.searchParams.delete('room');
-    window.history.replaceState({}, '', url.pathname);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     setInvitedFromUrl(false);
     setInputRoomCode('');
   };
@@ -197,7 +197,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
 
         {/* Config Summary */}
         <div className="space-y-1">
-          <div className="text-[11px] text-slate-400 flex justify-center gap-3">
+          <div className="text-[11px] text-slate-400 flex flex-wrap justify-center gap-x-3 gap-y-1">
             <span>
               Type:{' '}
               <strong className="text-amber-300">
@@ -205,6 +205,10 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
                   ? 'Progressive Track'
                   : 'Standard'}
               </strong>
+            </span>
+            <span>
+              Shape:{' '}
+              <strong className="text-slate-200 capitalize">{roomState.shape}</strong>
             </span>
             <span>
               Grid: <strong className="text-slate-200">{roomState.gridSize}²</strong>
@@ -289,7 +293,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
                 onClearError();
                 clearUrlParam();
               }}
-              className="text-amber-400 hover:text-white font-bold text-xs cursor-pointer"
+              aria-label="Dismiss error"
+              className="text-amber-400 hover:text-white font-bold text-xs cursor-pointer p-1"
             >
               ✕
             </button>
@@ -303,7 +308,8 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           </div>
           <button
             onClick={onClearError}
-            className="text-rose-400 hover:text-white font-bold cursor-pointer"
+            aria-label="Dismiss error"
+            className="text-rose-400 hover:text-white font-bold cursor-pointer p-1"
           >
             ✕
           </button>
@@ -384,65 +390,65 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
           <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold block">
             Board Shape
           </span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <button
               onClick={() => setSelectedShape('classic')}
               aria-pressed={selectedShape === 'classic'}
-              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`py-2 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 selectedShape === 'classic'
                   ? 'bg-indigo-950/70 border-indigo-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Square className="w-3 h-3" />
+              <Square className="w-3.5 h-3.5 shrink-0" />
               Classic
             </button>
             <button
               onClick={() => setSelectedShape('wheel')}
               aria-pressed={isWheel(selectedShape)}
-              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`py-2 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 isWheel(selectedShape)
                   ? 'bg-fuchsia-950/70 border-fuchsia-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Circle className="w-3 h-3" />
+              <Circle className="w-3.5 h-3.5 shrink-0" />
               Wheel
             </button>
             <button
               onClick={() => setSelectedShape('mosaic')}
               aria-pressed={isMosaic(selectedShape)}
-              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`py-2 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 isMosaic(selectedShape)
                   ? 'bg-amber-950/70 border-amber-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Hexagon className="w-3 h-3" />
+              <Hexagon className="w-3.5 h-3.5 shrink-0" />
               Mosaic
             </button>
             <button
               onClick={() => setSelectedShape('triangle')}
               aria-pressed={isTriangle(selectedShape)}
-              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`py-2 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 isTriangle(selectedShape)
                   ? 'bg-cyan-950/70 border-cyan-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Triangle className="w-3 h-3" />
+              <Triangle className="w-3.5 h-3.5 shrink-0" />
               Triangle
             </button>
             <button
               onClick={() => setSelectedShape('hive')}
               aria-pressed={isHive(selectedShape)}
-              className={`p-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`col-span-2 sm:col-span-2 py-2 px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 isHive(selectedShape)
                   ? 'bg-lime-950/70 border-lime-500 text-white'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Hexagon className="w-3 h-3" />
+              <Hexagon className="w-3.5 h-3.5 shrink-0" />
               Hive
             </button>
           </div>
@@ -530,6 +536,7 @@ export const OnlineLobby: React.FC<OnlineLobbyProps> = ({
         <div className="flex gap-2">
           <input
             type="text"
+            aria-label="Room code"
             value={inputRoomCode}
             onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
             placeholder="ROOM CODE"

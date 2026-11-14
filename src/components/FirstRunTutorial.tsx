@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
 import { X, MousePointerClick, Keyboard, Swords } from 'lucide-react';
 import { isCube, isHive, isMosaic, isTriangle, isWheel } from '../utils/boardShape';
 import type { BoardShape } from '../types';
@@ -34,12 +33,7 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
   const next = () => setManualStep(Math.min(step + 1, 2));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 16 }}
-      className="fixed left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 z-40 w-[min(92vw,380px)] pointer-events-none"
-    >
+    <div className="fixed left-1/2 -translate-x-1/2 bottom-24 sm:bottom-28 z-40 w-[min(92vw,380px)] pointer-events-none animate-[pop-in_200ms_ease-out]">
       <div className="pointer-events-auto bg-slate-900/95 border border-slate-750 rounded-2xl p-4 shadow-2xl relative">
         <button
           onClick={onFinish}
@@ -149,6 +143,6 @@ export const FirstRunTutorial: React.FC<FirstRunTutorialProps> = ({
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

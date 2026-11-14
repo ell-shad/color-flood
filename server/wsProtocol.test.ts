@@ -340,4 +340,30 @@ describe('P12 solo-only shapes over the wire', () => {
     expect(made.snapshot.roomState.movesCount).toBe(1);
     expect(made.snapshot.roomState.turn).toBe(2);
   });
+
+  it('forwards shape updates via WS settings in the waiting lobby', async () => {
+    const host = await TestClient.connect(port());
+    host.send({
+      type: 'create_room',
+      playerName: 'Host',
+      gridSize: 10,
+      colorCount: 4,
+      shape: 'classic',
+    });
+    const created = (await host.expect('room_created')) as SessionAckMessage;
+    host.send({
+      type: 'settings',
+      roomId: created.roomId,
+      playerToken: created.playerToken,
+      shape: 'triangle',
+      gridSize: 12,
+    });
+    const updated = (await host.expect('settings_updated')) as StateUpdateMessage;
+    expect(updated.snapshot.roomState.shape).toBe('triangle');
+    expect(updated.snapshot.roomState.gridSize).toBe(12);
+    // Triangle ladder size 12 produces 6 rows x 24 cols
+    expect(updated.snapshot.roomState.grid).toHaveLength(6);
+    expect(updated.snapshot.roomState.grid[0]).toHaveLength(24);
+    host.close();
+  });
 });
